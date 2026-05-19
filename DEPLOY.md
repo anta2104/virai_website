@@ -104,11 +104,24 @@ SSL: tự động (Full). Kiểm tra sau 5–30 phút: https://virai.com.vn
 ## Form liên hệ sau deploy
 
 1. Đăng ký Formspree, tạo form nhận về `tanvn@virai.com.vn`
-2. Copy Form ID (phần sau `/f/` trong URL)
-3. Cloudflare Pages → **Settings** → **Environment variables** → thêm `PUBLIC_FORMSPREE_FORM_ID`
-4. **Redeploy** project
+2. Copy Form ID (phần sau `/f/` trong URL, ví dụ `mykvzbla`)
+3. **Push code mới lên Git** — Cloudflare chạy `npm run build` và nhúng Form ID vào HTML
 
-Trước khi cấu hình Formspree: nút **Gửi yêu cầu** mở app email với nội dung đã điền; nút **Hoặc gửi email trực tiếp** luôn hoạt động.
+### Dự án đang dùng Cloudflare Workers (sau PR autoconfig)
+
+URL dạng `….workers.dev` = Workers + Astro, **không** phải Pages thuần.
+
+| Cách thêm biến | Form có hoạt động? |
+|----------------|-------------------|
+| **Secret** trên Dashboard (*Add secret: PUBLIC_FORMSPREE…*) | **Không** — Secret chỉ lúc Worker chạy, Astro đã build HTML trước đó |
+| **Environment variable** + build lại từ Git | **Có** (nếu biến có sẵn lúc `npm run build`) |
+| Form ID trong `src/data/site.ts` (fallback) | **Có** — đã cấu hình sẵn `mykvzbla` |
+
+**Vì sao thêm Secret mà web không đổi:** Version History ghi *"Add secret"* chỉ cập nhật cấu hình Worker, **không** build lại Astro. Banner vàng biến mất chỉ sau lần **build** mới có Form ID trong HTML.
+
+**Cách kích hoạt build mới:** push commit lên `main`, hoặc Deployments → deployment từ Git → **Retry deployment** (không chỉ Rollback/Add secret).
+
+Trước khi cấu hình Formspree: nút **Gửi yêu cầu** mở app email; nút **Hoặc gửi email trực tiếp** luôn hoạt động.
 
 ## Cập nhật thông tin liên hệ
 

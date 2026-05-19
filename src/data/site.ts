@@ -7,7 +7,9 @@ export const site = {
   locale: 'vi_VN',
 };
 
-const formspreeId = import.meta.env.PUBLIC_FORMSPREE_FORM_ID;
+const formspreeId =
+  (import.meta.env.PUBLIC_FORMSPREE_FORM_ID as string | undefined)?.trim() ||
+  'mykvzbla';
 
 /** Formspree: đăng ký tại https://formspree.io → đặt PUBLIC_FORMSPREE_FORM_ID trên Cloudflare Pages */
 export const contact = {
