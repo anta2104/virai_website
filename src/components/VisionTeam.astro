@@ -1,0 +1,173 @@
+---
+import { visionMission, team, teamStats } from '../data/site';
+
+const founder = team.find((m) => m.featured);
+const coFounders = team.filter((m) => !m.featured);
+---
+
+<section id="vision" class="section-padding border-t border-white/5">
+  <div class="mx-auto max-w-7xl">
+    <div class="mx-auto max-w-3xl text-center">
+      <p class="text-sm font-semibold uppercase tracking-widest text-virai-400">Tầm nhìn &amp; Sứ mệnh</p>
+      <h2 class="mt-3 text-3xl font-bold text-white sm:text-4xl">{visionMission.title}</h2>
+    </div>
+
+    <div class="mt-14 grid gap-6 lg:grid-cols-2">
+      <article class="relative overflow-hidden rounded-2xl border border-virai-500/20 bg-gradient-to-br from-virai-950/80 to-slate-900 p-8 lg:p-10">
+        <div class="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-virai-500/10 blur-2xl" />
+        <div class="relative">
+          <span class="inline-flex items-center gap-2 rounded-full bg-virai-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-virai-300">
+            <span class="h-1.5 w-1.5 rounded-full bg-virai-400"></span>
+            Tầm nhìn
+          </span>
+          <p class="mt-5 text-lg leading-relaxed text-slate-200">{visionMission.vision}</p>
+        </div>
+      </article>
+
+      <article class="relative overflow-hidden rounded-2xl border border-cyan-500/20 bg-gradient-to-br from-cyan-950/40 to-slate-900 p-8 lg:p-10">
+        <div class="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-cyan-500/10 blur-2xl" />
+        <div class="relative">
+          <span class="inline-flex items-center gap-2 rounded-full bg-cyan-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-cyan-300">
+            <span class="h-1.5 w-1.5 rounded-full bg-cyan-400"></span>
+            Sứ mệnh
+          </span>
+          <p class="mt-5 text-lg leading-relaxed text-slate-200">{visionMission.mission}</p>
+        </div>
+      </article>
+    </div>
+
+    <div class="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {
+        visionMission.values.map((value) => (
+          <div class="rounded-xl border border-white/5 bg-white/[0.03] p-5 transition-colors hover:border-virai-500/25 hover:bg-white/[0.05]">
+            <h3 class="font-semibold text-white">{value.title}</h3>
+            <p class="mt-2 text-sm leading-relaxed text-slate-400">{value.description}</p>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<section id="team" class="relative section-padding overflow-hidden">
+  <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-virai-900/20 via-transparent to-transparent" />
+
+  <div class="relative mx-auto max-w-7xl">
+    <div class="mx-auto max-w-3xl text-center">
+      <p class="text-sm font-semibold uppercase tracking-widest text-virai-400">Đội ngũ</p>
+      <h2 class="mt-3 text-3xl font-bold text-white sm:text-4xl">Những người đứng sau Virai</h2>
+      <p class="mt-4 text-slate-400 leading-relaxed">
+        Bốn đồng sáng lập — kết hợp kinh nghiệm sản phẩm, AI và triển khai thực tế — cùng xây dựng
+        hệ sinh thái giải pháp từ công trường, chăm sóc sức khỏe đến trợ lý AI doanh nghiệp.
+      </p>
+    </div>
+
+    <div class="mt-12 grid grid-cols-3 gap-4 rounded-2xl border border-white/10 bg-slate-900/60 p-6 sm:gap-8 sm:p-8">
+      {
+        teamStats.map((stat) => (
+          <div class="text-center">
+            <p class="text-2xl font-bold text-gradient sm:text-3xl">{stat.value}</p>
+            <p class="mt-1 text-xs text-slate-400 sm:text-sm">{stat.label}</p>
+          </div>
+        ))
+      }
+    </div>
+
+    {
+      founder && (
+        <article class="mt-14 overflow-hidden rounded-2xl border border-virai-500/30 bg-gradient-to-br from-slate-900 via-slate-900 to-virai-950/40 shadow-xl shadow-virai-900/20">
+          <div class="grid lg:grid-cols-5">
+            <div class="relative lg:col-span-2">
+              <div class="absolute inset-0 bg-gradient-to-br from-virai-600/20 to-transparent" />
+              <div class="aspect-[4/5] overflow-hidden bg-slate-800 lg:aspect-auto lg:h-full lg:min-h-[420px]">
+                <img
+                  src={founder.photo}
+                  alt={founder.name}
+                  class="h-full w-full object-cover object-top"
+                  loading="eager"
+                  width={500}
+                  height={625}
+                />
+              </div>
+              <div class="absolute left-4 top-4 rounded-full bg-virai-600 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white shadow-lg">
+                Founder
+              </div>
+            </div>
+            <div class="flex flex-col justify-center p-8 lg:col-span-3 lg:p-12">
+              <p class="text-sm font-medium text-virai-400">{founder.role}</p>
+              <h3 class="mt-2 text-2xl font-bold text-white sm:text-3xl">{founder.name}</h3>
+              <p class="mt-4 text-slate-300 leading-relaxed">{founder.bio}</p>
+              <ul class="mt-6 flex flex-wrap gap-2">
+                {
+                  founder.focus.map((tag) => (
+                    <li class="rounded-lg border border-virai-500/30 bg-virai-500/10 px-3 py-1.5 text-xs font-medium text-virai-200">
+                      {tag}
+                    </li>
+                  ))
+                }
+              </ul>
+            </div>
+          </div>
+        </article>
+      )
+    }
+
+    <div class="mt-10 grid gap-6 md:grid-cols-3">
+      {
+        coFounders.map((member) => (
+          <article class="group flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-900/80 transition-all duration-300 hover:-translate-y-1 hover:border-virai-500/40 hover:shadow-lg hover:shadow-virai-900/20">
+            <div class="relative overflow-hidden bg-gradient-to-b from-slate-700 to-slate-900">
+              <div class="aspect-[4/5] overflow-hidden">
+                <img
+                  src={member.photo}
+                  alt={member.name}
+                  class="h-full w-full object-cover object-[center_15%] transition-transform duration-500 group-hover:scale-[1.03]"
+                  loading="lazy"
+                  width={400}
+                  height={500}
+                />
+              </div>
+              <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent opacity-90" />
+              <div class="absolute bottom-0 inset-x-0 p-5">
+                <p class="text-xs font-semibold uppercase tracking-wider text-cyan-400">Co-Founder</p>
+                <h3 class="mt-1 text-lg font-bold text-white">{member.name}</h3>
+                <p class="text-sm text-virai-300">{member.role}</p>
+              </div>
+            </div>
+            <div class="flex flex-1 flex-col p-5">
+              <p class="flex-1 text-sm leading-relaxed text-slate-400">{member.bio}</p>
+              <ul class="mt-4 flex flex-wrap gap-1.5 border-t border-white/5 pt-4">
+                {
+                  member.focus.map((tag) => (
+                    <li class="rounded-md bg-slate-800 px-2.5 py-1 text-xs text-slate-300">{tag}</li>
+                  ))
+                }
+              </ul>
+            </div>
+          </article>
+        ))
+      }
+    </div>
+
+    {
+      visionMission.teamImage && (
+        <figure class="mt-14 overflow-hidden rounded-2xl border border-white/10 bg-slate-900/50">
+          <img
+            src={visionMission.teamImage}
+            alt="Đội ngũ Virai trong chuyến công tác"
+            class="aspect-[16/9] w-full object-cover object-center sm:aspect-[2/1]"
+            loading="lazy"
+            width={1601}
+            height={855}
+          />
+          <figcaption class="border-t border-white/5 px-6 py-5 text-center sm:px-10 sm:text-left">
+            <p class="text-sm font-semibold text-virai-300">Khoảnh khắc đội ngũ Virai</p>
+            <p class="mt-2 text-sm leading-relaxed text-slate-400">
+              Cùng nhau xây dựng công nghệ AI phục vụ doanh nghiệp và cộng đồng Việt Nam.
+            </p>
+          </figcaption>
+        </figure>
+      )
+    }
+  </div>
+</section>

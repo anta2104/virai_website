@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" fill="none">
+  <defs>
+    <linearGradient id="cb" x1="22" y1="14" x2="50" y2="42" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#60a5fa"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="500" rx="16" fill="#0f172a"/>
+  <rect x="0" y="0" width="800" height="56" rx="16" fill="#1e293b"/>
+  <circle cx="36" cy="28" r="14" fill="url(#cb)"/>
+  <text x="60" y="34" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="14" font-weight="600">Virai Assistant</text>
+  <text x="60" y="48" fill="#64748b" font-family="system-ui,sans-serif" font-size="10">Tro ly AI noi bo</text>
+  <rect x="24" y="80" width="480" height="56" rx="12" fill="#1e293b"/>
+  <text x="44" y="104" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="12">Quy trinh xin nghi phep nhu the nao?</text>
+  <rect x="296" y="152" width="480" height="80" rx="12" fill="#1e3a5f"/>
+  <text x="316" y="176" fill="#bfdbfe" font-family="system-ui,sans-serif" font-size="12">Theo quy trinh HR-2024, nhan vien can:</text>
+  <text x="316" y="196" fill="#bfdbfe" font-family="system-ui,sans-serif" font-size="12">1. Dien form tren he thong noi bo</text>
+  <text x="316" y="216" fill="#bfdbfe" font-family="system-ui,sans-serif" font-size="12">2. Trinh quan ly phe duyet (2 ngay lam viec)</text>
+  <rect x="24" y="252" width="400" height="40" rx="12" fill="#1e293b"/>
+  <text x="44" y="278" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="12">Tom tat bao cao Q1 cho toi</text>
+  <rect x="24" y="360" width="752" height="56" rx="12" fill="#1e293b" stroke="#334155"/>
+  <text x="44" y="394" fill="#475569" font-family="system-ui,sans-serif" font-size="13">Nhap cau hoi...</text>
+  <rect x="680" y="372" width="80" height="32" rx="8" fill="#2563eb"/>
+  <text x="720" y="393" text-anchor="middle" fill="white" font-family="system-ui,sans-serif" font-size="12">Gui</text>
+  <text x="44" y="450" fill="#475569" font-family="system-ui,sans-serif" font-size="10">Nguon: HR-Policy-2024.pdf</text>
+</svg>

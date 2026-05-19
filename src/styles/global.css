@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@theme {
+  --color-virai-50: #eff6ff;
+  --color-virai-100: #dbeafe;
+  --color-virai-200: #bfdbfe;
+  --color-virai-300: #93c5fd;
+  --color-virai-400: #60a5fa;
+  --color-virai-500: #38bdf8;
+  --color-virai-600: #2563eb;
+  --color-virai-700: #1d4ed8;
+  --color-virai-800: #1e40af;
+  --color-virai-900: #1e3a8a;
+  --color-virai-950: #172554;
+
+  --font-sans: "Be Vietnam Pro", "Inter", system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-slate-950 text-slate-100 antialiased;
+    font-family: var(--font-sans);
+  }
+
+  ::selection {
+    @apply bg-virai-500/40 text-white;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-virai-400 via-cyan-400 to-virai-300 bg-clip-text text-transparent;
+  }
+
+  .glass {
+    @apply border border-white/10 bg-white/5 backdrop-blur-xl;
+  }
+
+  .section-padding {
+    @apply px-4 py-20 sm:px-6 lg:px-8 lg:py-28;
+  }
+}

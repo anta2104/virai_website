@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://virai.com.vn/sitemap-index.xml
