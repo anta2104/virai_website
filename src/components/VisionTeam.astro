@@ -1,6 +1,17 @@
 ---
-import { visionMission, team, teamStats } from '../data/site';
+import {
+  team as defaultTeam,
+  teamStats as defaultTeamStats,
+  ui as defaultUi,
+  visionMission as defaultVisionMission,
+} from '../data/site';
 
+const {
+  visionMission = defaultVisionMission,
+  team = defaultTeam,
+  teamStats = defaultTeamStats,
+  ui = defaultUi,
+} = Astro.props;
 const founder = team.find((m) => m.featured);
 const coFounders = team.filter((m) => !m.featured);
 ---
@@ -8,7 +19,9 @@ const coFounders = team.filter((m) => !m.featured);
 <section id="vision" class="section-padding border-t border-white/5">
   <div class="mx-auto max-w-7xl">
     <div class="mx-auto max-w-3xl text-center">
-      <p class="text-sm font-semibold uppercase tracking-widest text-virai-400">Tầm nhìn &amp; Sứ mệnh</p>
+      <p class="text-sm font-semibold uppercase tracking-widest text-virai-400">
+        {ui.visionLabel} &amp; {ui.missionLabel}
+      </p>
       <h2 class="mt-3 text-3xl font-bold text-white sm:text-4xl">{visionMission.title}</h2>
     </div>
 
@@ -18,7 +31,7 @@ const coFounders = team.filter((m) => !m.featured);
         <div class="relative">
           <span class="inline-flex items-center gap-2 rounded-full bg-virai-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-virai-300">
             <span class="h-1.5 w-1.5 rounded-full bg-virai-400"></span>
-            Tầm nhìn
+            {ui.visionLabel}
           </span>
           <p class="mt-5 text-lg leading-relaxed text-slate-200">{visionMission.vision}</p>
         </div>
@@ -29,7 +42,7 @@ const coFounders = team.filter((m) => !m.featured);
         <div class="relative">
           <span class="inline-flex items-center gap-2 rounded-full bg-cyan-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-cyan-300">
             <span class="h-1.5 w-1.5 rounded-full bg-cyan-400"></span>
-            Sứ mệnh
+            {ui.missionLabel}
           </span>
           <p class="mt-5 text-lg leading-relaxed text-slate-200">{visionMission.mission}</p>
         </div>
@@ -54,11 +67,10 @@ const coFounders = team.filter((m) => !m.featured);
 
   <div class="relative mx-auto max-w-7xl">
     <div class="mx-auto max-w-3xl text-center">
-      <p class="text-sm font-semibold uppercase tracking-widest text-virai-400">Đội ngũ</p>
-      <h2 class="mt-3 text-3xl font-bold text-white sm:text-4xl">Những người đứng sau Virai</h2>
+      <p class="text-sm font-semibold uppercase tracking-widest text-virai-400">{ui.teamEyebrow}</p>
+      <h2 class="mt-3 text-3xl font-bold text-white sm:text-4xl">{ui.teamTitle}</h2>
       <p class="mt-4 text-slate-400 leading-relaxed">
-        Bốn đồng sáng lập — kết hợp kinh nghiệm sản phẩm, AI và triển khai thực tế — cùng xây dựng
-        hệ sinh thái giải pháp từ công trường, chăm sóc sức khỏe đến trợ lý AI doanh nghiệp.
+        {ui.teamDescription}
       </p>
     </div>
 
@@ -90,7 +102,7 @@ const coFounders = team.filter((m) => !m.featured);
                 />
               </div>
               <div class="absolute left-4 top-4 rounded-full bg-virai-600 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white shadow-lg">
-                Founder
+                {ui.founderLabel}
               </div>
             </div>
             <div class="flex flex-col justify-center p-8 lg:col-span-3 lg:p-12">
@@ -129,7 +141,9 @@ const coFounders = team.filter((m) => !m.featured);
               </div>
               <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent opacity-90" />
               <div class="absolute bottom-0 inset-x-0 p-5">
-                <p class="text-xs font-semibold uppercase tracking-wider text-cyan-400">Co-Founder</p>
+                <p class="text-xs font-semibold uppercase tracking-wider text-cyan-400">
+                  {ui.coFounderLabel}
+                </p>
                 <h3 class="mt-1 text-lg font-bold text-white">{member.name}</h3>
                 <p class="text-sm text-virai-300">{member.role}</p>
               </div>
@@ -154,16 +168,16 @@ const coFounders = team.filter((m) => !m.featured);
         <figure class="mt-14 overflow-hidden rounded-2xl border border-white/10 bg-slate-900/50">
           <img
             src={visionMission.teamImage}
-            alt="Đội ngũ Virai trong chuyến công tác"
+            alt={ui.teamImageAlt}
             class="aspect-[16/9] w-full object-cover object-center sm:aspect-[2/1]"
             loading="lazy"
             width={1601}
             height={855}
           />
           <figcaption class="border-t border-white/5 px-6 py-5 text-center sm:px-10 sm:text-left">
-            <p class="text-sm font-semibold text-virai-300">Khoảnh khắc đội ngũ Virai</p>
+            <p class="text-sm font-semibold text-virai-300">{ui.teamImageTitle}</p>
             <p class="mt-2 text-sm leading-relaxed text-slate-400">
-              Cùng nhau xây dựng công nghệ AI phục vụ doanh nghiệp và cộng đồng Việt Nam.
+              {ui.teamImageDescription}
             </p>
           </figcaption>
         </figure>

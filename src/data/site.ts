@@ -229,3 +229,381 @@ export const navLinks = [
   { href: '#solutions', label: 'Giải pháp' },
   { href: '#contact', label: 'Liên hệ' },
 ];
+
+export type Locale = 'vi' | 'en';
+
+export const hero = {
+  eyebrow: 'Giải pháp AI cho doanh nghiệp Việt Nam',
+  titlePrefix: 'Virai',
+  titleSuffix: '— Đồng hành chuyển đổi số bằng trí tuệ nhân tạo',
+  description:
+    'Giám sát an toàn công trường, chăm sóc người cao tuổi và trợ lý AI nội bộ — ba giải pháp thực tiễn, dễ triển khai, phù hợp điều kiện vận hành tại Việt Nam.',
+  primaryCta: 'Khám phá giải pháp',
+  secondaryCta: 'Liên hệ tư vấn',
+  stats: [
+    { label: 'Giải pháp AI', value: '3+' },
+    { label: 'Triển khai', value: 'On-premise & Cloud' },
+    { label: 'Hỗ trợ', value: '24/7' },
+  ],
+};
+
+export const aboutHighlights = [
+  {
+    icon: 'M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z',
+    title: 'An toàn & Tin cậy',
+    desc: 'Giải pháp được thiết kế cho môi trường sản xuất và chăm sóc sức khỏe thực tế.',
+  },
+  {
+    icon: 'M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z',
+    title: 'Triển khai nhanh',
+    desc: 'Tích hợp linh hoạt với hệ thống camera và hạ tầng hiện có của doanh nghiệp.',
+  },
+  {
+    icon: 'M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z',
+    title: 'Bảo mật dữ liệu',
+    desc: 'Hỗ trợ triển khai on-premise, private cloud — dữ liệu không rời khỏi doanh nghiệp.',
+  },
+];
+
+export const ui = {
+  solutionPrefix: 'Giải pháp',
+  solutionCta: 'Tư vấn giải pháp này',
+  productLead: 'Product Lead',
+  visionLabel: 'Tầm nhìn',
+  missionLabel: 'Sứ mệnh',
+  teamEyebrow: 'Đội ngũ',
+  teamTitle: 'Những người đứng sau Virai',
+  teamDescription:
+    'Bốn đồng sáng lập — kết hợp kinh nghiệm sản phẩm, AI và triển khai thực tế — cùng xây dựng hệ sinh thái giải pháp từ công trường, chăm sóc sức khỏe đến trợ lý AI doanh nghiệp.',
+  founderLabel: 'Founder',
+  coFounderLabel: 'Co-Founder',
+  teamImageAlt: 'Đội ngũ Virai trong chuyến công tác',
+  teamImageTitle: 'Khoảnh khắc đội ngũ Virai',
+  teamImageDescription: 'Cùng nhau xây dựng công nghệ AI phục vụ doanh nghiệp và cộng đồng Việt Nam.',
+  contactEyebrow: 'Liên hệ',
+  contactTitle: 'Sẵn sàng tư vấn giải pháp cho doanh nghiệp bạn',
+  contactDescription:
+    'Để lại thông tin, đội ngũ Virai sẽ liên hệ trong vòng 24 giờ làm việc để tư vấn giải pháp phù hợp nhất.',
+  phoneLabel: 'Điện thoại',
+  addressLabel: 'Địa chỉ',
+  formSuccess: 'Cảm ơn bạn! Chúng tôi đã nhận được tin nhắn và sẽ phản hồi sớm.',
+  formError: 'Có lỗi xảy ra. Vui lòng kiểm tra lại thông tin hoặc gửi email trực tiếp.',
+  formPending:
+    'Form đang chờ cấu hình Formspree trên server. Bạn vẫn có thể gửi yêu cầu qua nút email bên dưới.',
+  nameLabel: 'Họ và tên',
+  namePlaceholder: 'Nguyễn Văn A',
+  emailPlaceholder: 'email@congty.com',
+  phonePlaceholder: '0901 234 567',
+  solutionLabel: 'Giải pháp quan tâm',
+  solutionPlaceholder: '-- Chọn giải pháp --',
+  solutionOptions: [
+    { value: 'construction', label: 'AI An toàn công trường' },
+    { value: 'elderly-care', label: 'AI Camera chăm sóc người cao tuổi' },
+    { value: 'ai-agent', label: 'AI Agent + LLM nội bộ' },
+    { value: 'other', label: 'Khác / Tư vấn chung' },
+  ],
+  messageLabel: 'Nội dung',
+  messagePlaceholder: 'Mô tả nhu cầu của doanh nghiệp bạn...',
+  submitLabel: 'Gửi yêu cầu tư vấn',
+  submittingLabel: 'Đang gửi...',
+  directEmailLabel: 'Hoặc gửi email trực tiếp',
+  emailSubject: 'Yêu cầu tư vấn giải pháp Virai',
+  fallbackEmailSubject: 'Yêu cầu tư vấn Virai',
+  validationName: 'Vui lòng nhập họ tên (ít nhất 2 ký tự).',
+  validationEmail: 'Email không hợp lệ.',
+  validationPhone: 'Số điện thoại không hợp lệ (VD: 0901234567).',
+  validationMessage: 'Nội dung cần ít nhất 10 ký tự.',
+  submitFailure: 'Không gửi được. Vui lòng thử lại hoặc gửi email trực tiếp đến chúng tôi.',
+  footerLinksTitle: 'Liên kết',
+  footerContactTitle: 'Liên hệ',
+  footerRights: 'Bảo lưu mọi quyền.',
+  navCta: 'Liên hệ tư vấn',
+  mobileMenuLabel: 'Menu di động',
+  openMenuLabel: 'Mở menu',
+};
+
+export const siteEn = {
+  ...site,
+  title: 'Virai — AI Solutions for Businesses',
+  description:
+    'Virai provides three core AI solutions: construction safety monitoring, elderly care camera systems, and enterprise AI Agents for knowledge automation.',
+  locale: 'en_US',
+};
+
+export const contactEn = {
+  ...contact,
+  address: 'Vietnam',
+};
+
+export const aboutEn = {
+  title: 'About Virai',
+  paragraphs: [
+    'Virai is an AI technology company focused on turning artificial intelligence into practical solutions for production, construction, healthcare, and enterprise operations. We develop computer vision and large language model (LLM) products that help organizations improve efficiency, safety, and decision-making.',
+    'With an engineering team experienced in AI product development, Virai provides solutions that are practical, easy to deploy, and aligned with real operating conditions — from construction sites and elderly care facilities to modern business offices.',
+  ],
+};
+
+export const visionMissionEn = {
+  title: 'Virai Direction',
+  vision:
+    'To become a trusted AI technology partner in Vietnam, helping organizations adopt practical, scalable, and responsible AI solutions for safety, healthcare, and digital transformation.',
+  mission:
+    'To apply artificial intelligence responsibly in daily life and business operations: protecting people on construction sites and at home, increasing enterprise productivity, and respecting privacy and local deployment conditions.',
+  teamImage: visionMission.teamImage,
+  values: [
+    {
+      title: 'Practical',
+      description: 'Solutions designed for real construction sites, care environments, factories, and offices.',
+    },
+    {
+      title: 'Safe & Reliable',
+      description: 'We prioritize people, data protection, and operational reliability in every AI product.',
+    },
+    {
+      title: 'Continuous Innovation',
+      description: 'We combine computer vision, LLMs, and RAG to solve real business problems.',
+    },
+    {
+      title: 'Long-Term Partnership',
+      description: 'We work closely with customers from discovery and pilot to operation and scale.',
+    },
+  ],
+};
+
+export const teamEn: TeamMember[] = [
+  {
+    name: 'Vu Nhat Tan',
+    role: 'Founder & CEO',
+    photo: '/images/doingu/vu-nhat-tan.png',
+    bio: 'Leads company strategy, business development, and Virai’s AI product vision — connecting technology with real market needs.',
+    focus: ['Strategy', 'Business development', 'Partnerships & deployment'],
+    featured: true,
+  },
+  {
+    name: 'Nguyen Truong Son',
+    role: 'Co-Founder & Product Lead',
+    photo: '/images/doingu/nguyen-truong-son.jpg',
+    bio: 'Leads the AI camera product for elderly care, including fall detection, health anomaly alerts, and real-time notifications for families and caregivers.',
+    focus: ['Product', 'Healthcare AI', 'Elderly care camera'],
+  },
+  {
+    name: 'Nguyen Khac Hieu',
+    role: 'Co-Founder & Product Lead',
+    photo: '/images/doingu/nguyen-khac-hieu.png',
+    bio: 'Designs and leads the construction safety AI product, from operational requirements and PPE detection to on-site monitoring experience.',
+    focus: ['Product', 'Computer Vision', 'Construction safety'],
+  },
+  {
+    name: 'Thai Ba Bao',
+    role: 'Co-Founder & Product Lead',
+    photo: '/images/doingu/thai-ba-bao.png',
+    bio: 'Leads AI Agent, LLM, and enterprise knowledge systems (RAG) that help organizations automate knowledge-intensive workflows.',
+    focus: ['LLM & RAG', 'AI Agent', 'Digital enterprise'],
+  },
+];
+
+export const teamStatsEn = [
+  { value: '4', label: 'Co-founders' },
+  { value: '3', label: 'Core AI solutions' },
+  { value: '100%', label: 'Focused on Vietnam market' },
+];
+
+export const solutionsEn: Solution[] = [
+  {
+    id: 'construction',
+    number: '01',
+    title: 'Intelligent Construction Safety Monitoring',
+    subtitle: 'Construction Safety AI',
+    productLead: 'Nguyen Khac Hieu',
+    description:
+      'Improve site operations, workplace safety, and workforce management with real-time computer vision. The system analyzes video streams, detects safety violations, and sends instant alerts to supervisors.',
+    features: [
+      'Real-time workplace safety monitoring and alerts',
+      'Detection of dangerous behavior and safety rule violations',
+      'PPE monitoring, including helmets, reflective vests, and safety harnesses',
+      'Workforce activity and progress monitoring',
+      'Operational analytics to optimize cost and performance',
+      'Instant alerts to managers when incidents occur',
+    ],
+    images: solutions[0].images,
+  },
+  {
+    id: 'elderly-care',
+    number: '02',
+    title: 'Smart Monitoring for Elderly Care',
+    subtitle: 'AI Care Camera',
+    productLead: 'Nguyen Truong Son',
+    description:
+      'An AI camera system for homes and care facilities that detects falls, seizures, and dangerous situations early while protecting privacy and avoiding video storage.',
+    features: [
+      'Real-time fall detection with immediate alerts',
+      'Recognition of seizures and health-related anomalies',
+      'Daily activity monitoring and abnormal behavior detection',
+      'Notifications to family members or medical staff through an app',
+      'Privacy-first design — behavior analysis without video storage',
+      'Periodic health and activity reports',
+    ],
+    images: solutions[1].images,
+    reverse: true,
+  },
+  {
+    id: 'ai-agent',
+    number: '03',
+    title: 'AI Agent for Enterprise Knowledge and Automation',
+    subtitle: 'AI Agent + LLM',
+    description:
+      'An LLM-powered AI assistant that helps employees search internal documents, automate workflows, and improve productivity. It can be deployed on-premise or in a private cloud to protect enterprise data.',
+    features: [
+      'Internal chatbot for documents, processes, and company policies',
+      'Intelligent Q&A on enterprise knowledge bases (RAG)',
+      'Summarization of reports, emails, and long documents',
+      'Multilingual support, including Vietnamese and English',
+      'Integration with Slack, Microsoft Teams, and Zalo OA',
+      'Data security through on-premise or private cloud deployment',
+    ],
+    images: solutions[2].images,
+  },
+];
+
+export const navLinksEn = [
+  { href: '#about', label: 'About' },
+  { href: '#vision', label: 'Vision' },
+  { href: '#team', label: 'Team' },
+  { href: '#solutions', label: 'Solutions' },
+  { href: '#contact', label: 'Contact' },
+];
+
+export const heroEn = {
+  eyebrow: 'AI solutions for modern businesses',
+  titlePrefix: 'Virai',
+  titleSuffix: '— Practical AI for digital transformation',
+  description:
+    'Virai provides three core AI solutions: construction safety monitoring, elderly care camera systems, and enterprise AI Agents for knowledge automation.',
+  primaryCta: 'Explore solutions',
+  secondaryCta: 'Contact us',
+  stats: [
+    { label: 'AI solutions', value: '3+' },
+    { label: 'Deployment', value: 'On-premise & Cloud' },
+    { label: 'Support', value: '24/7' },
+  ],
+};
+
+export const aboutHighlightsEn = [
+  {
+    icon: aboutHighlights[0].icon,
+    title: 'Safe & Reliable',
+    desc: 'Built for real production, construction, and care environments.',
+  },
+  {
+    icon: aboutHighlights[1].icon,
+    title: 'Fast Deployment',
+    desc: 'Flexible integration with existing camera systems and enterprise infrastructure.',
+  },
+  {
+    icon: aboutHighlights[2].icon,
+    title: 'Data Security',
+    desc: 'Supports on-premise and private cloud deployment so business data stays under control.',
+  },
+];
+
+export const uiEn = {
+  solutionPrefix: 'Solution',
+  solutionCta: 'Request consultation',
+  productLead: 'Product Lead',
+  visionLabel: 'Vision',
+  missionLabel: 'Mission',
+  teamEyebrow: 'Team',
+  teamTitle: 'The People Behind Virai',
+  teamDescription:
+    'Four co-founders combine product, AI, and real-world deployment experience to build solutions for construction sites, healthcare, and enterprise AI workflows.',
+  founderLabel: 'Founder',
+  coFounderLabel: 'Co-Founder',
+  teamImageAlt: 'Virai team during a company trip',
+  teamImageTitle: 'Virai team moment',
+  teamImageDescription: 'Building AI technology for businesses and communities together.',
+  contactEyebrow: 'Contact',
+  contactTitle: 'Ready to discuss AI solutions for your business?',
+  contactDescription:
+    'Leave your information and the Virai team will contact you within 24 business hours to recommend the right solution.',
+  phoneLabel: 'Phone',
+  addressLabel: 'Address',
+  formSuccess: 'Thank you! We have received your message and will respond soon.',
+  formError: 'Something went wrong. Please check your information or email us directly.',
+  formPending:
+    'The form is waiting for Formspree configuration on the server. You can still send a request by email below.',
+  nameLabel: 'Full name',
+  namePlaceholder: 'John Smith',
+  emailPlaceholder: 'email@company.com',
+  phonePlaceholder: '+84 901 234 567',
+  solutionLabel: 'Solution of interest',
+  solutionPlaceholder: '-- Select a solution --',
+  solutionOptions: [
+    { value: 'construction', label: 'Construction Safety AI' },
+    { value: 'elderly-care', label: 'AI Elderly Care Camera' },
+    { value: 'ai-agent', label: 'Enterprise AI Agent + LLM' },
+    { value: 'other', label: 'Other / General consultation' },
+  ],
+  messageLabel: 'Message',
+  messagePlaceholder: 'Describe your business needs...',
+  submitLabel: 'Send consultation request',
+  submittingLabel: 'Sending...',
+  directEmailLabel: 'Or email us directly',
+  emailSubject: 'Virai solution consultation request',
+  fallbackEmailSubject: 'Virai consultation request',
+  validationName: 'Please enter your full name (at least 2 characters).',
+  validationEmail: 'Please enter a valid email address.',
+  validationPhone: 'Please enter a valid phone number.',
+  validationMessage: 'Message must be at least 10 characters.',
+  submitFailure: 'Unable to send. Please try again or email us directly.',
+  footerLinksTitle: 'Links',
+  footerContactTitle: 'Contact',
+  footerRights: 'All rights reserved.',
+  navCta: 'Contact us',
+  mobileMenuLabel: 'Mobile menu',
+  openMenuLabel: 'Open menu',
+};
+
+export const content = {
+  vi: {
+    site,
+    contact,
+    about,
+    visionMission,
+    team,
+    teamStats,
+    solutions,
+    navLinks,
+    hero,
+    aboutHighlights,
+    ui,
+    language: {
+      current: 'vi' as Locale,
+      currentLabel: 'VI',
+      alternateHref: '/en/',
+      alternateLabel: 'EN',
+      htmlLang: 'vi',
+    },
+  },
+  en: {
+    site: siteEn,
+    contact: contactEn,
+    about: aboutEn,
+    visionMission: visionMissionEn,
+    team: teamEn,
+    teamStats: teamStatsEn,
+    solutions: solutionsEn,
+    navLinks: navLinksEn,
+    hero: heroEn,
+    aboutHighlights: aboutHighlightsEn,
+    ui: uiEn,
+    language: {
+      current: 'en' as Locale,
+      currentLabel: 'EN',
+      alternateHref: '/',
+      alternateLabel: 'VI',
+      htmlLang: 'en',
+    },
+  },
+};
+
+export type PageContent = (typeof content)[Locale];

@@ -1,3 +1,9 @@
+---
+import { hero as defaultHero } from '../data/site';
+
+const { hero = defaultHero } = Astro.props;
+---
+
 <section class="relative flex min-h-screen items-center overflow-hidden pt-20">
   <div class="absolute inset-0">
     <img
@@ -19,39 +25,33 @@
         class="mb-4 inline-flex items-center gap-2 rounded-full border border-virai-500/30 bg-virai-500/10 px-4 py-1.5 text-sm font-medium text-virai-300"
       >
         <span class="h-2 w-2 rounded-full bg-cyan-400 animate-pulse"></span>
-        Giải pháp AI cho doanh nghiệp Việt Nam
+        {hero.eyebrow}
       </p>
       <h1 class="text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
-        <span class="text-gradient">Virai</span> — Đồng hành chuyển đổi số bằng
-        trí tuệ nhân tạo
+        <span class="text-gradient">{hero.titlePrefix}</span> {hero.titleSuffix}
       </h1>
       <p class="mt-6 text-lg leading-relaxed text-slate-400 sm:text-xl">
-        Giám sát an toàn công trường, chăm sóc người cao tuổi và trợ lý AI nội bộ — ba giải
-        pháp thực tiễn, dễ triển khai, phù hợp điều kiện vận hành tại Việt Nam.
+        {hero.description}
       </p>
       <div class="mt-10 flex flex-wrap gap-4">
         <a
           href="#solutions"
           class="rounded-xl bg-virai-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-virai-600/25 transition-all hover:bg-virai-500 hover:shadow-virai-500/30"
         >
-          Khám phá giải pháp
+          {hero.primaryCta}
         </a>
         <a
           href="#contact"
           class="rounded-xl border border-white/15 bg-white/5 px-6 py-3.5 text-sm font-semibold text-white backdrop-blur transition-all hover:bg-white/10"
         >
-          Liên hệ tư vấn
+          {hero.secondaryCta}
         </a>
       </div>
     </div>
 
     <div class="mt-16 grid grid-cols-1 gap-4 sm:grid-cols-3">
       {
-        [
-          { label: 'Giải pháp AI', value: '3+' },
-          { label: 'Triển khai', value: 'On-premise & Cloud' },
-          { label: 'Hỗ trợ', value: '24/7' },
-        ].map((stat) => (
+        hero.stats.map((stat) => (
           <div class="glass rounded-xl px-6 py-4 text-center sm:text-left">
             <p class="text-2xl font-bold text-gradient">{stat.value}</p>
             <p class="mt-1 text-sm text-slate-400">{stat.label}</p>

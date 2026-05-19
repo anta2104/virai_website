@@ -1,18 +1,19 @@
 ---
-import { contact } from '../data/site';
+import { contact as defaultContact, ui as defaultUi } from '../data/site';
+
+const { contact = defaultContact, ui = defaultUi } = Astro.props;
 ---
 
 <section id="contact" class="section-padding bg-slate-900/50">
   <div class="mx-auto max-w-7xl">
     <div class="grid gap-12 lg:grid-cols-2 lg:gap-16">
       <div>
-        <p class="text-sm font-semibold uppercase tracking-widest text-virai-400">Liên hệ</p>
+        <p class="text-sm font-semibold uppercase tracking-widest text-virai-400">{ui.contactEyebrow}</p>
         <h2 class="mt-3 text-3xl font-bold text-white sm:text-4xl">
-          Sẵn sàng tư vấn giải pháp cho doanh nghiệp bạn
+          {ui.contactTitle}
         </h2>
         <p class="mt-4 text-slate-400 leading-relaxed">
-          Để lại thông tin, đội ngũ Virai sẽ liên hệ trong vòng 24 giờ làm việc để tư vấn giải pháp
-          phù hợp nhất.
+          {ui.contactDescription}
         </p>
 
         <ul class="mt-10 space-y-6">
@@ -36,7 +37,7 @@ import { contact } from '../data/site';
               </svg>
             </div>
             <div>
-              <p class="text-sm font-medium text-slate-400">Điện thoại</p>
+              <p class="text-sm font-medium text-slate-400">{ui.phoneLabel}</p>
               <a href={`tel:${contact.phone.replace(/\s/g, '')}`} class="text-white hover:text-virai-300 transition-colors">
                 {contact.phone}
               </a>
@@ -50,7 +51,7 @@ import { contact } from '../data/site';
               </svg>
             </div>
             <div>
-              <p class="text-sm font-medium text-slate-400">Địa chỉ</p>
+              <p class="text-sm font-medium text-slate-400">{ui.addressLabel}</p>
               <p class="text-white">{contact.address}</p>
             </div>
           </li>
@@ -65,16 +66,16 @@ import { contact } from '../data/site';
         novalidate
       >
         <div id="form-success" class="hidden mb-6 rounded-lg bg-green-500/10 border border-green-500/30 px-4 py-3 text-sm text-green-400">
-          Cảm ơn bạn! Chúng tôi đã nhận được tin nhắn và sẽ phản hồi sớm.
+          {ui.formSuccess}
         </div>
         <div id="form-error" class="hidden mb-6 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-sm text-red-400">
-          Có lỗi xảy ra. Vui lòng kiểm tra lại thông tin hoặc gửi email trực tiếp.
+          {ui.formError}
         </div>
 
         {
           !contact.formReady && (
             <div class="mb-6 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-              Form đang chờ cấu hình Formspree trên server. Bạn vẫn có thể gửi yêu cầu qua nút email bên dưới.
+              {ui.formPending}
             </div>
           )
         }
@@ -82,7 +83,7 @@ import { contact } from '../data/site';
         <div class="space-y-5">
           <div>
             <label for="name" class="mb-1.5 block text-sm font-medium text-slate-300">
-              Họ và tên <span class="text-red-400">*</span>
+              {ui.nameLabel} <span class="text-red-400">*</span>
             </label>
             <input
               type="text"
@@ -92,7 +93,7 @@ import { contact } from '../data/site';
               minlength="2"
               autocomplete="name"
               class="w-full rounded-lg border border-white/10 bg-slate-900/80 px-4 py-2.5 text-white placeholder-slate-500 outline-none transition-colors focus:border-virai-500 focus:ring-1 focus:ring-virai-500"
-              placeholder="Nguyễn Văn A"
+              placeholder={ui.namePlaceholder}
             />
             <p class="mt-1 hidden text-xs text-red-400" data-error="name"></p>
           </div>
@@ -108,14 +109,14 @@ import { contact } from '../data/site';
               required
               autocomplete="email"
               class="w-full rounded-lg border border-white/10 bg-slate-900/80 px-4 py-2.5 text-white placeholder-slate-500 outline-none transition-colors focus:border-virai-500 focus:ring-1 focus:ring-virai-500"
-              placeholder="email@congty.com"
+              placeholder={ui.emailPlaceholder}
             />
             <p class="mt-1 hidden text-xs text-red-400" data-error="email"></p>
           </div>
 
           <div>
             <label for="phone" class="mb-1.5 block text-sm font-medium text-slate-300">
-              Số điện thoại
+              {ui.phoneLabel}
             </label>
             <input
               type="tel"
@@ -123,31 +124,28 @@ import { contact } from '../data/site';
               name="phone"
               autocomplete="tel"
               class="w-full rounded-lg border border-white/10 bg-slate-900/80 px-4 py-2.5 text-white placeholder-slate-500 outline-none transition-colors focus:border-virai-500 focus:ring-1 focus:ring-virai-500"
-              placeholder="0901 234 567"
+              placeholder={ui.phonePlaceholder}
             />
             <p class="mt-1 hidden text-xs text-red-400" data-error="phone"></p>
           </div>
 
           <div>
             <label for="solution" class="mb-1.5 block text-sm font-medium text-slate-300">
-              Giải pháp quan tâm
+              {ui.solutionLabel}
             </label>
             <select
               id="solution"
               name="solution"
               class="w-full rounded-lg border border-white/10 bg-slate-900/80 px-4 py-2.5 text-white outline-none transition-colors focus:border-virai-500 focus:ring-1 focus:ring-virai-500"
             >
-              <option value="">-- Chọn giải pháp --</option>
-              <option value="construction">AI An toàn công trường</option>
-              <option value="elderly-care">AI Camera chăm sóc người cao tuổi</option>
-              <option value="ai-agent">AI Agent + LLM nội bộ</option>
-              <option value="other">Khác / Tư vấn chung</option>
+              <option value="">{ui.solutionPlaceholder}</option>
+              {ui.solutionOptions.map((option) => <option value={option.value}>{option.label}</option>)}
             </select>
           </div>
 
           <div>
             <label for="message" class="mb-1.5 block text-sm font-medium text-slate-300">
-              Nội dung <span class="text-red-400">*</span>
+              {ui.messageLabel} <span class="text-red-400">*</span>
             </label>
             <textarea
               id="message"
@@ -156,7 +154,7 @@ import { contact } from '../data/site';
               minlength="10"
               rows="4"
               class="w-full resize-none rounded-lg border border-white/10 bg-slate-900/80 px-4 py-2.5 text-white placeholder-slate-500 outline-none transition-colors focus:border-virai-500 focus:ring-1 focus:ring-virai-500"
-              placeholder="Mô tả nhu cầu của doanh nghiệp bạn..."
+              placeholder={ui.messagePlaceholder}
             ></textarea>
             <p class="mt-1 hidden text-xs text-red-400" data-error="message"></p>
           </div>
@@ -168,14 +166,14 @@ import { contact } from '../data/site';
             id="submit-btn"
             class="w-full rounded-xl bg-virai-600 px-6 py-3.5 text-sm font-semibold text-white transition-all hover:bg-virai-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Gửi yêu cầu tư vấn
+            {ui.submitLabel}
           </button>
 
           <a
-            href={`mailto:${contact.email}?subject=${encodeURIComponent('Yêu cầu tư vấn giải pháp Virai')}`}
+            href={`mailto:${contact.email}?subject=${encodeURIComponent(ui.emailSubject)}`}
             class="flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-6 py-3.5 text-sm font-semibold text-white transition-all hover:bg-white/10"
           >
-            Hoặc gửi email trực tiếp
+            {ui.directEmailLabel}
           </a>
         </div>
       </form>
@@ -183,7 +181,25 @@ import { contact } from '../data/site';
   </div>
 </section>
 
-<script define:vars={{ formEndpoint: contact.formEndpoint, contactEmail: contact.email }}>
+<script
+  define:vars={{
+    formEndpoint: contact.formEndpoint,
+    contactEmail: contact.email,
+    formLabels: {
+      validationName: ui.validationName,
+      validationEmail: ui.validationEmail,
+      validationPhone: ui.validationPhone,
+      validationMessage: ui.validationMessage,
+      fallbackEmailSubject: ui.fallbackEmailSubject,
+      submitFailure: ui.submitFailure,
+      submitLabel: ui.submitLabel,
+      submittingLabel: ui.submittingLabel,
+      nameLabel: ui.nameLabel,
+      phoneLabel: ui.phoneLabel,
+      solutionLabel: ui.solutionLabel,
+    },
+  }}
+>
   const form = document.getElementById('contact-form');
   const submitBtn = document.getElementById('submit-btn');
   const successEl = document.getElementById('form-success');
@@ -223,19 +239,19 @@ import { contact } from '../data/site';
     const message = document.getElementById('message')?.value.trim() ?? '';
 
     if (name.length < 2) {
-      showFieldError('name', 'Vui lòng nhập họ tên (ít nhất 2 ký tự).');
+      showFieldError('name', formLabels.validationName);
       valid = false;
     }
     if (!emailRegex.test(email)) {
-      showFieldError('email', 'Email không hợp lệ.');
+      showFieldError('email', formLabels.validationEmail);
       valid = false;
     }
     if (phone && !phoneRegex.test(phone.replace(/[\s.-]/g, ''))) {
-      showFieldError('phone', 'Số điện thoại không hợp lệ (VD: 0901234567).');
+      showFieldError('phone', formLabels.validationPhone);
       valid = false;
     }
     if (message.length < 10) {
-      showFieldError('message', 'Nội dung cần ít nhất 10 ký tự.');
+      showFieldError('message', formLabels.validationMessage);
       valid = false;
     }
 
@@ -253,21 +269,21 @@ import { contact } from '../data/site';
       const solution = document.getElementById('solution')?.value ?? '';
       const message = document.getElementById('message')?.value.trim() ?? '';
       const body = [
-        `Họ tên: ${name}`,
+        `${formLabels.nameLabel}: ${name}`,
         `Email: ${email}`,
-        phone ? `SĐT: ${phone}` : '',
-        solution ? `Giải pháp: ${solution}` : '',
+        phone ? `${formLabels.phoneLabel}: ${phone}` : '',
+        solution ? `${formLabels.solutionLabel}: ${solution}` : '',
         '',
         message,
       ]
         .filter(Boolean)
         .join('\n');
-      window.location.href = `mailto:${contactEmail}?subject=${encodeURIComponent('Yêu cầu tư vấn Virai')}&body=${encodeURIComponent(body)}`;
+      window.location.href = `mailto:${contactEmail}?subject=${encodeURIComponent(formLabels.fallbackEmailSubject)}&body=${encodeURIComponent(body)}`;
       return;
     }
 
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Đang gửi...';
+    submitBtn.textContent = formLabels.submittingLabel;
 
     try {
       const res = await fetch(formEndpoint, {
@@ -286,12 +302,11 @@ import { contact } from '../data/site';
     } catch {
       errorEl?.classList.remove('hidden');
       if (errorEl) {
-        errorEl.textContent =
-          'Không gửi được. Vui lòng thử lại hoặc gửi email trực tiếp đến chúng tôi.';
+        errorEl.textContent = formLabels.submitFailure;
       }
     } finally {
       submitBtn.disabled = false;
-      submitBtn.textContent = 'Gửi yêu cầu tư vấn';
+      submitBtn.textContent = formLabels.submitLabel;
     }
   });
 </script>
