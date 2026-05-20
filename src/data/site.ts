@@ -76,7 +76,7 @@ export const team: TeamMember[] = [
   {
     name: 'Nguyễn Trường Sơn',
     role: 'Co-Founder & Product Lead',
-    photo: '/images/doingu/nguyen-truong-son.jpg',
+    photo: '/images/doingu/Nguyễn Trường Sơn_1.jpg',
     bio: 'Phụ trách sản phẩm camera AI chăm sóc người cao tuổi — phát hiện té ngã, bất thường sức khỏe và cảnh báo tức thời cho người thân, cơ sở y tế.',
     focus: ['Product', 'Healthcare AI', 'Camera chăm sóc người già'],
   },
@@ -382,7 +382,7 @@ export const teamEn: TeamMember[] = [
   {
     name: 'Nguyen Truong Son',
     role: 'Co-Founder & Product Lead',
-    photo: '/images/doingu/nguyen-truong-son.jpg',
+    photo: '/images/doingu/Nguyễn Trường Sơn_1.jpg',
     bio: 'Leads the AI camera product for elderly care, including fall detection, health anomaly alerts, and real-time notifications for families and caregivers.',
     focus: ['Product', 'Healthcare AI', 'Elderly care camera'],
   },
