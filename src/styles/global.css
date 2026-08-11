@@ -199,37 +199,214 @@
     radial-gradient(1px 1px at 10% 80%, rgba(255, 255, 255, 0.4) 50%, transparent 50%);
 }
 
-/* ── Hiệu ứng nến & hoa ──────────────────────────────────────────────────── */
+/* ── Ngọn nến ────────────────────────────────────────────────────────────── */
 
-@keyframes flicker {
-  0%, 100% { transform: scale(1) translateY(0); opacity: 0.95; }
-  25% { transform: scale(1.06) translateY(-1px); opacity: 1; }
-  50% { transform: scale(0.97) translateY(0.5px); opacity: 0.9; }
-  75% { transform: scale(1.03) translateY(-0.5px); opacity: 1; }
+.vm-candle {
+  position: relative;
+  display: inline-flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: var(--vm-candle-width, 26px);
+  flex: none;
 }
 
-.flame {
-  animation: flicker 1.6s ease-in-out infinite;
-  transform-origin: bottom center;
+.vm-candle svg {
+  width: 100%;
+  height: auto;
+  position: relative;
+  z-index: 1;
 }
 
-@keyframes petal-fall {
-  0% { transform: translateY(-10vh) rotate(0deg); opacity: 0; }
-  10% { opacity: 1; }
-  100% { transform: translateY(105vh) rotate(320deg); opacity: 0; }
+/* Vầng sáng toả ra quanh ngọn lửa */
+.vm-candle-glow {
+  position: absolute;
+  left: 50%;
+  top: -22%;
+  width: 190%;
+  aspect-ratio: 1;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 198, 96, 0.5) 0%,
+    rgba(255, 176, 70, 0.2) 40%,
+    rgba(255, 170, 60, 0) 70%
+  );
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
 }
 
-.petal {
+.vm-candle-flame,
+.vm-candle-wick {
+  transition: opacity 0.4s ease;
+}
+
+/* Nến chưa thắp: tắt lửa, chỉ còn thân và tim nến */
+.vm-candle:not(.is-lit) .vm-candle-flame {
+  opacity: 0;
+}
+
+.vm-candle.is-lit .vm-candle-flame {
+  transform-origin: 50% 100%;
+  animation: vm-flame 1.5s ease-in-out var(--vm-candle-delay, 0s) infinite alternate;
+}
+
+.vm-candle.is-lit .vm-candle-glow {
+  animation: vm-glow 1.5s ease-in-out var(--vm-candle-delay, 0s) infinite alternate;
+}
+
+@keyframes vm-flame {
+  0% {
+    transform: scale(1, 1) rotate(0deg);
+  }
+  30% {
+    transform: scale(0.94, 1.07) rotate(-2.5deg);
+  }
+  55% {
+    transform: scale(1.05, 0.95) rotate(1.5deg);
+  }
+  80% {
+    transform: scale(0.97, 1.04) rotate(-1deg);
+  }
+  100% {
+    transform: scale(1.02, 0.98) rotate(1.8deg);
+  }
+}
+
+@keyframes vm-glow {
+  0% {
+    opacity: 0.45;
+    transform: translateX(-50%) scale(0.9);
+  }
+  50% {
+    opacity: 0.75;
+    transform: translateX(-50%) scale(1.05);
+  }
+  100% {
+    opacity: 0.55;
+    transform: translateX(-50%) scale(0.96);
+  }
+}
+
+/* Nến mới được thắp: bùng lên rồi về nhịp bình thường */
+@keyframes vm-candle-bloom {
+  0% {
+    transform: translateY(6px) scale(0.5);
+    opacity: 0;
+  }
+  55% {
+    transform: translateY(-2px) scale(1.18);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.vm-candle-new {
+  animation: vm-candle-bloom 0.75s cubic-bezier(0.22, 1.2, 0.36, 1) both;
+}
+
+/* Dãy nến của mọi người đã ghé thăm */
+.vm-candle-wall {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.75rem 1.15rem;
+  min-height: 3.5rem;
+  padding-top: 0.75rem;
+}
+
+/* Nền tối: ngọn lửa cần sáng hơn một chút mới nổi */
+[data-memorial-theme='dem-sao'] .vm-candle-glow {
+  background: radial-gradient(
+    circle,
+    rgba(255, 205, 110, 0.62) 0%,
+    rgba(255, 180, 75, 0.26) 42%,
+    rgba(255, 170, 60, 0) 72%
+  );
+}
+
+/* ── Cánh hoa rơi ────────────────────────────────────────────────────────── */
+
+.vm-petal {
   position: fixed;
   top: 0;
+  left: 0;
   pointer-events: none;
-  animation: petal-fall linear forwards;
   z-index: 60;
+  will-change: transform, opacity;
+  animation: vm-petal-fall var(--vm-fall, 6s) linear var(--vm-delay, 0s) forwards;
+}
+
+.vm-petal svg {
+  display: block;
+  width: var(--vm-size, 18px);
+  height: auto;
+  animation: vm-petal-spin var(--vm-spin, 2.4s) ease-in-out var(--vm-delay, 0s) infinite alternate;
+}
+
+@keyframes vm-petal-fall {
+  0% {
+    transform: translate3d(var(--vm-x, 50vw), -12vh, 0);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(calc(var(--vm-x, 50vw) + var(--vm-drift, 0px)), 106vh, 0);
+    opacity: 0;
+  }
+}
+
+/* Cánh hoa lắc qua lắc lại khi rơi cho tự nhiên */
+@keyframes vm-petal-spin {
+  0% {
+    transform: rotate(calc(var(--vm-rot, 0deg) - 35deg)) skewX(-6deg);
+  }
+  100% {
+    transform: rotate(calc(var(--vm-rot, 0deg) + 40deg)) skewX(6deg);
+  }
+}
+
+/* Con số nhảy lên một nhịp khi vừa tăng */
+@keyframes vm-count-bump {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.28);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Không đặt display:inline-block ở đây — thẻ <p> đang căn giữa sẽ co lại và
+   nhảy sang lề trái. Là block nên transform vẫn áp dụng bình thường. */
+.vm-count-bump {
+  animation: vm-count-bump 0.5s ease-out;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .flame,
-  .petal {
+  .vm-candle.is-lit .vm-candle-flame,
+  .vm-candle.is-lit .vm-candle-glow,
+  .vm-candle-new,
+  .vm-petal,
+  .vm-petal svg,
+  .vm-count-bump {
     animation: none;
+  }
+
+  /* Vẫn cho thấy nến đang sáng, chỉ bỏ phần chuyển động */
+  .vm-candle.is-lit .vm-candle-glow {
+    opacity: 0.7;
   }
 }

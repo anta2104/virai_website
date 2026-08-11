@@ -7,7 +7,8 @@ import { guestbookEntries, memorials, users } from '../../../lib/db/schema';
 import { getMemorialBySlug, listApprovedGuestbook, listPhotos } from '../../../lib/memorials';
 import { limitsFor } from '../../../lib/plans';
 import { newId } from '../../../lib/ids';
-import { truncate } from '../../../lib/format';
+import { todayInVietnam, truncate } from '../../../lib/format';
+import { tributeCookieName } from '../../../lib/tributes';
 import { lifeSummary } from '../../../lib/memorial-dates';
 import { site } from '../../../lib/site';
 import { and } from 'drizzle-orm';
@@ -136,6 +137,12 @@ if (limits.guestbookVisible !== Number.POSITIVE_INFINITY && entries.length === v
   hiddenEntries = Math.max(0, Number(totalRows[0]?.n ?? 0) - entries.length);
 }
 
+// Khách đã thắp nến / thả hoa hôm nay chưa — để nút hiện đúng trạng thái ngay
+// khi tải trang, không đợi bấm mới biết.
+const todayVn = todayInVietnam();
+const litCandle = Astro.cookies.get(tributeCookieName('candle', memorial.id))?.value === todayVn;
+const gaveFlower = Astro.cookies.get(tributeCookieName('flower', memorial.id))?.value === todayVn;
+
 const summary = lifeSummary(memorial.birthDate, memorial.deathDate);
 const description = memorial.bio
   ? truncate(memorial.bio, 180)
@@ -169,5 +176,7 @@ const jsonLd = {
     guestbookNotice={guestbookNotice}
     guestbookError={guestbookError}
     hiddenEntries={hiddenEntries}
+    litCandle={litCandle}
+    gaveFlower={gaveFlower}
   />
 </BaseLayout>

@@ -1,5 +1,6 @@
 ---
 import type { GuestbookEntry, Memorial, Photo } from '../lib/db/schema';
+import CandleIcon from './CandleIcon.astro';
 import { photoUrl } from '../lib/memorials';
 import { lifeSummary, milestonesFor } from '../lib/memorial-dates';
 import { GENDER_LABEL, SPECIES_LABEL, formatDate, formatDateTime } from '../lib/format';
@@ -18,6 +19,9 @@ interface Props {
   guestbookError?: string | null;
   /** Còn bao nhiêu lời lưu bút bị ẩn vì hạn mức gói miễn phí */
   hiddenEntries?: number;
+  /** Khách này hôm nay đã thắp nến / thả hoa chưa (đọc từ cookie phía server) */
+  litCandle?: boolean;
+  gaveFlower?: boolean;
 }
 
 const {
@@ -29,6 +33,8 @@ const {
   guestbookNotice = null,
   guestbookError = null,
   hiddenEntries = 0,
+  litCandle = false,
+  gaveFlower = false,
 } = Astro.props;
 
 const cover = photos.find((photo) => photo.id === memorial.coverPhotoId) ?? photos[0] ?? null;
@@ -38,6 +44,11 @@ const milestones = milestonesFor(memorial.deathDate);
 const speciesLine = [SPECIES_LABEL[memorial.species], memorial.breed, GENDER_LABEL[memorial.gender]]
   .filter(Boolean)
   .join(' · ');
+
+/** Số nến vẽ ra trên dãy — nhiều hơn thì gộp vào dòng "và N người khác". */
+const WALL_LIMIT = 24;
+const wallCandles = Math.min(memorial.candleCount, WALL_LIMIT);
+const extraCandles = Math.max(0, memorial.candleCount - WALL_LIMIT);
 ---
 
 <div data-memorial-theme={memorial.theme} class="memorial-surface min-h-screen overflow-x-clip">
@@ -87,40 +98,86 @@ const speciesLine = [SPECIES_LABEL[memorial.species], memorial.breed, GENDER_LAB
         )}
         {summary.lunarLine && <p class="memorial-muted mt-2 text-sm">{summary.lunarLine}</p>}
 
-        <div class="memorial-muted mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs sm:gap-x-6 sm:text-sm">
-          <span>👣 {memorial.visitCount.toLocaleString('vi-VN')} lượt ghé thăm</span>
-          <span data-count-candle>🕯️ {memorial.candleCount.toLocaleString('vi-VN')} nến</span>
-          <span data-count-flower>🌸 {memorial.flowerCount.toLocaleString('vi-VN')} hoa</span>
-        </div>
+        <p class="memorial-muted mt-5 text-xs sm:text-sm">
+          {memorial.visitCount.toLocaleString('vi-VN')} lượt ghé thăm
+        </p>
       </div>
 
-      <!-- Thắp nến / thả hoa -->
-      <div class="mt-6 flex flex-wrap items-center justify-center gap-3" data-tributes data-slug={memorial.slug}>
-        <button
-          type="button"
-          class="memorial-panel flex items-center gap-2 rounded-full border px-4 py-2.5 text-xs font-medium transition hover:shadow-sm disabled:opacity-60 sm:px-5 sm:text-sm"
-          data-tribute="candle"
-          disabled={preview}
+      <!-- Nến của mọi người + nút gửi -->
+      <section class="mt-10" data-tributes data-slug={memorial.slug} data-wall-limit={WALL_LIMIT}>
+        <div class="vm-candle-wall" data-candle-wall>
+          {
+            Array.from({ length: wallCandles }).map((_, index) => (
+              <CandleIcon lit delay={(index % 7) * 0.21} size="sm" />
+            ))
+          }
+        </div>
+
+        <p class="memorial-muted mt-4 text-center text-sm" data-tribute-summary>
+          {
+            memorial.candleCount === 0 && memorial.flowerCount === 0
+              ? `Chưa có ai thắp nến cho ${memorial.petName}. Bạn là người đầu tiên.`
+              : [
+                  memorial.candleCount > 0
+                    ? `${memorial.candleCount.toLocaleString('vi-VN')} ngọn nến đã được thắp`
+                    : null,
+                  memorial.flowerCount > 0
+                    ? `${memorial.flowerCount.toLocaleString('vi-VN')} cánh hoa đã thả`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')
+          }
+          {extraCandles > 0 && <span class="block text-xs">(hiện {WALL_LIMIT} ngọn gần nhất)</span>}
+        </p>
+
+        <div class="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <button
+            type="button"
+            class="memorial-panel flex items-center gap-2.5 rounded-full border px-5 py-2.5 text-sm font-medium transition hover:shadow-md disabled:cursor-default disabled:opacity-100"
+            data-tribute="candle"
+            data-label-done="Bạn đã thắp nến hôm nay"
+            disabled={preview || litCandle}
+          >
+            <CandleIcon lit={litCandle} size="sm" class="-my-1" />
+            <span data-tribute-label>{litCandle ? 'Bạn đã thắp nến hôm nay' : 'Thắp một ngọn nến'}</span>
+          </button>
+
+          <button
+            type="button"
+            class="memorial-panel flex items-center gap-2.5 rounded-full border px-5 py-2.5 text-sm font-medium transition hover:shadow-md disabled:cursor-default disabled:opacity-100"
+            data-tribute="flower"
+            data-label-done="Bạn đã thả hoa hôm nay"
+            disabled={preview || gaveFlower}
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path
+                d="M12 2c4.2 4.4 6 8.4 6 12 0 5.2-2.7 8-6 8s-6-2.8-6-8c0-3.6 1.8-7.6 6-12Z"
+                fill="#f0a8bb"
+              />
+              <path d="M12 7.5c2.3 2.9 3.2 5.3 3.2 7.6 0 3-1.4 4.7-3.2 4.7s-3.2-1.7-3.2-4.7c0-2.3.9-4.7 3.2-7.6Z" fill="#f8ccd8" />
+            </svg>
+            <span data-tribute-label>{gaveFlower ? 'Bạn đã thả hoa hôm nay' : 'Thả một cánh hoa'}</span>
+          </button>
+
+          <button
+            type="button"
+            class="memorial-panel hidden items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-medium transition hover:shadow-md sm:flex"
+            data-share
+          >
+            <span aria-hidden="true">🔗</span> Chia sẻ
+          </button>
+        </div>
+
+        <p
+          class="memorial-muted mt-3 min-h-5 text-center text-xs"
+          data-tribute-status
+          role="status"
+          aria-live="polite"
         >
-          <span class="flame text-lg" aria-hidden="true">🕯️</span> Thắp một nén nến
-        </button>
-        <button
-          type="button"
-          class="memorial-panel flex items-center gap-2 rounded-full border px-4 py-2.5 text-xs font-medium transition hover:shadow-sm disabled:opacity-60 sm:px-5 sm:text-sm"
-          data-tribute="flower"
-          disabled={preview}
-        >
-          <span class="text-lg" aria-hidden="true">🌸</span> Thả một cánh hoa
-        </button>
-        <button
-          type="button"
-          class="memorial-panel hidden items-center gap-2 rounded-full border px-4 py-2.5 text-xs font-medium transition hover:shadow-sm sm:flex sm:px-5 sm:text-sm"
-          data-share
-        >
-          <span aria-hidden="true">🔗</span> Chia sẻ
-        </button>
-      </div>
-      <p class="memorial-muted mt-3 text-center text-xs" data-tribute-status role="status" aria-live="polite"></p>
+          {preview ? 'Đang xem trước — các nút tạm khoá.' : ''}
+        </p>
+      </section>
 
       <!-- Câu chuyện -->
       {
@@ -325,29 +382,109 @@ const speciesLine = [SPECIES_LABEL[memorial.species], memorial.breed, GENDER_LAB
   const tributes = document.querySelector<HTMLElement>('[data-tributes]');
   if (tributes) {
     const slug = tributes.dataset.slug!;
-    const status = document.querySelector<HTMLElement>('[data-tribute-status]');
-    const candleLabel = document.querySelector<HTMLElement>('[data-count-candle]');
-    const flowerLabel = document.querySelector<HTMLElement>('[data-count-flower]');
+    const wallLimit = Number(tributes.dataset.wallLimit ?? 24);
+    const wall = tributes.querySelector<HTMLElement>('[data-candle-wall]');
+    const summary = tributes.querySelector<HTMLElement>('[data-tribute-summary]');
+    const status = tributes.querySelector<HTMLElement>('[data-tribute-status]');
 
-    function rainPetals() {
-      const petals = ['🌸', '🌺', '🌼'];
-      for (let i = 0; i < 14; i++) {
+    const PETAL_COLORS = [
+      ['#f0a8bb', '#f8ccd8'],
+      ['#eec3a0', '#f8e0c8'],
+      ['#e9a7ae', '#f6cdd1'],
+      ['#f2d6a8', '#fbecd2'],
+    ];
+
+    /** Thả một cơn mưa cánh hoa SVG, mỗi cánh có hướng bay và nhịp lắc riêng. */
+    function rainPetals(count = 26) {
+      for (let i = 0; i < count; i++) {
+        const [outer, inner] = PETAL_COLORS[i % PETAL_COLORS.length]!;
         const petal = document.createElement('span');
-        petal.className = 'petal';
-        petal.textContent = petals[i % petals.length]!;
-        petal.style.left = `${Math.random() * 96}vw`;
-        petal.style.fontSize = `${14 + Math.random() * 16}px`;
-        petal.style.animationDuration = `${4 + Math.random() * 3}s`;
-        petal.style.animationDelay = `${Math.random() * 1.2}s`;
+        petal.className = 'vm-petal';
+        petal.style.setProperty('--vm-x', `${Math.random() * 96}vw`);
+        petal.style.setProperty('--vm-drift', `${(Math.random() - 0.5) * 28}vw`);
+        petal.style.setProperty('--vm-size', `${13 + Math.random() * 13}px`);
+        petal.style.setProperty('--vm-fall', `${5 + Math.random() * 4}s`);
+        petal.style.setProperty('--vm-delay', `${Math.random() * 1.8}s`);
+        petal.style.setProperty('--vm-spin', `${1.6 + Math.random() * 1.8}s`);
+        petal.style.setProperty('--vm-rot', `${Math.random() * 360}deg`);
+        petal.innerHTML =
+          `<svg viewBox="0 0 24 24" aria-hidden="true">` +
+          `<path d="M12 2c4.2 4.4 6 8.4 6 12 0 5.2-2.7 8-6 8s-6-2.8-6-8c0-3.6 1.8-7.6 6-12Z" fill="${outer}"/>` +
+          `<path d="M12 7.5c2.3 2.9 3.2 5.3 3.2 7.6 0 3-1.4 4.7-3.2 4.7s-3.2-1.7-3.2-4.7c0-2.3.9-4.7 3.2-7.6Z" fill="${inner}"/>` +
+          `</svg>`;
         document.body.appendChild(petal);
-        setTimeout(() => petal.remove(), 9000);
+        setTimeout(() => petal.remove(), 11_000);
       }
+    }
+
+    /** Thêm một ngọn nến mới vào dãy, có hiệu ứng bùng lên. */
+    function addCandleToWall() {
+      if (!wall) return;
+      const template = wall.querySelector('.vm-candle');
+      const candle = template
+        ? (template.cloneNode(true) as HTMLElement)
+        : document.createElement('span');
+
+      if (!template) {
+        // Dãy đang trống (chưa ai thắp): dựng nến đầu tiên từ đầu
+        candle.className = 'vm-candle is-lit';
+        candle.style.setProperty('--vm-candle-width', '18px');
+        candle.innerHTML =
+          `<span class="vm-candle-glow"></span>` +
+          `<svg viewBox="0 0 24 46" fill="none" xmlns="http://www.w3.org/2000/svg">` +
+          `<g class="vm-candle-flame">` +
+          `<path d="M12 3c3.4 4.9 5 8 5 10.9C17 17.8 14.8 20.4 12 20.4s-5-2.6-5-6.5C7 11 8.6 7.9 12 3Z" fill="#f0951f"/>` +
+          `<path d="M12 8.2c1.9 3.2 2.6 4.8 2.6 6.4 0 2.3-1.2 3.8-2.6 3.8s-2.6-1.5-2.6-3.8c0-1.6.7-3.2 2.6-6.4Z" fill="#ffdc7a"/>` +
+          `<path d="M12 12.6c.8 1.6 1.1 2.4 1.1 3.1 0 1-.5 1.7-1.1 1.7s-1.1-.7-1.1-1.7c0-.7.3-1.5 1.1-3.1Z" fill="#fff8e1"/>` +
+          `</g>` +
+          `<path class="vm-candle-wick" d="M12 19.5v3.6" stroke="#4a3f38" stroke-width="1.4" stroke-linecap="round"/>` +
+          `<rect x="6.5" y="22.5" width="11" height="22" rx="3.2" fill="#f5e3d0"/>` +
+          `<rect x="6.5" y="22.5" width="11" height="22" rx="3.2" stroke="rgba(90,60,40,.18)" stroke-width="1"/>` +
+          `<path d="M9 25.5v16" stroke="rgba(255,255,255,.75)" stroke-width="1.6" stroke-linecap="round"/>` +
+          `<ellipse cx="12" cy="23.2" rx="5.5" ry="1.5" fill="#e6cdb4"/>` +
+          `</svg>`;
+      }
+
+      candle.classList.add('is-lit', 'vm-candle-new');
+      candle.style.setProperty('--vm-candle-delay', '0s');
+      wall.appendChild(candle);
+
+      // Giữ dãy không dài quá hạn mức
+      const all = wall.querySelectorAll('.vm-candle');
+      if (all.length > wallLimit) all[0]!.remove();
+    }
+
+    function updateSummary(candles?: number, flowers?: number) {
+      if (!summary) return;
+      const parts: string[] = [];
+      if (typeof candles === 'number' && candles > 0) {
+        parts.push(`${candles.toLocaleString('vi-VN')} ngọn nến đã được thắp`);
+      }
+      if (typeof flowers === 'number' && flowers > 0) {
+        parts.push(`${flowers.toLocaleString('vi-VN')} cánh hoa đã thả`);
+      }
+      if (parts.length === 0) return;
+      summary.textContent = parts.join(' · ');
+      summary.classList.remove('vm-count-bump');
+      // Buộc trình duyệt chạy lại animation
+      void summary.offsetWidth;
+      summary.classList.add('vm-count-bump');
+    }
+
+    /** Đổi nút sang trạng thái đã gửi. */
+    function markDone(button: HTMLButtonElement) {
+      button.disabled = true;
+      const label = button.querySelector<HTMLElement>('[data-tribute-label]');
+      if (label && button.dataset.labelDone) label.textContent = button.dataset.labelDone;
+      button.querySelector('.vm-candle')?.classList.add('is-lit');
     }
 
     tributes.querySelectorAll<HTMLButtonElement>('[data-tribute]').forEach((button) => {
       button.addEventListener('click', async () => {
         const type = button.dataset.tribute!;
         button.disabled = true;
+        if (status) status.textContent = '';
+
         try {
           const response = await fetch('/api/tribute', {
             method: 'POST',
@@ -367,21 +504,21 @@ const speciesLine = [SPECIES_LABEL[memorial.species], memorial.breed, GENDER_LAB
             return;
           }
 
-          if (candleLabel && typeof data.candles === 'number') {
-            candleLabel.textContent = `🕯️ ${data.candles.toLocaleString('vi-VN')} nến`;
-          }
-          if (flowerLabel && typeof data.flowers === 'number') {
-            flowerLabel.textContent = `🌸 ${data.flowers.toLocaleString('vi-VN')} hoa`;
+          updateSummary(data.candles, data.flowers);
+          markDone(button);
+
+          if (data.alreadyDone) {
+            if (status) status.textContent = 'Hôm nay bạn đã gửi rồi — cảm ơn bạn.';
+            return;
           }
 
-          if (status) {
-            status.textContent = data.alreadyDone
-              ? 'Hôm nay bạn đã gửi rồi — cảm ơn bạn.'
-              : type === 'candle'
-                ? 'Đã thắp một nén nến. Cảm ơn bạn.'
-                : 'Đã thả một cánh hoa. Cảm ơn bạn.';
+          if (type === 'candle') {
+            addCandleToWall();
+            if (status) status.textContent = 'Ngọn nến của bạn đã được thắp. Cảm ơn bạn.';
+          } else {
+            rainPetals();
+            if (status) status.textContent = 'Cánh hoa của bạn đang bay. Cảm ơn bạn.';
           }
-          if (type === 'flower' && !data.alreadyDone) rainPetals();
         } catch {
           if (status) status.textContent = 'Mất kết nối, bạn thử lại nhé.';
           button.disabled = false;

@@ -5,6 +5,7 @@ import { memorials } from '../../lib/db/schema';
 import { getMemorialBySlug } from '../../lib/memorials';
 import { jsonResponse } from '../../lib/guards';
 import { todayInVietnam } from '../../lib/format';
+import { parseTributeType, tributeCookieName } from '../../lib/tributes';
 import { env } from '../../lib/env';
 
 /**
@@ -12,7 +13,6 @@ import { env } from '../../lib/env';
  * đủ để con số có ý nghĩa mà không cần bắt người ghé thăm đăng nhập.
  */
 export const POST: APIRoute = async ({ request, cookies, url }) => {
-
   let payload: { slug?: string; type?: string };
   try {
     payload = (await request.json()) as typeof payload;
@@ -20,7 +20,7 @@ export const POST: APIRoute = async ({ request, cookies, url }) => {
     return jsonResponse({ error: 'Dữ liệu không đọc được.' }, 400);
   }
 
-  const type = payload.type === 'flower' ? 'flower' : payload.type === 'candle' ? 'candle' : null;
+  const type = parseTributeType(payload.type);
   if (!type || !payload.slug) {
     return jsonResponse({ error: 'Yêu cầu không hợp lệ.' }, 400);
   }
@@ -30,7 +30,7 @@ export const POST: APIRoute = async ({ request, cookies, url }) => {
     return jsonResponse({ error: 'Không tìm thấy trang.' }, 404);
   }
 
-  const cookieName = `vm_${type}_${memorial.id.slice(0, 8)}`;
+  const cookieName = tributeCookieName(type, memorial.id);
   const today = todayInVietnam();
   if (cookies.get(cookieName)?.value === today) {
     return jsonResponse({
@@ -41,13 +41,12 @@ export const POST: APIRoute = async ({ request, cookies, url }) => {
   }
 
   const db = getDb(env.DB);
-  const column = type === 'candle' ? memorials.candleCount : memorials.flowerCount;
   await db
     .update(memorials)
     .set(
       type === 'candle'
-        ? { candleCount: sql`${column} + 1` }
-        : { flowerCount: sql`${column} + 1` },
+        ? { candleCount: sql`${memorials.candleCount} + 1` }
+        : { flowerCount: sql`${memorials.flowerCount} + 1` },
     )
     .where(eq(memorials.id, memorial.id));
 
