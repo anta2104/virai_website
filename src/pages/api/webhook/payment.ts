@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { findOrderByPaymentCode, markOrderPaid } from '../../../lib/orders';
 import { jsonResponse } from '../../../lib/guards';
 import { env } from '../../../lib/env';
+import { paymentCodePattern } from '../../../lib/payment-code';
 
 /**
  * Webhook nhận thông báo biến động số dư (SePay).
@@ -12,8 +13,6 @@ import { env } from '../../../lib/env';
  * Tên field trong payload có thể khác nhau giữa các nhà cung cấp nên hàm đọc
  * theo nhiều tên gọi. Mã đơn được dò bằng regex trong nội dung chuyển khoản.
  */
-
-const PAYMENT_CODE_PATTERN = /VRM[0-9A-Z]{7}/;
 
 function timingSafeEqual(a: string, b: string): boolean {
   const encoder = new TextEncoder();
@@ -88,15 +87,35 @@ export const POST: APIRoute = async ({ request }) => {
     .toUpperCase()
     .replace(/[^A-Z0-9 ]/g, ' ');
 
-  const found = PAYMENT_CODE_PATTERN.exec(haystack.replace(/\s+/g, ''));
+  // Thử trên chuỗi còn khoảng trắng trước: mã đứng thành từ riêng thì chắc chắn
+  // đúng. Chỉ khi không thấy mới bỏ hết khoảng trắng — cách này vớt được trường
+  // hợp ngân hàng chèn dấu cách vào giữa mã, nhưng dễ khớp nhầm qua ranh giới
+  // hai từ nên để làm phương án sau.
+  const pattern = paymentCodePattern(env);
+  const found = pattern.exec(haystack) ?? pattern.exec(haystack.replace(/\s+/g, ''));
+
   if (!found) {
-    console.warn('[webhook] Không tìm thấy mã đơn trong nội dung:', haystack);
+    // Log cả payload thô: nội dung thật của ngân hàng là thứ duy nhất giúp dò
+    // được vì sao không khớp (đã gặp thật: VietinBank chèn BANKAPINOTIFY, mã FT...).
+    console.warn(
+      '[webhook] Không tìm thấy mã đơn. Chuỗi đã chuẩn hoá:',
+      haystack,
+      '| payload thô:',
+      JSON.stringify(payload).slice(0, 800),
+    );
     return jsonResponse({ success: true, matched: false });
   }
 
   const order = await findOrderByPaymentCode(found[0]);
   if (!order) {
-    console.warn('[webhook] Mã đơn không có trong hệ thống:', found[0]);
+    // Có thể là khớp nhầm qua ranh giới từ (ví dụ nội dung chỉ có "SEVQR" trơ trọi
+    // rồi tới mã giao dịch của ngân hàng), nên log kèm payload thô để đối chiếu.
+    console.warn(
+      '[webhook] Mã đơn không có trong hệ thống:',
+      found[0],
+      '| payload thô:',
+      JSON.stringify(payload).slice(0, 800),
+    );
     return jsonResponse({ success: true, matched: false });
   }
 

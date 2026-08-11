@@ -1,7 +1,8 @@
 import { and, desc, eq } from 'drizzle-orm';
 import { getDb } from './db';
 import { memorials, orders, type Memorial, type Order } from './db/schema';
-import { newId, newPaymentCode } from './ids';
+import { newId } from './ids';
+import { newPaymentCode } from './payment-code';
 import { PRICES } from './plans';
 import { ensureRemindersFor } from './reminders';
 import { env } from './env';
@@ -64,7 +65,7 @@ export async function getOrCreateOrder(input: {
     memorialId: input.memorialId,
     type: input.type,
     amount: amountFor(input.type),
-    paymentCode: newPaymentCode(),
+    paymentCode: newPaymentCode(env),
     status: 'pending',
     shippingInfo: input.shippingInfo ? JSON.stringify(input.shippingInfo) : null,
     note: null,

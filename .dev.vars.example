@@ -24,3 +24,7 @@ ADMIN_EMAIL=tanvn@virai.com.vn
 
 # Nguồn sinh mã QR thanh toán: local (tự sinh trong Worker, mặc định) hoặc sepay
 QR_PROVIDER=local
+
+# Tiền tố mã đơn trong nội dung chuyển khoản — phải khớp tiền tố mà ngân hàng/
+# SePay nhận diện, nếu không ngân hàng sẽ không đẩy thông báo. Mặc định SEVQR.
+PAYMENT_CODE_PREFIX=SEVQR

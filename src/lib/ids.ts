@@ -22,14 +22,6 @@ function randomChars(length: number, alphabet: string): string {
   return out;
 }
 
-/**
- * Nội dung chuyển khoản duy nhất cho một đơn, ví dụ `VRM7K2QPX4`.
- * Chỉ chữ IN + số để ngân hàng không bóp méo khi khách nhập tay.
- */
-export function newPaymentCode(): string {
-  return `VRM${randomChars(7, UNAMBIGUOUS)}`;
-}
-
 /** Hậu tố ngắn thêm vào slug khi bị trùng. */
 export function shortSuffix(length = 4): string {
   return randomChars(length, 'abcdefghijkmnpqrstuvwxyz23456789');
