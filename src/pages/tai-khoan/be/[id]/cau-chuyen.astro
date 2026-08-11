@@ -1,0 +1,209 @@
+---
+import AppLayout from '../../../../layouts/AppLayout.astro';
+import WizardSteps from '../../../../components/WizardSteps.astro';
+import { notFound, ownedMemorial } from '../../../../lib/guards';
+import { getDb } from '../../../../lib/db';
+import { memorials } from '../../../../lib/db/schema';
+import { eq } from 'drizzle-orm';
+import { STORY_QUESTIONS, remainingAiQuota, type StoryNotes } from '../../../../lib/ai';
+import { currentUser } from '../../../../lib/guards';
+import { env } from '../../../../lib/env';
+
+const user = currentUser(Astro.locals);
+let memorial = await ownedMemorial(Astro.locals, Astro.params.id);
+if (!memorial) return notFound();
+
+let error: string | null = null;
+let saved = false;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const bio = String(form.get('bio') ?? '').trim().slice(0, 20_000);
+
+  const notes: StoryNotes = {};
+  for (const question of STORY_QUESTIONS) {
+    const value = String(form.get(`note_${question.key}`) ?? '').trim();
+    if (value) notes[question.key] = value.slice(0, 1200);
+  }
+
+  await getDb(env.DB)
+    .update(memorials)
+    .set({
+      bio: bio || null,
+      storyNotes: JSON.stringify(notes),
+      updatedAt: Math.floor(Date.now() / 1000),
+    })
+    .where(eq(memorials.id, memorial.id));
+
+  if (String(form.get('intent') ?? '') === 'next') {
+    return Astro.redirect(`/tai-khoan/be/${memorial.id}/giao-dien`);
+  }
+
+  memorial = { ...memorial, bio: bio || null, storyNotes: JSON.stringify(notes) };
+  saved = true;
+}
+
+let notes: StoryNotes = {};
+try {
+  notes = memorial.storyNotes ? (JSON.parse(memorial.storyNotes) as StoryNotes) : {};
+} catch {
+  notes = {};
+}
+
+const aiRemaining = await remainingAiQuota(env.DB, user.id, Boolean(memorial.isPremium));
+---
+
+<AppLayout
+  title={`Câu chuyện của ${memorial.petName}`}
+  backHref={`/tai-khoan/be/${memorial.id}`}
+  backLabel="Về trang quản lý"
+>
+  <WizardSteps current={3} memorialId={memorial.id} />
+
+  {error && <p class="alert-error mb-6">{error}</p>}
+  {saved && <p class="alert-success mb-6">Đã lưu.</p>}
+
+  <form method="POST" class="space-y-6" data-story-form data-memorial-id={memorial.id}>
+    <div class="card p-6">
+      <h2 class="font-serif text-lg font-semibold">Vài câu hỏi cho dễ bắt đầu</h2>
+      <p class="mt-1 text-sm text-ink-500">
+        Không cần trả lời hết, cũng không cần viết hay. Cứ kể như đang nói với một người bạn.
+      </p>
+
+      <div class="mt-6 space-y-5">
+        {
+          STORY_QUESTIONS.map((question) => (
+            <div>
+              <label class="label" for={`note_${question.key}`}>
+                {question.label}
+              </label>
+              <textarea
+                class="input min-h-20"
+                id={`note_${question.key}`}
+                name={`note_${question.key}`}
+                maxlength="1200"
+                rows="2"
+                placeholder={question.placeholder}
+                data-note-key={question.key}
+                set:text={notes[question.key] ?? ''}
+              />
+            </div>
+          ))
+        }
+      </div>
+
+      <div class="mt-6 rounded-xl bg-clay-50 p-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p class="text-sm font-medium text-clay-800">Nhờ AI viết giúp</p>
+            <p class="text-xs text-clay-700">
+              AI sẽ dựa vào câu trả lời trên để viết một bài hoàn chỉnh. Bạn đọc lại và sửa theo ý
+              mình.
+            </p>
+          </div>
+          <button type="button" class="btn-primary btn-sm shrink-0" data-ai-button>
+            ✍️ Nhờ AI viết giúp
+          </button>
+        </div>
+        <p class="mt-2 text-xs text-clay-700" data-ai-status role="status" aria-live="polite">
+          Còn {aiRemaining} lần hôm nay.
+        </p>
+      </div>
+    </div>
+
+    <div class="card p-6">
+      <label class="label" for="bio">Bài viết về bé</label>
+      <p class="hint mb-2">
+        Đây là phần hiện trên trang kỷ niệm. Bạn tự viết hoặc bấm nút nhờ AI ở trên rồi sửa lại.
+      </p>
+      <textarea
+        class="input min-h-72 leading-relaxed"
+        id="bio"
+        name="bio"
+        maxlength="20000"
+        rows="16"
+        placeholder="Mít đến nhà mình vào một chiều tháng Chín…"
+        data-bio-field
+        set:text={memorial.bio ?? ''}
+      />
+      <p class="hint mt-2" data-bio-count></p>
+    </div>
+
+    <div class="flex items-center justify-between gap-4">
+      <button type="submit" name="intent" value="save" class="btn-secondary">Lưu nháp</button>
+      <button type="submit" name="intent" value="next" class="btn-primary">
+        Tiếp tục — chọn giao diện
+      </button>
+    </div>
+  </form>
+</AppLayout>
+
+<script>
+  const form = document.querySelector<HTMLFormElement>('[data-story-form]');
+  if (form) {
+    const memorialId = form.dataset.memorialId!;
+    const button = form.querySelector<HTMLButtonElement>('[data-ai-button]')!;
+    const status = form.querySelector<HTMLElement>('[data-ai-status]')!;
+    const bio = form.querySelector<HTMLTextAreaElement>('[data-bio-field]')!;
+    const counter = form.querySelector<HTMLElement>('[data-bio-count]')!;
+
+    const updateCount = () => {
+      const words = bio.value.trim() ? bio.value.trim().split(/\s+/).length : 0;
+      counter.textContent = words > 0 ? `${words} từ` : '';
+    };
+    bio.addEventListener('input', updateCount);
+    updateCount();
+
+    button.addEventListener('click', async () => {
+      const notes: Record<string, string> = {};
+      form.querySelectorAll<HTMLTextAreaElement>('[data-note-key]').forEach((field) => {
+        if (field.value.trim()) notes[field.dataset.noteKey!] = field.value.trim();
+      });
+
+      if (Object.keys(notes).length === 0) {
+        status.textContent = 'Bạn trả lời giúp ít nhất một câu ở trên nhé.';
+        return;
+      }
+
+      if (bio.value.trim() && !confirm('Bài viết hiện tại sẽ bị thay bằng bản AI viết. Tiếp tục?')) {
+        return;
+      }
+
+      button.disabled = true;
+      const original = button.textContent;
+      button.textContent = 'AI đang viết…';
+      status.textContent = 'Thường mất 5–15 giây.';
+
+      try {
+        const response = await fetch('/api/ai/bio', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ memorialId, notes }),
+        });
+        const data = (await response.json()) as {
+          ok?: boolean;
+          text?: string;
+          error?: string;
+          remaining?: number;
+        };
+
+        if (data.ok && data.text) {
+          bio.value = data.text;
+          updateCount();
+          bio.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          status.textContent =
+            data.remaining === undefined
+              ? 'Xong rồi. Bạn đọc lại và sửa cho đúng giọng của mình nhé.'
+              : `Xong rồi — còn ${data.remaining} lần hôm nay. Bạn đọc lại và sửa cho đúng giọng của mình nhé.`;
+        } else {
+          status.textContent = data.error ?? 'Chưa gọi được AI, bạn thử lại sau nhé.';
+        }
+      } catch {
+        status.textContent = 'Mất kết nối. Bạn thử lại nhé.';
+      } finally {
+        button.disabled = false;
+        button.textContent = original;
+      }
+    });
+  }
+</script>

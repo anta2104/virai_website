@@ -1,0 +1,120 @@
+---
+import { eq } from 'drizzle-orm';
+import AppLayout from '../../../../layouts/AppLayout.astro';
+import WizardSteps from '../../../../components/WizardSteps.astro';
+import BasicInfoFields from '../../../../components/BasicInfoFields.astro';
+import { notFound, ownedMemorial } from '../../../../lib/guards';
+import { getDb } from '../../../../lib/db';
+import { memorials } from '../../../../lib/db/schema';
+import { lunarFieldsFor, slugExists } from '../../../../lib/memorials';
+import { parseBasicInfo, toDbFields, type BasicInfo } from '../../../../lib/memorial-form';
+import { isValidSlug } from '../../../../lib/slug';
+import { ensureRemindersFor } from '../../../../lib/reminders';
+import { env } from '../../../../lib/env';
+
+let memorial = await ownedMemorial(Astro.locals, Astro.params.id);
+if (!memorial) return notFound();
+
+const db = getDb(env.DB);
+let error: string | null = null;
+let saved = false;
+
+let values: BasicInfo = {
+  petName: memorial.petName,
+  species: memorial.species,
+  breed: memorial.breed ?? '',
+  gender: memorial.gender,
+  birthDate: memorial.birthDate ?? '',
+  deathDate: memorial.deathDate ?? '',
+};
+let slugValue = memorial.slug;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const parsed = parseBasicInfo(form);
+  values = parsed.values;
+  error = parsed.error;
+  slugValue = String(form.get('slug') ?? '').trim().toLowerCase();
+
+  if (!error) {
+    if (slugValue !== memorial.slug) {
+      if (!isValidSlug(slugValue)) {
+        error = 'Đường dẫn chỉ gồm chữ thường không dấu, số và dấu gạch ngang.';
+      } else if (await slugExists(db, slugValue)) {
+        error = 'Đường dẫn này đã có người dùng. Bạn thử tên khác nhé.';
+      }
+    }
+  }
+
+  if (!error) {
+    const fields = toDbFields(values);
+    await db
+      .update(memorials)
+      .set({
+        ...fields,
+        ...lunarFieldsFor(fields.birthDate, fields.deathDate),
+        slug: slugValue,
+        updatedAt: Math.floor(Date.now() / 1000),
+      })
+      .where(eq(memorials.id, memorial.id));
+
+    memorial = { ...memorial, ...fields, slug: slugValue };
+    await ensureRemindersFor(env.DB, memorial);
+
+    if (String(form.get('intent') ?? '') === 'next') {
+      return Astro.redirect(`/tai-khoan/be/${memorial.id}/anh`);
+    }
+    saved = true;
+  }
+}
+
+const isDraft = !memorial.isPublished;
+---
+
+<AppLayout
+  title={`Thông tin về ${memorial.petName}`}
+  backHref={`/tai-khoan/be/${memorial.id}`}
+  backLabel="Về trang quản lý"
+>
+  {isDraft && <WizardSteps current={1} memorialId={memorial.id} />}
+
+  {error && <p class="alert-error mb-6">{error}</p>}
+  {saved && <p class="alert-success mb-6">Đã lưu thông tin.</p>}
+
+  <form method="POST" class="card p-6 sm:p-8">
+    <BasicInfoFields values={values} />
+
+    <hr class="my-7 border-cream-300" />
+
+    <div>
+      <label class="label" for="slug">Đường dẫn trang</label>
+      <div class="flex items-center gap-1 text-sm text-ink-500">
+        <span class="shrink-0">/be/</span>
+        <input
+          class="input"
+          id="slug"
+          name="slug"
+          value={slugValue}
+          maxlength="64"
+          pattern="[a-z0-9]+(-[a-z0-9]+)*"
+          required
+        />
+      </div>
+      <p class="hint">
+        Đổi đường dẫn sẽ làm mã QR và các link cũ không còn dùng được. Nếu đã in thẻ QR rồi thì đừng
+        đổi nhé.
+      </p>
+    </div>
+
+    <div class="mt-8 flex items-center justify-between gap-4">
+      <button type="submit" name="intent" value="save" class="btn-secondary">Lưu</button>
+      {
+        isDraft && (
+          <button type="submit" name="intent" value="next" class="btn-primary">
+            Tiếp tục — tải ảnh
+          </button>
+        )
+      }
+    </div>
+  </form>
+</AppLayout>

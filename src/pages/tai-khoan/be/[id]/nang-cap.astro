@@ -1,0 +1,153 @@
+---
+import AppLayout from '../../../../layouts/AppLayout.astro';
+import { currentUser, notFound, ownedMemorial } from '../../../../lib/guards';
+import { PRICES, formatVnd } from '../../../../lib/plans';
+import { getOrCreateOrder, MATERIAL_LABEL, type OrderType, type ShippingInfo } from '../../../../lib/orders';
+
+const user = currentUser(Astro.locals);
+const memorial = await ownedMemorial(Astro.locals, Astro.params.id);
+if (!memorial) return notFound();
+
+let error: string | null = null;
+let shipping: ShippingInfo = { fullName: user.name, phone: '', address: '', material: 'kim_loai', note: '' };
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const type = String(form.get('type') ?? '') as OrderType;
+
+  if (type !== 'premium' && type !== 'physical_combo') {
+    error = 'Bạn chọn gói trước nhé.';
+  } else if (type === 'physical_combo') {
+    shipping = {
+      fullName: String(form.get('fullName') ?? '').trim().slice(0, 80),
+      phone: String(form.get('phone') ?? '').trim().slice(0, 20),
+      address: String(form.get('address') ?? '').trim().slice(0, 300),
+      material: String(form.get('material') ?? 'kim_loai'),
+      note: String(form.get('note') ?? '').trim().slice(0, 300),
+    };
+
+    if (!shipping.fullName || !shipping.phone || !shipping.address) {
+      error = 'Bạn điền giúp tên, số điện thoại và địa chỉ nhận thẻ nhé.';
+    } else if (!/^[0-9+\s.-]{8,20}$/.test(shipping.phone)) {
+      error = 'Số điện thoại chưa đúng.';
+    } else if (!MATERIAL_LABEL[shipping.material]) {
+      error = 'Bạn chọn chất liệu thẻ nhé.';
+    }
+  }
+
+  if (!error) {
+    const order = await getOrCreateOrder({
+      userId: user.id,
+      memorialId: memorial.id,
+      type,
+      shippingInfo: type === 'physical_combo' ? shipping : null,
+    });
+    return Astro.redirect(`/tai-khoan/thanh-toan/${order.id}`);
+  }
+}
+---
+
+<AppLayout
+  title={`Nâng cấp trang của ${memorial.petName}`}
+  backHref={`/tai-khoan/be/${memorial.id}`}
+  backLabel="Về trang quản lý"
+>
+  {error && <p class="alert-error mb-6">{error}</p>}
+
+  {
+    memorial.isPremium && (
+      <p class="alert-success mb-6">
+        Trang này đã là Premium. Bạn vẫn đặt thêm thẻ QR vật lý được ở phần dưới.
+      </p>
+    )
+  }
+
+  {
+    !memorial.isPremium && (
+      <form method="POST" class="card mb-6 p-6">
+        <input type="hidden" name="type" value="premium" />
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 class="font-serif text-xl font-semibold">Premium</h2>
+            <p class="mt-1 text-sm text-ink-500">Trả một lần cho bé này, dùng trọn đời.</p>
+          </div>
+          <p class="text-2xl font-semibold text-ink-900">{formatVnd(PRICES.premium)}</p>
+        </div>
+
+        <ul class="mt-5 space-y-2 text-sm">
+          <li class="flex gap-2.5"><span class="text-clay-500" aria-hidden="true">✓</span> Tối đa 200 ảnh và tải được cả video</li>
+          <li class="flex gap-2.5"><span class="text-clay-500" aria-hidden="true">✓</span> Tất cả giao diện, kể cả “Thanh tịnh” và “Đêm sao”</li>
+          <li class="flex gap-2.5"><span class="text-clay-500" aria-hidden="true">✓</span> Email nhắc 49 ngày và giỗ hằng năm theo âm lịch</li>
+          <li class="flex gap-2.5"><span class="text-clay-500" aria-hidden="true">✓</span> Sổ lưu bút không giới hạn</li>
+          <li class="flex gap-2.5"><span class="text-clay-500" aria-hidden="true">✓</span> Ẩn dòng thương hiệu ở chân trang</li>
+          <li class="flex gap-2.5"><span class="text-clay-500" aria-hidden="true">✓</span> Tải thẻ QR in sẵn (SVG và PNG 2048px)</li>
+        </ul>
+
+        <button type="submit" class="btn-primary mt-6 w-full sm:w-auto">
+          Nâng cấp Premium — {formatVnd(PRICES.premium)}
+        </button>
+      </form>
+    )
+  }
+
+  <form method="POST" class="card p-6">
+    <input type="hidden" name="type" value="physical_combo" />
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <h2 class="font-serif text-xl font-semibold">Combo thẻ QR vật lý</h2>
+        <p class="mt-1 text-sm text-ink-500">
+          Premium + một thẻ khắc mã QR của bé, gửi tới địa chỉ của bạn.
+        </p>
+      </div>
+      <p class="text-2xl font-semibold text-ink-900">{formatVnd(PRICES.physicalCombo)}</p>
+    </div>
+
+    <div class="mt-6 space-y-5">
+      <div>
+        <label class="label" for="fullName">Người nhận</label>
+        <input class="input" id="fullName" name="fullName" required maxlength="80" value={shipping.fullName} />
+      </div>
+      <div>
+        <label class="label" for="phone">Số điện thoại</label>
+        <input class="input" id="phone" name="phone" required maxlength="20" value={shipping.phone} inputmode="tel" />
+      </div>
+      <div>
+        <label class="label" for="address">Địa chỉ nhận thẻ</label>
+        <textarea class="input min-h-20" id="address" name="address" required maxlength="300" rows="3" set:text={shipping.address} />
+      </div>
+      <fieldset>
+        <legend class="label">Chất liệu thẻ</legend>
+        <div class="flex flex-wrap gap-2">
+          {
+            Object.entries(MATERIAL_LABEL).map(([value, label]) => (
+              <label class="cursor-pointer">
+                <input
+                  type="radio"
+                  name="material"
+                  value={value}
+                  checked={shipping.material === value}
+                  class="peer sr-only"
+                />
+                <span class="block rounded-full border border-cream-300 px-4 py-2 text-sm peer-checked:border-clay-400 peer-checked:bg-clay-50 peer-checked:text-clay-700">
+                  {label}
+                </span>
+              </label>
+            ))
+          }
+        </div>
+      </fieldset>
+      <div>
+        <label class="label" for="note">Ghi chú khắc thẻ (không bắt buộc)</label>
+        <input class="input" id="note" name="note" maxlength="300" value={shipping.note ?? ''} placeholder="Ví dụ: khắc thêm dòng “Mãi thương con”" />
+      </div>
+    </div>
+
+    <p class="hint mt-4">
+      Sau khi nhận thanh toán, chúng tôi khắc thẻ và gửi cho bạn, thường trong 5–10 ngày.
+    </p>
+
+    <button type="submit" class="btn-secondary mt-6 w-full sm:w-auto">
+      Đặt combo — {formatVnd(PRICES.physicalCombo)}
+    </button>
+  </form>
+</AppLayout>

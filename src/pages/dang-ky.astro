@@ -1,0 +1,102 @@
+---
+import SiteLayout from '../layouts/SiteLayout.astro';
+import {
+  createSession,
+  registerUser,
+  setSessionCookie,
+  validateEmail,
+  validatePassword,
+} from '../lib/auth';
+import { getDb } from '../lib/db';
+import { env } from '../lib/env';
+
+
+if (Astro.locals.user) {
+  return Astro.redirect('/tai-khoan');
+}
+
+let error: string | null = null;
+let values = { name: '', email: '' };
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const name = String(form.get('name') ?? '').trim();
+  const email = String(form.get('email') ?? '').trim();
+  const password = String(form.get('password') ?? '');
+  values = { name, email };
+
+  error =
+    (!name ? 'Vui lòng cho biết tên của bạn.' : null) ??
+    validateEmail(email) ??
+    validatePassword(password);
+
+  if (!error) {
+    const result = await registerUser(env.DB, {
+      email,
+      password,
+      name,
+      adminEmail: env.ADMIN_EMAIL,
+    });
+    if (!result.ok || !result.user) {
+      error = result.error ?? 'Không tạo được tài khoản, bạn thử lại nhé.';
+    } else {
+      const session = await createSession(getDb(env.DB), result.user.id, env.SESSION_SECRET);
+      setSessionCookie(Astro.cookies, session.cookieValue, session.expiresAt, Astro.url.protocol === 'https:');
+      return Astro.redirect('/tai-khoan/tao-trang');
+    }
+  }
+}
+---
+
+<SiteLayout title="Tạo tài khoản" description="Tạo tài khoản miễn phí để lập trang kỷ niệm cho bé.">
+  <section class="section">
+    <div class="mx-auto w-full max-w-md">
+      <div class="card p-6 sm:p-8">
+        <h1 class="font-serif text-2xl font-semibold">Tạo tài khoản</h1>
+        <p class="mt-2 text-sm text-ink-500">
+          Miễn phí, không cần thẻ. Bạn sẽ tạo được trang kỷ niệm đầu tiên ngay sau bước này.
+        </p>
+
+        {error && <p class="alert-error mt-5">{error}</p>}
+
+        <form method="POST" class="mt-6 space-y-4">
+          <div>
+            <label class="label" for="name">Tên của bạn</label>
+            <input class="input" id="name" name="name" required maxlength="80" value={values.name} autocomplete="name" />
+          </div>
+          <div>
+            <label class="label" for="email">Email</label>
+            <input
+              class="input"
+              id="email"
+              name="email"
+              type="email"
+              required
+              value={values.email}
+              autocomplete="email"
+            />
+            <p class="hint">Dùng để đăng nhập và nhận email nhắc ngày tưởng niệm.</p>
+          </div>
+          <div>
+            <label class="label" for="password">Mật khẩu</label>
+            <input
+              class="input"
+              id="password"
+              name="password"
+              type="password"
+              required
+              minlength="8"
+              autocomplete="new-password"
+            />
+            <p class="hint">Ít nhất 8 ký tự.</p>
+          </div>
+          <button type="submit" class="btn-primary w-full">Tạo tài khoản</button>
+        </form>
+
+        <p class="mt-6 text-center text-sm text-ink-500">
+          Đã có tài khoản? <a class="font-medium text-clay-600 hover:underline" href="/dang-nhap">Đăng nhập</a>
+        </p>
+      </div>
+    </div>
+  </section>
+</SiteLayout>

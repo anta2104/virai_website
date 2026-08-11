@@ -1,0 +1,62 @@
+---
+interface Props {
+  /** Bước hiện tại, tính từ 1 */
+  current: number;
+  /** id của trang kỷ niệm — có rồi thì các bước sau bấm được */
+  memorialId?: string | null;
+}
+
+const { current, memorialId = null } = Astro.props;
+
+const steps = [
+  { label: 'Về bé', href: memorialId ? `/tai-khoan/be/${memorialId}/thong-tin` : '/tai-khoan/tao-trang' },
+  { label: 'Ảnh', href: memorialId ? `/tai-khoan/be/${memorialId}/anh` : null },
+  { label: 'Câu chuyện', href: memorialId ? `/tai-khoan/be/${memorialId}/cau-chuyen` : null },
+  { label: 'Giao diện', href: memorialId ? `/tai-khoan/be/${memorialId}/giao-dien` : null },
+  { label: 'Xuất bản', href: memorialId ? `/tai-khoan/be/${memorialId}/xem-truoc` : null },
+];
+---
+
+<ol class="mb-8 flex flex-wrap items-center gap-x-2 gap-y-2 text-sm" aria-label="Các bước tạo trang">
+  {
+    steps.map((step, index) => {
+      const number = index + 1;
+      const state = number === current ? 'current' : number < current ? 'done' : 'todo';
+      const content = (
+        <span class="flex items-center gap-2">
+          <span
+            class:list={[
+              'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
+              state === 'current' && 'bg-clay-500 text-white',
+              state === 'done' && 'bg-sage-300 text-sage-700',
+              state === 'todo' && 'bg-cream-300 text-ink-500',
+            ]}
+            aria-hidden="true"
+          >
+            {state === 'done' ? '✓' : number}
+          </span>
+          <span class:list={[state === 'current' ? 'font-semibold text-ink-900' : 'text-ink-500']}>
+            {step.label}
+          </span>
+        </span>
+      );
+
+      return (
+        <li class="flex items-center gap-2">
+          {step.href && state !== 'current' ? (
+            <a href={step.href} class="rounded-full px-1 hover:text-clay-600">
+              {content}
+            </a>
+          ) : (
+            <span aria-current={state === 'current' ? 'step' : undefined}>{content}</span>
+          )}
+          {index < steps.length - 1 && (
+            <span class="text-cream-400" aria-hidden="true">
+              ›
+            </span>
+          )}
+        </li>
+      );
+    })
+  }
+</ol>

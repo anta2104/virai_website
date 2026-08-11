@@ -1,0 +1,78 @@
+---
+import SiteLayout from '../layouts/SiteLayout.astro';
+import { site } from '../lib/site';
+
+/**
+ * BẢN NHÁP — cần chủ dự án rà soát và điền thông tin pháp nhân trước khi công bố.
+ * Đây không phải tư vấn pháp lý.
+ */
+const updated = '11/08/2026';
+---
+
+<SiteLayout title="Chính sách bảo mật" description="Chúng tôi thu thập gì, dùng để làm gì và bạn kiểm soát được những gì.">
+  <section class="section">
+    <div class="container-narrow">
+      <h1 class="font-serif text-4xl font-semibold">Chính sách bảo mật</h1>
+      <p class="mt-3 text-sm text-ink-500">Cập nhật ngày {updated}</p>
+
+      <div class="mt-10 space-y-8 leading-relaxed text-ink-500">
+        <div>
+          <h2 class="font-serif text-xl font-semibold">Chúng tôi lưu những gì</h2>
+          <ul class="mt-3 list-disc space-y-1.5 pl-5">
+            <li>Email, tên và mật khẩu đã băm (không lưu mật khẩu gốc).</li>
+            <li>Nội dung bạn nhập cho trang kỷ niệm: tên bé, ngày tháng, câu chuyện, ảnh.</li>
+            <li>Lời lưu bút của người ghé thăm, kèm một chuỗi băm của địa chỉ IP để chống spam.</li>
+            <li>Thông tin đơn hàng; với combo vật lý là tên, số điện thoại và địa chỉ nhận hàng.</li>
+            <li>Bộ đếm lượt ghé thăm, số nến và số hoa — dạng con số tổng, không gắn với cá nhân.</li>
+          </ul>
+        </div>
+
+        <div>
+          <h2 class="font-serif text-xl font-semibold">Chúng tôi không làm gì</h2>
+          <ul class="mt-3 list-disc space-y-1.5 pl-5">
+            <li>Không bán hoặc cho thuê dữ liệu của bạn.</li>
+            <li>Không gắn mã quảng cáo theo dõi hành vi trên trang kỷ niệm.</li>
+            <li>Không gửi email quảng cáo nếu bạn không đăng ký nhận.</li>
+          </ul>
+        </div>
+
+        <div>
+          <h2 class="font-serif text-xl font-semibold">Bên thứ ba chúng tôi dùng</h2>
+          <ul class="mt-3 list-disc space-y-1.5 pl-5">
+            <li><strong>Cloudflare</strong> — hạ tầng chạy website, lưu cơ sở dữ liệu và ảnh.</li>
+            <li><strong>Cloudflare Workers AI</strong> — xử lý yêu cầu “Nhờ AI viết giúp”.</li>
+            <li><strong>Resend</strong> — gửi email nhắc ngày tưởng niệm.</li>
+            <li><strong>SePay</strong> — nhận thông báo biến động số dư để xác nhận thanh toán.</li>
+          </ul>
+        </div>
+
+        <div>
+          <h2 class="font-serif text-xl font-semibold">Ai xem được trang của bé</h2>
+          <p class="mt-2">
+            Trang kỷ niệm chỉ mở cho người có đường link hoặc quét mã QR. Chúng tôi không tạo danh
+            bạ công khai các trang. Bạn có thể chuyển trang về trạng thái nháp bất cứ lúc nào để
+            không ai xem được nữa.
+          </p>
+        </div>
+
+        <div>
+          <h2 class="font-serif text-xl font-semibold">Quyền của bạn</h2>
+          <p class="mt-2">
+            Bạn có thể sửa hoặc xoá nội dung của mình trong trang quản lý. Nếu muốn xoá toàn bộ tài
+            khoản và dữ liệu, gửi email tới
+            <a class="text-clay-600 hover:underline" href={`mailto:${site.supportEmail}`}>{site.supportEmail}</a>;
+            chúng tôi xử lý trong vòng 7 ngày làm việc.
+          </p>
+        </div>
+
+        <div>
+          <h2 class="font-serif text-xl font-semibold">Cookie</h2>
+          <p class="mt-2">
+            Chúng tôi chỉ dùng một cookie kỹ thuật để giữ trạng thái đăng nhập, và một cookie ngắn
+            hạn để không tính trùng lượt ghé thăm hay lượt thắp nến. Không có cookie quảng cáo.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+</SiteLayout>

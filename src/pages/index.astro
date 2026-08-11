@@ -1,43 +1,288 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
-import Header from '../components/Header.astro';
-import Hero from '../components/Hero.astro';
-import About from '../components/About.astro';
-import VisionTeam from '../components/VisionTeam.astro';
-import SolutionSection from '../components/SolutionSection.astro';
-import ContactForm from '../components/ContactForm.astro';
-import Footer from '../components/Footer.astro';
-import { content } from '../data/site';
+import SiteLayout from '../layouts/SiteLayout.astro';
+import PricingTable from '../components/PricingTable.astro';
+import { site } from '../lib/site';
+import { listDemoMemorials, listPhotos, coverUrlOf } from '../lib/memorials';
+import { formatDate } from '../lib/format';
+import { env } from '../lib/env';
 
-const page = content.vi;
+
+// Trang mẫu để khách bấm xem ngay — chỉ hiện nếu đã seed trong D1
+const demos = await listDemoMemorials(env.DB).catch(() => []);
+const demoCards = await Promise.all(
+  demos.slice(0, 3).map(async (memorial) => {
+    const photoList = await listPhotos(env.DB, memorial.id);
+    return { memorial, cover: coverUrlOf(memorial, photoList) };
+  }),
+);
+
+const steps = [
+  {
+    title: 'Kể về bé',
+    body: 'Điền tên, ngày sinh — ngày mất, giống loài. Chúng tôi tự hiện luôn ngày âm lịch tương ứng.',
+  },
+  {
+    title: 'Tải ảnh & viết câu chuyện',
+    body: 'Chọn những tấm ảnh bạn thương nhất. Không biết viết gì? Trả lời vài câu gợi ý, AI sẽ viết giúp bạn một bài tiểu sử hoàn chỉnh.',
+  },
+  {
+    title: 'Chia sẻ bằng mã QR',
+    body: 'Trang của bé có mã QR riêng và ảnh chia sẻ đẹp cho Facebook, Zalo. Bạn bè quét là vào được ngay.',
+  },
+];
+
+const features = [
+  {
+    icon: '🌙',
+    title: 'Nhắc 49 ngày và ngày giỗ theo âm lịch',
+    body: 'Chúng tôi tự chuyển ngày mất sang âm lịch, tính ngày cúng 49 ngày và giỗ hằng năm, rồi gửi email nhắc bạn trước.',
+  },
+  {
+    icon: '✍️',
+    title: 'AI viết tiểu sử giúp bạn',
+    body: 'Bạn chỉ cần trả lời “bé thích ăn gì”, “kỷ niệm đáng nhớ nhất”… AI sẽ viết thành một câu chuyện mượt mà bằng tiếng Việt để bạn sửa lại theo ý mình.',
+  },
+  {
+    icon: '📱',
+    title: 'Mã QR để chia sẻ hoặc khắc thẻ',
+    body: 'Mỗi trang có mã QR riêng. Bạn có thể tải về tự in, hoặc đặt thẻ kim loại/gỗ khắc sẵn để đặt cạnh tro cốt, vòng cổ, khung ảnh.',
+  },
+  {
+    icon: '🕯️',
+    title: 'Thắp nến, thả hoa, viết lưu bút',
+    body: 'Bạn bè ghé thăm có thể thắp một nén nến ảo, thả một cánh hoa hoặc viết lời nhắn. Bạn duyệt trước khi lời nhắn hiện lên.',
+  },
+  {
+    icon: '🖼️',
+    title: 'Ảnh chia sẻ tự động, đẹp sẵn',
+    body: 'Khi dán link lên Facebook hay Zalo, ảnh xem trước tự sinh với ảnh của bé, tên và ngày tháng — không phải tự thiết kế.',
+  },
+  {
+    icon: '♾️',
+    title: 'Trả một lần, giữ trọn đời',
+    body: 'Không thuê tháng. Gói Premium trả một lần cho mỗi bé và trang của bé được giữ mãi.',
+  },
+];
+
+const faqs = [
+  {
+    q: 'Tạo trang có mất phí không?',
+    a: 'Không. Bạn tạo được một trang kỷ niệm hoàn chỉnh miễn phí với 10 ảnh. Chỉ khi cần thêm ảnh, thêm theme hoặc email nhắc ngày giỗ thì mới cần nâng cấp.',
+  },
+  {
+    q: 'Trang của bé có bị xoá sau một thời gian không?',
+    a: 'Không. Trang được giữ lâu dài. Gói Premium là trả một lần cho mỗi bé, không phải phí duy trì hằng năm.',
+  },
+  {
+    q: 'Tôi thanh toán bằng cách nào?',
+    a: 'Chuyển khoản ngân hàng qua mã VietQR — mở app ngân hàng, quét mã, nội dung chuyển khoản đã điền sẵn. Hệ thống tự xác nhận trong vài phút.',
+  },
+  {
+    q: 'Ai xem được trang của bé?',
+    a: 'Chỉ người có đường link hoặc quét mã QR. Trang không xuất hiện trong danh sách công khai nào, và bạn có thể ẩn trang bất cứ lúc nào.',
+  },
+  {
+    q: 'Lời lưu bút của người lạ có tự hiện lên không?',
+    a: 'Không. Mọi lời nhắn đều chờ bạn duyệt. Bạn xoá hoặc từ chối được bất cứ lời nào.',
+  },
+];
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'WebSite',
+      name: site.name,
+      url: site.url,
+      description: site.description,
+      inLanguage: 'vi',
+    },
+    {
+      '@type': 'FAQPage',
+      mainEntity: faqs.map((faq) => ({
+        '@type': 'Question',
+        name: faq.q,
+        acceptedAnswer: { '@type': 'Answer', text: faq.a },
+      })),
+    },
+  ],
+};
 ---
 
-<BaseLayout
-  site={page.site}
-  lang={page.language.htmlLang}
-  alternateHref={page.language.alternateHref}
-  alternateLang="en"
+<SiteLayout
+  title={`${site.name} — ${site.tagline}`}
+  description={site.description}
+  jsonLd={jsonLd}
 >
-  <Header navLinks={page.navLinks} ui={page.ui} language={page.language} />
-  <main>
-    <Hero hero={page.hero} />
-    <About about={page.about} aboutHighlights={page.aboutHighlights} eyebrow={page.navLinks[0].label} />
-    <VisionTeam
-      visionMission={page.visionMission}
-      team={page.team}
-      teamStats={page.teamStats}
-      ui={page.ui}
-    />
-    <section id="solutions" aria-label="Giải pháp">
-      {page.solutions.map((solution) => <SolutionSection solution={solution} ui={page.ui} />)}
-    </section>
-    <ContactForm contact={page.contact} ui={page.ui} />
-  </main>
-  <Footer
-    site={page.site}
-    contact={page.contact}
-    navLinks={page.navLinks}
-    solutions={page.solutions}
-    ui={page.ui}
-  />
-</BaseLayout>
+  <!-- Hero -->
+  <section class="relative overflow-hidden">
+    <div
+      class="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_50%_at_50%_0%,rgba(201,133,95,0.18),transparent_70%)]"
+      aria-hidden="true"
+    >
+    </div>
+    <div class="container-page relative px-4 pt-16 pb-14 text-center sm:px-6 lg:px-8 lg:pt-24">
+      <p class="text-sm font-medium tracking-wide text-clay-600 uppercase">
+        Trang tưởng niệm thú cưng
+      </p>
+      <h1 class="mx-auto mt-4 max-w-3xl font-serif text-4xl leading-tight font-semibold sm:text-5xl lg:text-6xl">
+        Bé đã đi rồi.<br class="hidden sm:block" /> Kỷ niệm thì vẫn ở lại.
+      </h1>
+      <p class="mx-auto mt-6 max-w-2xl text-lg text-ink-500">
+        Tạo một trang riêng cho người bạn nhỏ của bạn: ảnh, câu chuyện, sổ lưu bút và mã QR để chia
+        sẻ. Miễn phí để bắt đầu — và chúng tôi nhắc bạn ngày 49 và ngày giỗ theo âm lịch.
+      </p>
+      <div class="mt-9 flex flex-wrap items-center justify-center gap-3">
+        <a href="/dang-ky" class="btn-primary px-8 py-3.5 text-base">Tạo trang miễn phí</a>
+        {
+          demoCards.length > 0 ? (
+            <a href={`/be/${demoCards[0]!.memorial.slug}`} class="btn-secondary px-8 py-3.5 text-base">
+              Xem một trang mẫu
+            </a>
+          ) : (
+            <a href="/cach-hoat-dong" class="btn-secondary px-8 py-3.5 text-base">
+              Xem cách hoạt động
+            </a>
+          )
+        }
+      </div>
+      <p class="mt-5 text-sm text-ink-500">Không cần thẻ ngân hàng · Mất khoảng 5 phút</p>
+    </div>
+  </section>
+
+  <!-- Cách hoạt động -->
+  <section class="section bg-cream-100" id="cach-hoat-dong">
+    <div class="container-page">
+      <h2 class="text-center font-serif text-3xl font-semibold">Ba bước, khoảng 5 phút</h2>
+      <div class="mt-12 grid gap-6 md:grid-cols-3">
+        {
+          steps.map((step, index) => (
+            <div class="card p-6">
+              <span class="flex h-9 w-9 items-center justify-center rounded-full bg-clay-500 font-serif text-white">
+                {index + 1}
+              </span>
+              <h3 class="mt-4 text-lg font-semibold">{step.title}</h3>
+              <p class="mt-2 text-sm leading-relaxed text-ink-500">{step.body}</p>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Trang mẫu -->
+  {
+    demoCards.length > 0 && (
+      <section class="section">
+        <div class="container-page">
+          <h2 class="text-center font-serif text-3xl font-semibold">Một vài trang mẫu</h2>
+          <p class="mx-auto mt-3 max-w-xl text-center text-ink-500">
+            Bấm vào để xem trang của bé trông như thế nào khi hoàn thiện.
+          </p>
+          <div class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {demoCards.map(({ memorial, cover }) => (
+              <a href={`/be/${memorial.slug}`} class="card group overflow-hidden transition hover:shadow-md">
+                <div class="aspect-[4/3] overflow-hidden bg-cream-200">
+                  {cover ? (
+                    <img
+                      src={cover}
+                      alt={`Ảnh của ${memorial.petName}`}
+                      class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div class="flex h-full items-center justify-center text-4xl" aria-hidden="true">
+                      🐾
+                    </div>
+                  )}
+                </div>
+                <div class="p-5">
+                  <h3 class="font-serif text-lg font-semibold">{memorial.petName}</h3>
+                  <p class="mt-1 text-sm text-ink-500">
+                    {[formatDate(memorial.birthDate), formatDate(memorial.deathDate)]
+                      .filter(Boolean)
+                      .join(' — ')}
+                  </p>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  <!-- Tính năng -->
+  <section class="section bg-cream-100">
+    <div class="container-page">
+      <h2 class="text-center font-serif text-3xl font-semibold">
+        Những thứ chỉ có ở một trang tưởng niệm làm cho người Việt
+      </h2>
+      <div class="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {
+          features.map((feature) => (
+            <div class="card p-6">
+              <span class="text-2xl" aria-hidden="true">
+                {feature.icon}
+              </span>
+              <h3 class="mt-3 text-lg font-semibold">{feature.title}</h3>
+              <p class="mt-2 text-sm leading-relaxed text-ink-500">{feature.body}</p>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Bảng giá -->
+  <section class="section" id="bang-gia">
+    <div class="container-page">
+      <h2 class="text-center font-serif text-3xl font-semibold">Chi phí rõ ràng</h2>
+      <p class="mx-auto mt-3 max-w-xl text-center text-ink-500">
+        Bắt đầu miễn phí. Nâng cấp khi bạn thấy cần — trả một lần, không phí hằng năm.
+      </p>
+      <div class="mt-12">
+        <PricingTable />
+      </div>
+      <p class="mt-8 text-center text-sm text-ink-500">
+        Xem chi tiết ở <a class="font-medium text-clay-600 hover:underline" href="/bang-gia">trang bảng giá</a>.
+      </p>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="section bg-cream-100">
+    <div class="container-narrow">
+      <h2 class="text-center font-serif text-3xl font-semibold">Câu hỏi thường gặp</h2>
+      <div class="mt-10 space-y-3">
+        {
+          faqs.map((faq) => (
+            <details class="card group px-5 py-4">
+              <summary class="cursor-pointer list-none font-medium text-ink-900 marker:hidden">
+                <span class="flex items-start justify-between gap-4">
+                  {faq.q}
+                  <span class="mt-0.5 text-clay-500 transition group-open:rotate-45" aria-hidden="true">
+                    +
+                  </span>
+                </span>
+              </summary>
+              <p class="mt-3 text-sm leading-relaxed text-ink-500">{faq.a}</p>
+            </details>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="section">
+    <div class="container-narrow card bg-white px-6 py-12 text-center sm:px-12">
+      <h2 class="font-serif text-3xl font-semibold">Bắt đầu trang cho bé hôm nay</h2>
+      <p class="mx-auto mt-4 max-w-xl text-ink-500">
+        Bạn không cần chuẩn bị gì nhiều — chỉ một tấm ảnh và vài dòng ký ức. Phần còn lại chúng tôi
+        giúp bạn.
+      </p>
+      <a href="/dang-ky" class="btn-primary mt-8 px-8 py-3.5 text-base">Tạo trang miễn phí</a>
+    </div>
+  </section>
+</SiteLayout>

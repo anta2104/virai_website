@@ -1,0 +1,110 @@
+---
+import { eq, sql } from 'drizzle-orm';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { getDb } from '../../lib/db';
+import { guestbookEntries, memorials, orders, users } from '../../lib/db/schema';
+import { formatVnd } from '../../lib/plans';
+import { todayInVietnam } from '../../lib/format';
+import { env } from '../../lib/env';
+
+const db = getDb(env.DB);
+
+async function scalar(query: Promise<Array<{ n: unknown }>>): Promise<number> {
+  const rows = await query;
+  return Number(rows[0]?.n ?? 0);
+}
+
+const [
+  userCount,
+  memorialCount,
+  publishedCount,
+  premiumCount,
+  pendingOrders,
+  paidOrders,
+  revenue,
+  pendingGuestbook,
+] = await Promise.all([
+  scalar(db.select({ n: sql`count(*)` }).from(users)),
+  scalar(db.select({ n: sql`count(*)` }).from(memorials)),
+  scalar(db.select({ n: sql`count(*)` }).from(memorials).where(eq(memorials.isPublished, 1))),
+  scalar(db.select({ n: sql`count(*)` }).from(memorials).where(eq(memorials.isPremium, 1))),
+  scalar(db.select({ n: sql`count(*)` }).from(orders).where(eq(orders.status, 'pending'))),
+  scalar(db.select({ n: sql`count(*)` }).from(orders).where(eq(orders.status, 'paid'))),
+  scalar(
+    db
+      .select({ n: sql`coalesce(sum(${orders.amount}), 0)` })
+      .from(orders)
+      .where(sql`${orders.status} in ('paid','shipped','done')`),
+  ),
+  scalar(
+    db.select({ n: sql`count(*)` }).from(guestbookEntries).where(eq(guestbookEntries.status, 'pending')),
+  ),
+]);
+
+const stats = [
+  { label: 'Người dùng', value: userCount.toLocaleString('vi-VN') },
+  { label: 'Trang kỷ niệm', value: `${memorialCount.toLocaleString('vi-VN')} (${publishedCount} công khai)` },
+  { label: 'Trang Premium', value: premiumCount.toLocaleString('vi-VN') },
+  { label: 'Doanh thu đã nhận', value: formatVnd(revenue) },
+  { label: 'Đơn chờ thanh toán', value: pendingOrders.toLocaleString('vi-VN'), href: '/admin/don-hang' },
+  { label: 'Đơn đã thanh toán', value: paidOrders.toLocaleString('vi-VN'), href: '/admin/don-hang' },
+  { label: 'Lưu bút chờ duyệt', value: pendingGuestbook.toLocaleString('vi-VN'), href: '/admin/luu-but' },
+];
+
+const today = todayInVietnam();
+---
+
+<AdminLayout title="Tổng quan">
+  <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    {
+      stats.map((stat) =>
+        stat.href ? (
+          <a href={stat.href} class="card p-5 transition hover:shadow-md">
+            <p class="text-sm text-ink-500">{stat.label}</p>
+            <p class="mt-2 text-2xl font-semibold text-ink-900">{stat.value}</p>
+          </a>
+        ) : (
+          <div class="card p-5">
+            <p class="text-sm text-ink-500">{stat.label}</p>
+            <p class="mt-2 text-2xl font-semibold text-ink-900">{stat.value}</p>
+          </div>
+        ),
+      )
+    }
+  </div>
+
+  <div class="card mt-8 p-5">
+    <h2 class="font-serif text-lg font-semibold">Email nhắc ngày tưởng niệm</h2>
+    <p class="mt-2 text-sm text-ink-500">
+      Cron chạy 08:00 giờ Việt Nam mỗi ngày ({today} theo giờ VN). Bạn có thể xem trước danh sách sắp
+      gửi, hoặc chạy tay ngay bây giờ.
+    </p>
+    <div class="mt-4 flex flex-wrap gap-2">
+      <button type="button" class="btn-secondary btn-sm" data-cron-preview>Xem danh sách sắp gửi</button>
+      <button type="button" class="btn-secondary btn-sm" data-cron-run>Chạy gửi ngay</button>
+    </div>
+    <pre class="mt-4 hidden max-h-72 overflow-auto rounded-xl bg-ink-900 p-4 text-xs text-cream-100" data-cron-output></pre>
+  </div>
+</AdminLayout>
+
+<script>
+  const output = document.querySelector<HTMLElement>('[data-cron-output]');
+
+  async function call(method: 'GET' | 'POST') {
+    if (!output) return;
+    output.classList.remove('hidden');
+    output.textContent = 'Đang chạy…';
+    try {
+      const response = await fetch('/api/cron/reminders', { method });
+      const data = await response.json();
+      output.textContent = JSON.stringify(data, null, 2);
+    } catch (error) {
+      output.textContent = `Lỗi: ${String(error)}`;
+    }
+  }
+
+  document.querySelector('[data-cron-preview]')?.addEventListener('click', () => void call('GET'));
+  document.querySelector('[data-cron-run]')?.addEventListener('click', () => {
+    if (confirm('Gửi email thật cho các lời nhắc đến hạn?')) void call('POST');
+  });
+</script>

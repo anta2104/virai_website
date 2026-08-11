@@ -1,0 +1,107 @@
+---
+import { eq } from 'drizzle-orm';
+import AppLayout from '../../../../layouts/AppLayout.astro';
+import WizardSteps from '../../../../components/WizardSteps.astro';
+import { notFound, ownedMemorial } from '../../../../lib/guards';
+import { getDb } from '../../../../lib/db';
+import { memorials } from '../../../../lib/db/schema';
+import { THEMES, isThemeAllowed } from '../../../../lib/plans';
+import { env } from '../../../../lib/env';
+
+let memorial = await ownedMemorial(Astro.locals, Astro.params.id);
+if (!memorial) return notFound();
+
+let error: string | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const theme = String(form.get('theme') ?? '');
+
+  if (!THEMES.some((item) => item.id === theme)) {
+    error = 'Giao diện không hợp lệ.';
+  } else if (!isThemeAllowed(theme, memorial.isPremium)) {
+    error = 'Giao diện này thuộc gói Premium.';
+  } else {
+    await getDb(env.DB)
+      .update(memorials)
+      .set({ theme, updatedAt: Math.floor(Date.now() / 1000) })
+      .where(eq(memorials.id, memorial.id));
+    return Astro.redirect(`/tai-khoan/be/${memorial.id}/xem-truoc`);
+  }
+}
+
+const previewColors: Record<string, { bg: string; panel: string; text: string }> = {
+  'am-ap': { bg: '#faf5ec', panel: '#e8dac2', text: '#2f2823' },
+  'thanh-tinh': { bg: '#f4f7f8', panel: '#dbe4e7', text: '#23343b' },
+  'dem-sao': { bg: '#131625', panel: '#2a3050', text: '#f2f3fa' },
+};
+---
+
+<AppLayout
+  title="Chọn giao diện"
+  backHref={`/tai-khoan/be/${memorial.id}`}
+  backLabel="Về trang quản lý"
+>
+  <WizardSteps current={4} memorialId={memorial.id} />
+
+  {error && <p class="alert-error mb-6">{error}</p>}
+
+  <form method="POST">
+    <div class="grid gap-5 sm:grid-cols-3">
+      {
+        THEMES.map((theme) => {
+          const allowed = isThemeAllowed(theme.id, memorial!.isPremium);
+          const colors = previewColors[theme.id]!;
+          return (
+            <label class:list={['block', !allowed && 'cursor-not-allowed']}>
+              <input
+                type="radio"
+                name="theme"
+                value={theme.id}
+                checked={memorial!.theme === theme.id}
+                disabled={!allowed}
+                class="peer sr-only"
+              />
+              <span class="card block overflow-hidden p-0 transition peer-checked:border-clay-400 peer-checked:ring-2 peer-checked:ring-clay-200">
+                <span class="block p-4" style={`background:${colors.bg}`}>
+                  <span class="block h-3 w-16 rounded-full" style={`background:${colors.panel}`} />
+                  <span
+                    class="mt-3 block font-serif text-lg"
+                    style={`color:${colors.text}`}
+                  >
+                    {memorial!.petName}
+                  </span>
+                  <span class="mt-2 block h-2 w-24 rounded-full" style={`background:${colors.panel}`} />
+                  <span class="mt-1.5 block h-2 w-20 rounded-full" style={`background:${colors.panel}`} />
+                </span>
+                <span class="block border-t border-cream-300 p-4">
+                  <span class="flex items-center justify-between gap-2">
+                    <span class="font-medium text-ink-900">{theme.name}</span>
+                    {!allowed && <span class="badge bg-cream-200 text-ink-500">Premium</span>}
+                  </span>
+                  <span class="mt-1 block text-xs text-ink-500">{theme.description}</span>
+                </span>
+              </span>
+            </label>
+          );
+        })
+      }
+    </div>
+
+    {
+      !memorial.isPremium && (
+        <p class="alert-info mt-6">
+          Hai giao diện “Thanh tịnh” và “Đêm sao” thuộc gói Premium.{' '}
+          <a class="font-medium underline" href={`/tai-khoan/be/${memorial.id}/nang-cap`}>
+            Xem gói Premium
+          </a>
+        </p>
+      )
+    }
+
+    <div class="mt-10 flex items-center justify-between gap-4">
+      <a href={`/tai-khoan/be/${memorial.id}/cau-chuyen`} class="btn-ghost">← Quay lại</a>
+      <button type="submit" class="btn-primary">Tiếp tục — xem trước</button>
+    </div>
+  </form>
+</AppLayout>

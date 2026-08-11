@@ -1,0 +1,54 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import { site } from '../lib/site';
+
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+const path = Astro.url.pathname;
+
+const navItems = [
+  { href: '/admin', label: 'Tổng quan' },
+  { href: '/admin/don-hang', label: 'Đơn hàng' },
+  { href: '/admin/trang', label: 'Trang kỷ niệm' },
+  { href: '/admin/luu-but', label: 'Lưu bút' },
+  { href: '/admin/nguoi-dung', label: 'Người dùng' },
+];
+---
+
+<BaseLayout title={`${title} · Quản trị ${site.name}`} noindex>
+  <div class="flex min-h-screen flex-col bg-cream-100">
+    <header class="border-b border-cream-300 bg-ink-900 text-cream-100">
+      <div class="container-page flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
+        <span class="font-serif font-semibold">Quản trị</span>
+        <nav class="flex flex-wrap items-center gap-1 text-sm" aria-label="Điều hướng quản trị">
+          {
+            navItems.map((item) => (
+              <a
+                href={item.href}
+                class:list={[
+                  'rounded-full px-3 py-1.5 transition',
+                  path === item.href ? 'bg-cream-100 text-ink-900' : 'text-cream-300 hover:text-white',
+                ]}
+              >
+                {item.label}
+              </a>
+            ))
+          }
+          <a href="/tai-khoan" class="rounded-full px-3 py-1.5 text-cream-300 hover:text-white">
+            Về tài khoản
+          </a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="flex-1 px-4 py-8 sm:px-6 lg:px-8">
+      <div class="mx-auto w-full max-w-6xl">
+        <h1 class="mb-6 font-serif text-2xl font-semibold sm:text-3xl">{title}</h1>
+        <slot />
+      </div>
+    </main>
+  </div>
+</BaseLayout>

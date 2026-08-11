@@ -1,0 +1,89 @@
+---
+import { desc, eq, sql } from 'drizzle-orm';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { getDb } from '../../lib/db';
+import { memorials, users } from '../../lib/db/schema';
+import { currentUser } from '../../lib/guards';
+import { formatDateTime } from '../../lib/format';
+import { env } from '../../lib/env';
+
+const db = getDb(env.DB);
+const admin = currentUser(Astro.locals);
+let notice: string | null = null;
+let error: string | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('action') ?? '');
+  const userId = String(form.get('userId') ?? '');
+
+  if (userId === admin.id) {
+    error = 'Bạn không tự đổi quyền của chính mình được.';
+  } else if (action === 'makeAdmin') {
+    await db.update(users).set({ role: 'admin' }).where(eq(users.id, userId));
+    notice = 'Đã cấp quyền quản trị.';
+  } else if (action === 'removeAdmin') {
+    await db.update(users).set({ role: 'user' }).where(eq(users.id, userId));
+    notice = 'Đã thu hồi quyền quản trị.';
+  }
+}
+
+const rows = await db
+  .select({
+    user: users,
+    memorialCount: sql<number>`(select count(*) from ${memorials} where ${memorials.userId} = ${users.id})`,
+  })
+  .from(users)
+  .orderBy(desc(users.createdAt))
+  .limit(300);
+---
+
+<AdminLayout title="Người dùng">
+  {notice && <p class="alert-success mb-6">{notice}</p>}
+  {error && <p class="alert-error mb-6">{error}</p>}
+
+  <div class="card overflow-x-auto">
+    <table class="w-full min-w-[40rem] text-sm">
+      <thead class="border-b border-cream-300 text-left text-xs text-ink-500 uppercase">
+        <tr>
+          <th class="px-4 py-3">Tên</th>
+          <th class="px-4 py-3">Email</th>
+          <th class="px-4 py-3">Số trang</th>
+          <th class="px-4 py-3">Quyền</th>
+          <th class="px-4 py-3">Đăng ký</th>
+          <th class="px-4 py-3"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-cream-300">
+        {
+          rows.map(({ user, memorialCount }) => (
+            <tr>
+              <td class="px-4 py-3 font-medium text-ink-900">{user.name}</td>
+              <td class="px-4 py-3 text-ink-500">{user.email}</td>
+              <td class="px-4 py-3">{Number(memorialCount)}</td>
+              <td class="px-4 py-3">
+                {user.role === 'admin' ? (
+                  <span class="badge bg-clay-100 text-clay-700">Admin</span>
+                ) : (
+                  <span class="badge bg-cream-200 text-ink-500">Người dùng</span>
+                )}
+              </td>
+              <td class="px-4 py-3 text-xs text-ink-500">{formatDateTime(user.createdAt)}</td>
+              <td class="px-4 py-3">
+                {user.id !== admin.id && (
+                  <form method="POST">
+                    <input type="hidden" name="action" value={user.role === 'admin' ? 'removeAdmin' : 'makeAdmin'} />
+                    <input type="hidden" name="userId" value={user.id} />
+                    <button type="submit" class="btn-ghost btn-sm">
+                      {user.role === 'admin' ? 'Thu hồi admin' : 'Cấp admin'}
+                    </button>
+                  </form>
+                )}
+              </td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+</AdminLayout>

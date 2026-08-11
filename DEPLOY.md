@@ -1,128 +1,182 @@
-# Hướng dẫn deploy website Virai (virai.com.vn)
+# Đưa Virai Memorial lên production
 
-## Checklist trước deploy (bắt buộc)
+Làm một lần theo thứ tự dưới đây. Mọi lệnh chạy ở thư mục gốc của repo.
 
-Mở [`src/data/site.ts`](src/data/site.ts) và cập nhật:
-
-| Trường | Hiện tại | Cần làm |
-|--------|----------|---------|
-| `contact.email` | `tanvn@virai.com.vn` | Đã cập nhật |
-| `contact.phone` | `0966286480` | Đã cập nhật |
-| `contact.address` | `Việt Nam` | Địa chỉ đầy đủ |
-| `PUBLIC_FORMSPREE_FORM_ID` | (env trên Cloudflare) | [Formspree](https://formspree.io) → tạo form → dán ID vào biến môi trường |
-
-Sau khi sửa, chạy:
+## 1. Đăng nhập Cloudflare
 
 ```bash
-npm run build
-npm run preview   # kiểm tra tại http://localhost:4321
+npx wrangler login
+npx wrangler whoami
 ```
 
-Kiểm tra tay: menu mobile, 3 section giải pháp, form (gửi thử), link `mailto:` / `tel:`.
-
----
-
-## Thêm / thay file SVG (logo, mockup...)
-
-1. **Kéo thả** file `.svg` vào thư mục `public/` (hoặc `public/images/mockups/`).
-2. Trong Cursor: chuột phải file → **Reveal in Finder** để mở đúng thư mục.
-3. Tham chiếu trên website: đường dẫn bắt đầu từ `/`, ví dụ file `public/logo-icon.svg` → dùng `src="/logo-icon.svg"`.
-
-| File | Mục đích |
-|------|----------|
-| `public/logo-icon.svg` | Logo icon gốc (vuông, 200×200) — favicon, app icon |
-| `public/logo.svg` | Logo ngang (icon + chữ Virai) — header, footer |
-| `public/images/mockups/*.svg` | Mockup UI các giải pháp |
-
-**Thay logo:** ghi đè `public/logo-icon.svg` bằng file SVG của bạn (giữ `viewBox="0 0 200 200"` nếu có thể). Sau đó chạy lại `npm run build`.
-
-## Chạy local
+## 2. Tạo D1 database
 
 ```bash
-npm install
-npm run dev
+npx wrangler d1 create virai-memorial
 ```
 
-Mở http://localhost:4321
+Lệnh trên in ra `database_id`. Mở `wrangler.jsonc` và thay chuỗi
+`REPLACE_WITH_D1_DATABASE_ID` bằng id đó.
 
-## Build production
+Rồi chạy migration lên database thật:
 
 ```bash
-npm run build
+npm run db:migrate
 ```
 
-Output: thư mục `dist/`
-
-## Form liên hệ (Formspree)
-
-1. Đăng ký https://formspree.io
-2. Tạo form mới, copy Form ID
-3. Sửa `src/data/site.ts` → `contact.formEndpoint`: `https://formspree.io/f/XXXXXXXX`
-
-## GitHub repository
+## 3. Tạo R2 bucket
 
 ```bash
-git init
-git remote add origin git@github.com:anta2104/virai_website.git
-git add .
-git commit -m "Website giới thiệu Virai"
-git branch -M main
-git push -u origin main
+npx wrangler r2 bucket create virai-memorial-media
 ```
 
-## Deploy Cloudflare Pages (miễn phí)
+Tên bucket phải khớp `bucket_name` trong `wrangler.jsonc`.
 
-1. Push code lên GitHub (xem mục GitHub repository)
-2. [Cloudflare Dashboard](https://dash.cloudflare.com) → **Workers & Pages** → **Create** → **Pages** → **Connect to Git**
-3. Chọn repo `anta2104/virai_website`
-4. **Build settings:**
-   - **Framework preset:** Astro
-   - **Build command:** `npm run build`
-   - **Build output directory:** `dist`
-   - **Node version:** `22` (hoặc file `.node-version`)
-5. **Environment variables** (Production):
-   - `PUBLIC_FORMSPREE_FORM_ID` = Form ID từ [Formspree](https://formspree.io) (email: tanvn@virai.com.vn)
-6. **Save and Deploy** → đợi build xong → URL `virai-website.pages.dev`
+## 4. Bật Workers AI
 
-## DNS virai.com.vn
+Workers AI dùng binding `AI` đã khai trong `wrangler.jsonc`, không cần tạo tài nguyên.
+Vào Cloudflare Dashboard → Workers & Pages → AI để kiểm tra tài khoản đã bật và xem hạn mức
+miễn phí. Model đang dùng khai ở `src/lib/ai.ts`:
 
-**Cách 1 — Domain trên Cloudflare (khuyến nghị):**
+- chính: `@cf/meta/llama-3.3-70b-instruct-fp8-fast`
+- dự phòng: `@cf/meta/llama-3.1-8b-instruct`
 
-1. Cloudflare Pages → project → **Custom domains** → **Set up a custom domain**
-2. Nhập `virai.com.vn` và `www.virai.com.vn`
-3. Cloudflare tự thêm DNS records
+Nếu tài khoản chưa có model 70B, hệ thống tự lùi về 8B. Nên thử nút "Nhờ AI viết giúp" một lần
+sau khi deploy để xác nhận chất lượng tiếng Việt.
 
-**Cách 2 — DNS thủ công:**
+## 5. Đặt secrets
 
-| Type | Name | Content | Proxy |
-|------|------|---------|-------|
-| CNAME | `www` | `<tên-project>.pages.dev` | Bật |
-| CNAME | `@` | `<tên-project>.pages.dev` | Bật (nếu registrar hỗ trợ CNAME flattening) |
+```bash
+# Ký session cookie — bắt buộc
+npx wrangler secret put SESSION_SECRET      # dán kết quả: openssl rand -hex 32
 
-SSL: tự động (Full). Kiểm tra sau 5–30 phút: https://virai.com.vn
+# Email nhắc ngày tưởng niệm
+npx wrangler secret put RESEND_API_KEY
 
-## Form liên hệ sau deploy
+# Xác thực webhook thanh toán
+npx wrangler secret put PAYMENT_WEBHOOK_SECRET
 
-1. Đăng ký Formspree, tạo form nhận về `tanvn@virai.com.vn`
-2. Copy Form ID (phần sau `/f/` trong URL, ví dụ `mykvzbla`)
-3. **Push code mới lên Git** — Cloudflare chạy `npm run build` và nhúng Form ID vào HTML
+# Bí mật để cron gọi vào route gửi email
+npx wrangler secret put CRON_SECRET         # openssl rand -hex 16
 
-### Dự án đang dùng Cloudflare Workers (sau PR autoconfig)
+# Tài khoản nhận tiền, hiện trên mã VietQR
+npx wrangler secret put BANK_ACCOUNT_NUMBER
+npx wrangler secret put BANK_CODE           # BIN VietQR, ví dụ Vietcombank 970436, MB 970422
+npx wrangler secret put BANK_ACCOUNT_NAME
 
-URL dạng `….workers.dev` = Workers + Astro, **không** phải Pages thuần.
+# Email này khi đăng ký sẽ tự thành admin
+npx wrangler secret put ADMIN_EMAIL
+```
 
-| Cách thêm biến | Form có hoạt động? |
-|----------------|-------------------|
-| **Secret** trên Dashboard (*Add secret: PUBLIC_FORMSPREE…*) | **Không** — Secret chỉ lúc Worker chạy, Astro đã build HTML trước đó |
-| **Environment variable** + build lại từ Git | **Có** (nếu biến có sẵn lúc `npm run build`) |
-| Form ID trong `src/data/site.ts` (fallback) | **Có** — đã cấu hình sẵn `mykvzbla` |
+Danh sách BIN các ngân hàng phổ biến nằm trong `src/lib/vietqr.ts`.
 
-**Vì sao thêm Secret mà web không đổi:** Version History ghi *"Add secret"* chỉ cập nhật cấu hình Worker, **không** build lại Astro. Banner vàng biến mất chỉ sau lần **build** mới có Form ID trong HTML.
+## 6. Deploy
 
-**Cách kích hoạt build mới:** push commit lên `main`, hoặc Deployments → deployment từ Git → **Retry deployment** (không chỉ Rollback/Add secret).
+```bash
+npm run deploy
+```
 
-Trước khi cấu hình Formspree: nút **Gửi yêu cầu** mở app email; nút **Hoặc gửi email trực tiếp** luôn hoạt động.
+Build đã kèm `scripts/postbuild.mjs`, nó làm hai việc bắt buộc:
 
-## Cập nhật thông tin liên hệ
+1. thêm rule `CompiledWasm` để wrangler upload được file wasm của workers-og (dùng cho OG image);
+2. bọc entry của Astro bằng entry có thêm handler `scheduled` để Cron Trigger gọi được.
 
-Sửa file `src/data/site.ts` — các trường `contact.email`, `contact.phone`, `contact.address`.
+Sau khi deploy, kiểm tra Cron Trigger đã xuất hiện trong Dashboard → Worker → Settings → Trigger
+Events (`0 1 * * *`, tức 08:00 giờ Việt Nam).
+
+### Kiểm tra Cron Trigger có thật sự chạy
+
+Handler `scheduled` **không test được ở local**: `wrangler dev` bọc Worker bằng asset-worker và
+lớp bọc đó không chuyển tiếp sự kiện `scheduled`, nên `curl /cdn-cgi/handler/scheduled` luôn trả
+500 ở máy. (Đã kiểm chứng: bỏ khai báo `assets` ra khỏi config thì handler chạy đúng, gửi email
+và ghi log.)
+
+Vì vậy sau lần deploy đầu, hãy xác nhận trên production:
+
+1. Vào Dashboard → Worker → Logs (Observability đã bật sẵn), chờ qua 08:00 giờ Việt Nam.
+2. Tìm dòng log `[cron] reminders: {...}`. Có dòng này là cron chạy tốt.
+
+Nếu **không** thấy dòng đó (Workers Assets chặn `scheduled` trên production), dùng phương án dự phòng —
+route `/api/cron/reminders` gọi được từ ngoài bằng header bí mật:
+
+```bash
+curl -X POST https://virai.com.vn/api/cron/reminders \
+  -H "x-cron-secret: <CRON_SECRET>"
+```
+
+Đặt lệnh này vào bất kỳ scheduler nào (một Worker nhỏ riêng chỉ có `scheduled`, GitHub Actions
+`schedule`, cron-job.org…) chạy 01:00 UTC mỗi ngày. Ngoài ra `/admin` luôn có nút **Chạy gửi ngay**
+để gửi tay.
+
+## 7. Tạo tài khoản admin
+
+Vào `https://virai.com.vn/dang-ky` và đăng ký bằng đúng email đã đặt ở `ADMIN_EMAIL`.
+Tài khoản đó tự có quyền admin, vào được `/admin`.
+
+## 8. Cấu hình Resend
+
+1. Tạo tài khoản tại <https://resend.com> (free 3.000 email/tháng).
+2. Thêm domain `virai.com.vn`, thêm các bản ghi DNS (SPF, DKIM) mà Resend yêu cầu.
+3. Lấy API key, đặt vào secret `RESEND_API_KEY`.
+4. Địa chỉ gửi khai ở `site.fromEmail` trong `src/lib/site.ts` (hiện là
+   `no-reply@virai.com.vn`) — phải thuộc domain đã xác thực.
+
+Kiểm tra: vào `/admin`, bấm **Xem danh sách sắp gửi**, rồi **Chạy gửi ngay**.
+Kết quả trả về JSON có `sent` và `error` của từng email.
+
+## 9. Cấu hình SePay (tự động xác nhận chuyển khoản)
+
+1. Tạo tài khoản tại <https://sepay.vn>, liên kết tài khoản ngân hàng nhận tiền.
+2. Thêm webhook:
+   - URL: `https://virai.com.vn/api/webhook/payment`
+   - Xác thực: API Key → header `Authorization: Apikey <PAYMENT_WEBHOOK_SECRET>`
+3. Kiểm tra bằng lệnh dưới (thay `<CODE>` bằng mã đơn thật đang chờ, lấy ở `/admin/don-hang`):
+
+```bash
+curl -X POST https://virai.com.vn/api/webhook/payment \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Apikey <PAYMENT_WEBHOOK_SECRET>" \
+  -d '{"transferType":"in","transferAmount":249000,"content":"CK <CODE>"}'
+```
+
+Kết quả mong đợi: `{"success":true,"matched":true,"paid":true,...}` và trang kỷ niệm lên Premium.
+
+> Tên field trong payload của SePay có thể thay đổi. Endpoint đọc theo nhiều tên gọi
+> (`transferAmount`/`amount`, `content`/`description`/`code`) và dò mã đơn bằng regex `VRM[0-9A-Z]{7}`.
+> Nên gửi một giao dịch thật số tiền nhỏ để xác nhận trước khi mở bán.
+> Nếu webhook lỗi, `/admin/don-hang` luôn có nút **Xác nhận đã nhận tiền** để xử lý tay.
+
+## 10. Trang mẫu cho landing page
+
+```bash
+npm run db:seed
+```
+
+Tạo tài khoản `demo@virai.com.vn` (mật khẩu `demo-virai-2026`) và 3 trang mẫu:
+`/be/mit-golden`, `/be/bap-meo-tam-the`, `/be/lucky-corgi`.
+
+Seed **không** tạo được ảnh (ảnh nằm trên R2). Đăng nhập bằng tài khoản demo rồi tải ảnh thật
+cho ba trang này — landing page chỉ đẹp khi trang mẫu có ảnh. **Nên đổi mật khẩu tài khoản demo**
+hoặc xoá nó sau khi đã tải ảnh xong.
+
+Danh sách slug hiện trên landing khai ở `DEMO_SLUGS` trong `src/lib/memorials.ts`.
+
+## 11. Việc cần kiểm tra sau deploy
+
+- [ ] Đăng ký / đăng nhập / đăng xuất.
+- [ ] Tạo trang qua wizard 5 bước, tải ảnh (thử cả ảnh chụp từ điện thoại, dung lượng lớn).
+- [ ] Nút "Nhờ AI viết giúp" trả về văn bản tiếng Việt đọc được.
+- [ ] Dán link `/be/<slug>` vào Facebook và Zalo → ảnh xem trước hiện đúng ảnh của bé.
+      (Zalo cache khá dai; URL ảnh có `?v=updatedAt` nên sửa trang là ảnh mới.)
+- [ ] Quét mã QR bằng điện thoại → vào đúng trang.
+- [ ] **Quét mã VietQR bằng app ngân hàng thật** → số tiền và nội dung chuyển khoản điền sẵn đúng.
+- [ ] Chuyển khoản thật một đơn nhỏ → webhook tự xác nhận.
+- [ ] Gửi lưu bút từ máy khác → chủ trang nhận email và duyệt được.
+- [ ] `/admin` chỉ vào được bằng tài khoản admin (tài khoản thường phải ra 404).
+
+## Đổi tên thương hiệu / giá
+
+- Tên, tagline, email, URL: `src/lib/site.ts`
+- Giá và hạn mức từng gói: `src/lib/plans.ts`
+- Gắn thêm domain mới cho Worker: Dashboard → Worker → Settings → Domains & Routes.
+  Không cần sửa code; `site.url` chỉ dùng cho link trong email và ảnh OG mặc định.

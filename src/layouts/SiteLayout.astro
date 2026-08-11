@@ -1,0 +1,25 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+
+interface Props {
+  title?: string;
+  description?: string;
+  ogImage?: string;
+  noindex?: boolean;
+  jsonLd?: unknown;
+}
+
+const user = Astro.locals.user;
+---
+
+<BaseLayout {...Astro.props}>
+  <div class="flex min-h-screen flex-col">
+    <SiteHeader user={user} />
+    <main class="flex-1">
+      <slot />
+    </main>
+    <SiteFooter />
+  </div>
+</BaseLayout>

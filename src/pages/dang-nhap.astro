@@ -1,0 +1,74 @@
+---
+import SiteLayout from '../layouts/SiteLayout.astro';
+import { createSession, loginUser, setSessionCookie } from '../lib/auth';
+import { getDb } from '../lib/db';
+import { env } from '../lib/env';
+
+
+/** Chỉ cho phép chuyển tiếp tới đường dẫn nội bộ để tránh open redirect. */
+function safeNext(value: string | null): string {
+  if (!value) return '/tai-khoan';
+  return value.startsWith('/') && !value.startsWith('//') ? value : '/tai-khoan';
+}
+
+const next = safeNext(Astro.url.searchParams.get('next'));
+
+if (Astro.locals.user) {
+  return Astro.redirect(next);
+}
+
+let error: string | null = null;
+let email = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  email = String(form.get('email') ?? '').trim();
+  const password = String(form.get('password') ?? '');
+  const formNext = safeNext(String(form.get('next') ?? ''));
+
+  const result = await loginUser(env.DB, { email, password });
+  if (!result.ok || !result.user) {
+    error = result.error ?? 'Không đăng nhập được.';
+  } else {
+    const session = await createSession(getDb(env.DB), result.user.id, env.SESSION_SECRET);
+    setSessionCookie(Astro.cookies, session.cookieValue, session.expiresAt, Astro.url.protocol === 'https:');
+    return Astro.redirect(formNext);
+  }
+}
+---
+
+<SiteLayout title="Đăng nhập" noindex>
+  <section class="section">
+    <div class="mx-auto w-full max-w-md">
+      <div class="card p-6 sm:p-8">
+        <h1 class="font-serif text-2xl font-semibold">Đăng nhập</h1>
+
+        {error && <p class="alert-error mt-5">{error}</p>}
+
+        <form method="POST" class="mt-6 space-y-4">
+          <input type="hidden" name="next" value={next} />
+          <div>
+            <label class="label" for="email">Email</label>
+            <input class="input" id="email" name="email" type="email" required value={email} autocomplete="email" />
+          </div>
+          <div>
+            <label class="label" for="password">Mật khẩu</label>
+            <input
+              class="input"
+              id="password"
+              name="password"
+              type="password"
+              required
+              autocomplete="current-password"
+            />
+          </div>
+          <button type="submit" class="btn-primary w-full">Đăng nhập</button>
+        </form>
+
+        <p class="mt-6 text-center text-sm text-ink-500">
+          Chưa có tài khoản? <a class="font-medium text-clay-600 hover:underline" href="/dang-ky">Tạo miễn phí</a>
+        </p>
+      </div>
+    </div>
+  </section>
+</SiteLayout>

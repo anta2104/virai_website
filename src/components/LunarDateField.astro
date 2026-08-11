@@ -1,0 +1,53 @@
+---
+import { lunarShort } from '../lib/lunar';
+
+interface Props {
+  name: string;
+  label: string;
+  value?: string | null;
+  hint?: string;
+  required?: boolean;
+  max?: string;
+}
+
+const { name, label, value = '', hint, required = false, max } = Astro.props;
+const initialLunar = lunarShort(value ?? '');
+const fallbackText = hint ?? 'Không rõ thì để trống cũng được.';
+---
+
+<div>
+  <label class="label" for={name}>{label}</label>
+  <input
+    class="input"
+    type="date"
+    id={name}
+    name={name}
+    value={value ?? ''}
+    required={required}
+    max={max}
+    data-lunar-field
+    aria-describedby={`${name}-lunar`}
+  />
+  <p class="hint" id={`${name}-lunar`} data-lunar-output data-fallback={fallbackText}>
+    {initialLunar ? `Tức ${initialLunar}` : fallbackText}
+  </p>
+</div>
+
+<script>
+  import { lunarShort } from '../lib/lunar';
+
+  /** Hiện ngay ngày âm lịch tương ứng khi người dùng chọn ngày dương. */
+  function attach(input: HTMLInputElement) {
+    const output = input.parentElement?.querySelector<HTMLElement>('[data-lunar-output]');
+    if (!output) return;
+    const fallback = output.dataset.fallback ?? '';
+    const update = () => {
+      const lunar = lunarShort(input.value);
+      output.textContent = lunar ? `Tức ${lunar}` : fallback;
+    };
+    input.addEventListener('change', update);
+    input.addEventListener('input', update);
+  }
+
+  document.querySelectorAll<HTMLInputElement>('input[data-lunar-field]').forEach(attach);
+</script>

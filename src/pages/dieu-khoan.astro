@@ -1,0 +1,109 @@
+---
+import SiteLayout from '../layouts/SiteLayout.astro';
+import { site } from '../lib/site';
+import { PRICES, formatVnd } from '../lib/plans';
+
+/**
+ * BẢN NHÁP — cần chủ dự án điền thông tin pháp lý (tên pháp nhân đầy đủ, địa chỉ,
+ * mã số thuế) và rà soát lại trước khi công bố. Đây không phải tư vấn pháp lý.
+ */
+const updated = '11/08/2026';
+---
+
+<SiteLayout title="Điều khoản sử dụng" description="Điều khoản sử dụng dịch vụ trang tưởng niệm thú cưng.">
+  <section class="section">
+    <div class="container-narrow">
+      <h1 class="font-serif text-4xl font-semibold">Điều khoản sử dụng</h1>
+      <p class="mt-3 text-sm text-ink-500">Cập nhật ngày {updated}</p>
+
+      <div class="mt-10 space-y-8 leading-relaxed text-ink-500">
+        <div>
+          <h2 class="font-serif text-xl font-semibold">1. Dịch vụ</h2>
+          <p class="mt-2">
+            {site.name} là dịch vụ tạo trang tưởng niệm trực tuyến cho thú cưng, do {site.company}
+            vận hành. Bằng việc tạo tài khoản, bạn đồng ý với các điều khoản dưới đây.
+          </p>
+        </div>
+
+        <div>
+          <h2 class="font-serif text-xl font-semibold">2. Tài khoản của bạn</h2>
+          <p class="mt-2">
+            Bạn chịu trách nhiệm bảo mật mật khẩu của mình và mọi hoạt động diễn ra trong tài khoản.
+            Bạn cần cung cấp email thật để chúng tôi liên lạc về đơn hàng và các nhắc nhở bạn đã bật.
+          </p>
+        </div>
+
+        <div>
+          <h2 class="font-serif text-xl font-semibold">3. Nội dung bạn tải lên</h2>
+          <p class="mt-2">
+            Ảnh và bài viết bạn tải lên vẫn thuộc về bạn. Bạn cấp cho chúng tôi quyền lưu trữ và
+            hiển thị nội dung đó nhằm mục đích vận hành trang kỷ niệm của bạn.
+          </p>
+          <p class="mt-2">
+            Bạn cam kết có quyền sử dụng nội dung mình tải lên và không tải lên nội dung vi phạm pháp
+            luật, xúc phạm người khác, hoặc nội dung không liên quan tới mục đích tưởng niệm. Chúng
+            tôi có thể ẩn hoặc xoá nội dung vi phạm.
+          </p>
+        </div>
+
+        <div>
+          <h2 class="font-serif text-xl font-semibold">4. Gói dịch vụ và thanh toán</h2>
+          <p class="mt-2">
+            Gói miễn phí cho một trang kỷ niệm với hạn mức nêu tại trang bảng giá. Gói Premium giá
+            {' '}{formatVnd(PRICES.premium)} là khoản trả một lần cho mỗi trang kỷ niệm, không phải
+            phí định kỳ. Combo thẻ QR vật lý từ {formatVnd(PRICES.physicalCombo)} bao gồm Premium và
+            một thẻ khắc gửi tới địa chỉ bạn cung cấp.
+          </p>
+          <p class="mt-2">
+            Thanh toán thực hiện bằng chuyển khoản ngân hàng (VietQR). Đơn hàng được ghi nhận theo
+            nội dung chuyển khoản duy nhất của đơn.
+          </p>
+        </div>
+
+        <div>
+          <h2 class="font-serif text-xl font-semibold">5. Hoàn tiền</h2>
+          <p class="mt-2">
+            Với gói Premium, bạn có thể yêu cầu hoàn tiền trong vòng 7 ngày kể từ khi thanh toán nếu
+            dịch vụ không hoạt động như mô tả. Với combo thẻ vật lý, sau khi thẻ đã được khắc theo
+            thông tin bạn cung cấp thì phần thẻ không hoàn lại được, trừ trường hợp thẻ bị lỗi do
+            chúng tôi.
+          </p>
+        </div>
+
+        <div>
+          <h2 class="font-serif text-xl font-semibold">6. Nội dung do AI tạo ra</h2>
+          <p class="mt-2">
+            Tính năng “Nhờ AI viết giúp” tạo bản nháp dựa trên thông tin bạn cung cấp. Bản nháp có
+            thể chưa chính xác hoặc chưa đúng ý; bạn nên đọc lại và chỉnh sửa trước khi xuất bản.
+            Bạn là người chịu trách nhiệm về nội dung cuối cùng trên trang của mình.
+          </p>
+        </div>
+
+        <div>
+          <h2 class="font-serif text-xl font-semibold">7. Thời gian lưu trữ</h2>
+          <p class="mt-2">
+            Chúng tôi dự định duy trì các trang kỷ niệm lâu dài. Nếu vì lý do bắt buộc phải ngừng
+            dịch vụ, chúng tôi sẽ thông báo trước qua email và tạo điều kiện để bạn tải về toàn bộ
+            ảnh và nội dung của mình.
+          </p>
+        </div>
+
+        <div>
+          <h2 class="font-serif text-xl font-semibold">8. Giới hạn trách nhiệm</h2>
+          <p class="mt-2">
+            Dịch vụ được cung cấp trên cơ sở “như hiện có”. Chúng tôi cố gắng vận hành ổn định nhưng
+            không cam kết dịch vụ không bao giờ gián đoạn. Bạn nên tự giữ một bản sao những tấm ảnh
+            quan trọng.
+          </p>
+        </div>
+
+        <div>
+          <h2 class="font-serif text-xl font-semibold">9. Liên hệ</h2>
+          <p class="mt-2">
+            Mọi thắc mắc xin gửi tới <a class="text-clay-600 hover:underline" href={`mailto:${site.supportEmail}`}>{site.supportEmail}</a>.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+</SiteLayout>

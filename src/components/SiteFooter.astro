@@ -1,0 +1,40 @@
+---
+import { site } from '../lib/site';
+
+const year = new Date().getFullYear();
+---
+
+<footer class="border-t border-cream-300 bg-cream-100">
+  <div class="container-page grid gap-8 px-4 py-12 sm:px-6 md:grid-cols-3 lg:px-8">
+    <div>
+      <p class="font-serif text-lg font-semibold text-ink-900">{site.name}</p>
+      <p class="mt-2 max-w-xs text-sm text-ink-500">{site.tagline}. Miễn phí để bắt đầu.</p>
+    </div>
+
+    <div class="text-sm">
+      <p class="mb-3 font-semibold text-ink-900">Dịch vụ</p>
+      <ul class="space-y-2 text-ink-500">
+        <li><a class="hover:text-clay-600" href="/cach-hoat-dong">Cách hoạt động</a></li>
+        <li><a class="hover:text-clay-600" href="/bang-gia">Bảng giá</a></li>
+        <li><a class="hover:text-clay-600" href="/dang-ky">Tạo trang kỷ niệm</a></li>
+      </ul>
+    </div>
+
+    <div class="text-sm">
+      <p class="mb-3 font-semibold text-ink-900">Liên hệ &amp; pháp lý</p>
+      <ul class="space-y-2 text-ink-500">
+        <li>
+          <a class="hover:text-clay-600" href={`mailto:${site.supportEmail}`}>{site.supportEmail}</a>
+        </li>
+        <li><a class="hover:text-clay-600" href="/dieu-khoan">Điều khoản sử dụng</a></li>
+        <li><a class="hover:text-clay-600" href="/bao-mat">Chính sách bảo mật</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="border-t border-cream-300 px-4 py-5 sm:px-6 lg:px-8">
+    <p class="container-page text-xs text-ink-500">
+      © {year} {site.name} — vận hành bởi {site.company}.
+    </p>
+  </div>
+</footer>

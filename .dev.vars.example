@@ -1,0 +1,23 @@
+# Copy sang .dev.vars để chạy local: cp .dev.vars.example .dev.vars
+# Production: đặt bằng `wrangler secret put <TÊN>`
+
+# Chuỗi ngẫu nhiên dài để ký session cookie (tạo bằng: openssl rand -hex 32)
+SESSION_SECRET=doi-thanh-chuoi-ngau-nhien-that-dai
+
+# Resend — gửi email nhắc ngày tưởng niệm (https://resend.com)
+RESEND_API_KEY=re_xxxxxxxxxxxx
+
+# SePay — xác thực webhook biến động số dư (https://sepay.vn)
+PAYMENT_WEBHOOK_SECRET=chuoi-bi-mat-dat-trong-cau-hinh-webhook-sepay
+
+# Bí mật để cron gọi vào /api/cron/reminders
+CRON_SECRET=chuoi-bi-mat-cho-cron
+
+# Tài khoản ngân hàng nhận tiền — hiện trên mã VietQR
+BANK_ACCOUNT_NUMBER=0123456789
+# Mã ngân hàng theo chuẩn VietQR (BIN), ví dụ Vietcombank 970436, MB 970422, TPBank 970423
+BANK_CODE=970436
+BANK_ACCOUNT_NAME=NGUYEN VAN A
+
+# Email này khi đăng ký sẽ tự động thành tài khoản admin
+ADMIN_EMAIL=tanvn@virai.com.vn

@@ -1,0 +1,81 @@
+---
+import { desc, eq } from 'drizzle-orm';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { getDb } from '../../lib/db';
+import { guestbookEntries, memorials } from '../../lib/db/schema';
+import { formatDateTime } from '../../lib/format';
+import { env } from '../../lib/env';
+
+const db = getDb(env.DB);
+let notice: string | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('action') ?? '');
+  const entryId = String(form.get('entryId') ?? '');
+
+  if (action === 'approve') {
+    await db.update(guestbookEntries).set({ status: 'approved' }).where(eq(guestbookEntries.id, entryId));
+    notice = 'Đã duyệt.';
+  } else if (action === 'reject') {
+    await db.update(guestbookEntries).set({ status: 'rejected' }).where(eq(guestbookEntries.id, entryId));
+    notice = 'Đã ẩn.';
+  } else if (action === 'delete') {
+    await db.delete(guestbookEntries).where(eq(guestbookEntries.id, entryId));
+    notice = 'Đã xoá.';
+  }
+}
+
+const rows = await db
+  .select({ entry: guestbookEntries, memorial: memorials })
+  .from(guestbookEntries)
+  .innerJoin(memorials, eq(memorials.id, guestbookEntries.memorialId))
+  .where(eq(guestbookEntries.status, 'pending'))
+  .orderBy(desc(guestbookEntries.createdAt))
+  .limit(200);
+---
+
+<AdminLayout title="Lưu bút chờ duyệt">
+  {notice && <p class="alert-success mb-6">{notice}</p>}
+
+  <p class="mb-6 text-sm text-ink-500">
+    Bình thường chủ trang tự duyệt lời nhắn của mình. Trang này để bạn xử lý nội dung spam hoặc không
+    phù hợp trên toàn hệ thống.
+  </p>
+
+  {
+    rows.length === 0 ? (
+      <div class="card p-8 text-center text-sm text-ink-500">Không có lời nhắn nào đang chờ.</div>
+    ) : (
+      <ul class="space-y-3">
+        {rows.map(({ entry, memorial }) => (
+          <li class="card p-4">
+            <p class="text-xs text-ink-500">
+              Trang <a class="text-clay-600 hover:underline" href={`/be/${memorial.slug}`}>{memorial.petName}</a> ·{' '}
+              {entry.authorName} · {formatDateTime(entry.createdAt)}
+              {entry.ipHash && ` · IP ${entry.ipHash}`}
+            </p>
+            <p class="prose-story mt-2 text-[0.9375rem]">{entry.message}</p>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <form method="POST">
+                <input type="hidden" name="action" value="approve" />
+                <input type="hidden" name="entryId" value={entry.id} />
+                <button type="submit" class="btn-secondary btn-sm">Duyệt</button>
+              </form>
+              <form method="POST">
+                <input type="hidden" name="action" value="reject" />
+                <input type="hidden" name="entryId" value={entry.id} />
+                <button type="submit" class="btn-ghost btn-sm">Ẩn</button>
+              </form>
+              <form method="POST" class="ml-auto">
+                <input type="hidden" name="action" value="delete" />
+                <input type="hidden" name="entryId" value={entry.id} />
+                <button type="submit" class="btn-ghost btn-sm text-red-700 hover:bg-red-50">Xoá</button>
+              </form>
+            </div>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+</AdminLayout>

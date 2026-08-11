@@ -1,0 +1,127 @@
+---
+import { and, desc, eq } from 'drizzle-orm';
+import AppLayout from '../../../../layouts/AppLayout.astro';
+import { notFound, ownedMemorial } from '../../../../lib/guards';
+import { getDb } from '../../../../lib/db';
+import { guestbookEntries } from '../../../../lib/db/schema';
+import { formatDateTime } from '../../../../lib/format';
+import { env } from '../../../../lib/env';
+
+const memorial = await ownedMemorial(Astro.locals, Astro.params.id);
+if (!memorial) return notFound();
+
+const db = getDb(env.DB);
+let notice: string | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('action') ?? '');
+  const entryId = String(form.get('entryId') ?? '');
+
+  // Chỉ cho thao tác trên lời nhắn thuộc trang của mình
+  const scope = and(eq(guestbookEntries.id, entryId), eq(guestbookEntries.memorialId, memorial.id));
+
+  if (action === 'approve') {
+    await db.update(guestbookEntries).set({ status: 'approved' }).where(scope);
+    notice = 'Đã duyệt lời nhắn.';
+  } else if (action === 'reject') {
+    await db.update(guestbookEntries).set({ status: 'rejected' }).where(scope);
+    notice = 'Đã ẩn lời nhắn.';
+  } else if (action === 'delete') {
+    await db.delete(guestbookEntries).where(scope);
+    notice = 'Đã xoá lời nhắn.';
+  } else if (action === 'approveAll') {
+    await db
+      .update(guestbookEntries)
+      .set({ status: 'approved' })
+      .where(and(eq(guestbookEntries.memorialId, memorial.id), eq(guestbookEntries.status, 'pending')));
+    notice = 'Đã duyệt tất cả lời nhắn đang chờ.';
+  }
+}
+
+const entries = await db
+  .select()
+  .from(guestbookEntries)
+  .where(eq(guestbookEntries.memorialId, memorial.id))
+  .orderBy(desc(guestbookEntries.createdAt));
+
+const pending = entries.filter((entry) => entry.status === 'pending');
+const approved = entries.filter((entry) => entry.status === 'approved');
+const rejected = entries.filter((entry) => entry.status === 'rejected');
+
+const groups = [
+  { title: `Chờ duyệt (${pending.length})`, items: pending, showApprove: true, showReject: true },
+  { title: `Đang hiện trên trang (${approved.length})`, items: approved, showApprove: false, showReject: true },
+  { title: `Đã ẩn (${rejected.length})`, items: rejected, showApprove: true, showReject: false },
+];
+---
+
+<AppLayout
+  title={`Sổ lưu bút của ${memorial.petName}`}
+  backHref={`/tai-khoan/be/${memorial.id}`}
+  backLabel="Về trang quản lý"
+  wide
+>
+  {notice && <p class="alert-success mb-6">{notice}</p>}
+
+  {
+    entries.length === 0 ? (
+      <div class="card p-8 text-center">
+        <p class="text-sm text-ink-500">
+          Chưa có lời nhắn nào. Khi bạn chia sẻ trang, lời nhắn của mọi người sẽ về đây để bạn duyệt.
+        </p>
+      </div>
+    ) : (
+      <div class="space-y-10">
+        {pending.length > 1 && (
+          <form method="POST">
+            <input type="hidden" name="action" value="approveAll" />
+            <button type="submit" class="btn-secondary">Duyệt tất cả {pending.length} lời đang chờ</button>
+          </form>
+        )}
+
+        {groups.map(
+          (group) =>
+            group.items.length > 0 && (
+              <section>
+                <h2 class="font-serif text-lg font-semibold">{group.title}</h2>
+                <ul class="mt-4 space-y-3">
+                  {group.items.map((entry) => (
+                    <li class="card p-4">
+                      <p class="prose-story text-[0.9375rem]">{entry.message}</p>
+                      <p class="mt-2 text-xs text-ink-500">
+                        {entry.authorName} · {formatDateTime(entry.createdAt)}
+                      </p>
+                      <div class="mt-3 flex flex-wrap gap-2">
+                        {group.showApprove && (
+                          <form method="POST">
+                            <input type="hidden" name="action" value="approve" />
+                            <input type="hidden" name="entryId" value={entry.id} />
+                            <button type="submit" class="btn-secondary btn-sm">Duyệt</button>
+                          </form>
+                        )}
+                        {group.showReject && (
+                          <form method="POST">
+                            <input type="hidden" name="action" value="reject" />
+                            <input type="hidden" name="entryId" value={entry.id} />
+                            <button type="submit" class="btn-ghost btn-sm">Ẩn</button>
+                          </form>
+                        )}
+                        <form method="POST" class="ml-auto">
+                          <input type="hidden" name="action" value="delete" />
+                          <input type="hidden" name="entryId" value={entry.id} />
+                          <button type="submit" class="btn-ghost btn-sm text-red-700 hover:bg-red-50">
+                            Xoá
+                          </button>
+                        </form>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ),
+        )}
+      </div>
+    )
+  }
+</AppLayout>

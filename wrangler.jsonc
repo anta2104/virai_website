@@ -1,6 +1,6 @@
 {
 	"compatibility_date": "2026-05-19",
-	"compatibility_flags": ["global_fetch_strictly_public"],
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
 	"name": "virai-website",
 	"main": "@astrojs/cloudflare/entrypoints/server",
 	"assets": {
@@ -9,5 +9,34 @@
 	},
 	"observability": {
 		"enabled": true
+	},
+
+	// Cron chạy 01:00 UTC = 08:00 giờ Việt Nam, gửi email nhắc tưởng niệm
+	"triggers": {
+		"crons": ["0 1 * * *"]
+	},
+
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "virai-memorial",
+			"database_id": "9d0f534a-7ab9-48e1-8e4e-eddb35e05b38",
+			"migrations_dir": "migrations"
+		}
+	],
+
+	"r2_buckets": [
+		{
+			"binding": "BUCKET",
+			"bucket_name": "virai-memorial-media"
+		}
+	],
+
+	"ai": {
+		"binding": "AI"
+	},
+
+	"vars": {
+		"PUBLIC_SITE_URL": "https://virai.com.vn"
 	}
 }

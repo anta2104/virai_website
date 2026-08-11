@@ -1,0 +1,70 @@
+---
+import { site } from '../lib/site';
+
+interface Props {
+  user?: { name: string; role: string } | null;
+}
+
+const { user = null } = Astro.props;
+const path = Astro.url.pathname;
+
+const links = [
+  { href: '/', label: 'Trang chủ' },
+  { href: '/cach-hoat-dong', label: 'Cách hoạt động' },
+  { href: '/bang-gia', label: 'Bảng giá' },
+];
+---
+
+<header class="sticky top-0 z-40 border-b border-cream-300/80 bg-cream-50/90 backdrop-blur">
+  <div class="container-page flex items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
+    <a href="/" class="flex items-center gap-2.5">
+      <span
+        class="flex h-9 w-9 items-center justify-center rounded-full bg-clay-500 font-serif text-lg text-white"
+        aria-hidden="true">V</span
+      >
+      <span class="font-serif text-lg leading-tight font-semibold text-ink-900">{site.name}</span>
+    </a>
+
+    <nav class="hidden items-center gap-1 md:flex" aria-label="Điều hướng chính">
+      {
+        links.map((link) => (
+          <a
+            href={link.href}
+            class:list={[
+              'rounded-full px-3.5 py-2 text-sm transition',
+              path === link.href ? 'bg-cream-200 text-ink-900' : 'text-ink-500 hover:text-ink-900',
+            ]}
+          >
+            {link.label}
+          </a>
+        ))
+      }
+    </nav>
+
+    <div class="flex items-center gap-2">
+      {
+        user ? (
+          <>
+            {user.role === 'admin' && (
+              <a href="/admin" class="btn-ghost btn-sm hidden sm:inline-flex">
+                Quản trị
+              </a>
+            )}
+            <a href="/tai-khoan" class="btn-secondary btn-sm">
+              Trang của tôi
+            </a>
+          </>
+        ) : (
+          <>
+            <a href="/dang-nhap" class="btn-ghost btn-sm">
+              Đăng nhập
+            </a>
+            <a href="/dang-ky" class="btn-primary btn-sm">
+              Tạo trang miễn phí
+            </a>
+          </>
+        )
+      }
+    </div>
+  </div>
+</header>

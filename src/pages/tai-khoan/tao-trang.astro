@@ -1,0 +1,80 @@
+---
+import AppLayout from '../../layouts/AppLayout.astro';
+import WizardSteps from '../../components/WizardSteps.astro';
+import BasicInfoFields from '../../components/BasicInfoFields.astro';
+import { currentUser } from '../../lib/guards';
+import { getDb } from '../../lib/db';
+import { memorials } from '../../lib/db/schema';
+import { listMemorialsOfUser, lunarFieldsFor, slugExists } from '../../lib/memorials';
+import { EMPTY_BASIC_INFO, parseBasicInfo, toDbFields } from '../../lib/memorial-form';
+import { newId } from '../../lib/ids';
+import { uniqueSlug } from '../../lib/slug';
+import { LIMITS } from '../../lib/plans';
+import { env } from '../../lib/env';
+
+const user = currentUser(Astro.locals);
+const db = getDb(env.DB);
+
+// Gói miễn phí cho 1 trang. Muốn thêm bé nữa thì trang cũ phải lên Premium.
+const existing = await listMemorialsOfUser(env.DB, user.id);
+const freeCount = existing.filter((memorial) => !memorial.isPremium).length;
+const canCreate = freeCount < LIMITS.free.memorials;
+
+let error: string | null = null;
+let values = EMPTY_BASIC_INFO;
+
+if (Astro.request.method === 'POST' && canCreate) {
+  const parsed = parseBasicInfo(await Astro.request.formData());
+  values = parsed.values;
+  error = parsed.error;
+
+  if (!error) {
+    const fields = toDbFields(values);
+    const slug = await uniqueSlug(fields.petName, (candidate) => slugExists(db, candidate));
+    const id = newId();
+
+    await db.insert(memorials).values({
+      id,
+      userId: user.id,
+      slug,
+      ...fields,
+      ...lunarFieldsFor(fields.birthDate, fields.deathDate),
+      theme: 'am-ap',
+      isPublished: 0,
+    });
+
+    return Astro.redirect(`/tai-khoan/be/${id}/anh`);
+  }
+}
+---
+
+<AppLayout title="Tạo trang cho bé" backHref="/tai-khoan" backLabel="Về danh sách">
+  <WizardSteps current={1} />
+
+  {
+    !canCreate ? (
+      <div class="card p-6">
+        <p class="alert-info">
+          Gói miễn phí cho một trang kỷ niệm. Bạn đã dùng trang miễn phí của mình rồi — nâng cấp
+          trang đó lên Premium là bạn tạo thêm được bé mới.
+        </p>
+        <a href="/tai-khoan" class="btn-secondary mt-5">Xem các trang của tôi</a>
+      </div>
+    ) : (
+      <form method="POST" class="card p-6 sm:p-8">
+        <p class="mb-6 text-sm text-ink-500">
+          Bắt đầu bằng vài thông tin cơ bản. Bạn sửa lại được bất cứ lúc nào.
+        </p>
+
+        {error && <p class="alert-error mb-6">{error}</p>}
+
+        <BasicInfoFields values={values} />
+
+        <div class="mt-8 flex items-center justify-between gap-4">
+          <a href="/tai-khoan" class="btn-ghost">Huỷ</a>
+          <button type="submit" class="btn-primary">Tiếp tục — tải ảnh</button>
+        </div>
+      </form>
+    )
+  }
+</AppLayout>

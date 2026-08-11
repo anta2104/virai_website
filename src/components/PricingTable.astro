@@ -1,0 +1,102 @@
+---
+import { PRICES, formatVnd } from '../lib/plans';
+
+interface Props {
+  /** Đích của nút CTA — khác nhau giữa landing và trang bảng giá */
+  ctaHref?: string;
+}
+
+const { ctaHref = '/dang-ky' } = Astro.props;
+
+const plans = [
+  {
+    name: 'Miễn phí',
+    price: '0đ',
+    note: 'Dùng mãi mãi',
+    highlight: false,
+    features: [
+      '1 trang kỷ niệm',
+      'Tối đa 10 ảnh',
+      'Theme “Ấm áp”',
+      'AI viết giúp tiểu sử (3 lần/ngày)',
+      'Mã QR chia sẻ',
+      'Sổ lưu bút (hiển thị 20 lời gần nhất)',
+    ],
+    limits: ['Có dòng “Tạo bởi Virai Memorial” ở cuối trang', 'Không có email nhắc ngày tưởng niệm'],
+    cta: 'Tạo trang miễn phí',
+  },
+  {
+    name: 'Premium',
+    price: formatVnd(PRICES.premium),
+    note: 'Trả một lần cho mỗi bé, dùng trọn đời',
+    highlight: true,
+    features: [
+      'Tối đa 200 ảnh cho mỗi bé',
+      'Tất cả theme (Ấm áp, Thanh tịnh, Đêm sao)',
+      'Email nhắc 49 ngày & giỗ hằng năm theo âm lịch',
+      'Sổ lưu bút không giới hạn',
+      'Ẩn dòng thương hiệu ở cuối trang',
+      'Tải file QR chất lượng cao để tự in',
+      'AI viết giúp 30 lần/ngày',
+    ],
+    limits: [],
+    cta: 'Nâng cấp Premium',
+  },
+  {
+    name: 'Combo thẻ QR',
+    price: `từ ${formatVnd(PRICES.physicalCombo)}`,
+    note: 'Premium + thẻ khắc QR gửi tận nhà',
+    highlight: false,
+    features: [
+      'Toàn bộ quyền lợi Premium',
+      'Thẻ kim loại hoặc gỗ khắc mã QR của bé',
+      'Khắc tên và ngày tháng lên thẻ',
+      'Giao hàng toàn quốc',
+    ],
+    limits: [],
+    cta: 'Đặt combo',
+  },
+];
+---
+
+<div class="grid gap-6 lg:grid-cols-3">
+  {
+    plans.map((plan) => (
+      <div
+        class:list={[
+          'card flex flex-col p-6',
+          plan.highlight && 'border-clay-300 bg-white ring-2 ring-clay-200',
+        ]}
+      >
+        {plan.highlight && (
+          <span class="badge mb-3 self-start bg-clay-100 text-clay-700">Phổ biến nhất</span>
+        )}
+        <h3 class="font-serif text-xl font-semibold">{plan.name}</h3>
+        <p class="mt-3 text-3xl font-semibold text-ink-900">{plan.price}</p>
+        <p class="mt-1 text-sm text-ink-500">{plan.note}</p>
+
+        <ul class="mt-5 flex-1 space-y-2.5 text-sm">
+          {plan.features.map((feature) => (
+            <li class="flex gap-2.5">
+              <span class="mt-0.5 text-clay-500" aria-hidden="true">✓</span>
+              <span set:html={feature} />
+            </li>
+          ))}
+          {plan.limits.map((limit) => (
+            <li class="flex gap-2.5 text-ink-500">
+              <span class="mt-0.5" aria-hidden="true">–</span>
+              <span>{limit}</span>
+            </li>
+          ))}
+        </ul>
+
+        <a
+          href={ctaHref}
+          class:list={['mt-6 w-full', plan.highlight ? 'btn-primary' : 'btn-secondary']}
+        >
+          {plan.cta}
+        </a>
+      </div>
+    ))
+  }
+</div>

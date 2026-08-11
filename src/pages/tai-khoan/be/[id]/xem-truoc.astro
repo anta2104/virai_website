@@ -1,0 +1,103 @@
+---
+import { eq } from 'drizzle-orm';
+import AppLayout from '../../../../layouts/AppLayout.astro';
+import WizardSteps from '../../../../components/WizardSteps.astro';
+import MemorialView from '../../../../components/MemorialView.astro';
+import { notFound, ownedMemorial } from '../../../../lib/guards';
+import { getDb } from '../../../../lib/db';
+import { memorials } from '../../../../lib/db/schema';
+import { listApprovedGuestbook, listPhotos } from '../../../../lib/memorials';
+import { limitsFor } from '../../../../lib/plans';
+import { ensureRemindersFor } from '../../../../lib/reminders';
+import { env } from '../../../../lib/env';
+
+let memorial = await ownedMemorial(Astro.locals, Astro.params.id);
+if (!memorial) return notFound();
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const intent = String(form.get('intent') ?? '');
+
+  if (intent === 'publish') {
+    await getDb(env.DB)
+      .update(memorials)
+      .set({ isPublished: 1, updatedAt: Math.floor(Date.now() / 1000) })
+      .where(eq(memorials.id, memorial.id));
+    // Lịch nhắc chỉ gửi cho gói Premium, nhưng tạo sẵn để bật là có ngay
+    await ensureRemindersFor(env.DB, { ...memorial, isPublished: 1 });
+    return Astro.redirect(`/tai-khoan/be/${memorial.id}?published=1`);
+  }
+}
+
+const photos = await listPhotos(env.DB, memorial.id);
+const limits = limitsFor(memorial.isPremium);
+const entries = await listApprovedGuestbook(env.DB, memorial.id, 5);
+
+const warnings: string[] = [];
+if (photos.length === 0) warnings.push('Trang chưa có ảnh nào.');
+if (!memorial.bio) warnings.push('Trang chưa có bài viết về bé.');
+if (!memorial.deathDate) warnings.push('Chưa có ngày bé rời đi nên không tính được ngày 49 và ngày giỗ.');
+---
+
+<AppLayout
+  title="Xem trước và xuất bản"
+  backHref={`/tai-khoan/be/${memorial.id}`}
+  backLabel="Về trang quản lý"
+  wide
+>
+  <WizardSteps current={5} memorialId={memorial.id} />
+
+  {
+    warnings.length > 0 && (
+      <div class="alert-info mb-6">
+        <p class="font-medium">Vẫn xuất bản được, nhưng bạn có thể muốn bổ sung:</p>
+        <ul class="mt-2 list-disc pl-5">
+          {warnings.map((warning) => (
+            <li>{warning}</li>
+          ))}
+        </ul>
+      </div>
+    )
+  }
+
+  <div class="card mb-6 flex flex-wrap items-center justify-between gap-4 p-5">
+    <div>
+      <p class="font-medium text-ink-900">
+        {memorial.isPublished ? 'Trang đang công khai' : 'Trang đang ở dạng nháp'}
+      </p>
+      <p class="mt-1 text-sm text-ink-500">
+        {
+          memorial.isPublished
+            ? 'Ai có link hoặc quét mã QR đều xem được.'
+            : 'Chỉ bạn xem được. Xuất bản để chia sẻ với người khác.'
+        }
+      </p>
+    </div>
+    <div class="flex gap-2">
+      <a href={`/tai-khoan/be/${memorial.id}/giao-dien`} class="btn-ghost">← Quay lại</a>
+      {
+        memorial.isPublished ? (
+          <a href={`/be/${memorial.slug}`} class="btn-primary">Mở trang thật</a>
+        ) : (
+          <form method="POST">
+            <input type="hidden" name="intent" value="publish" />
+            <button type="submit" class="btn-primary">Xuất bản trang</button>
+          </form>
+        )
+      }
+    </div>
+  </div>
+
+  <div class="overflow-hidden rounded-2xl border border-cream-300">
+    <p class="border-b border-cream-300 bg-cream-200 px-4 py-2 text-xs text-ink-500">
+      Bản xem trước — các nút tương tác tạm khoá
+    </p>
+    <MemorialView
+      memorial={memorial}
+      photos={photos}
+      entries={entries}
+      showBranding={!limits.hideBranding}
+      preview
+    />
+  </div>
+</AppLayout>

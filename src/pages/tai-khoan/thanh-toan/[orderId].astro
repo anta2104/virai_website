@@ -1,0 +1,237 @@
+---
+import AppLayout from '../../../layouts/AppLayout.astro';
+import { currentUser, notFound } from '../../../lib/guards';
+import {
+  getOwnedOrder,
+  MATERIAL_LABEL,
+  ORDER_STATUS_LABEL,
+  ORDER_TYPE_LABEL,
+  parseShippingInfo,
+} from '../../../lib/orders';
+import { getMemorialById } from '../../../lib/memorials';
+import { formatVnd } from '../../../lib/plans';
+import { formatDateTime } from '../../../lib/format';
+import { bankConfigFrom, bankLabel, vietQrPayload } from '../../../lib/vietqr';
+import { qrSvg } from '../../../lib/qr';
+import { site } from '../../../lib/site';
+import { env } from '../../../lib/env';
+
+const user = currentUser(Astro.locals);
+const order = await getOwnedOrder(Astro.params.orderId!, user.id);
+if (!order) return notFound('Không tìm thấy đơn hàng');
+
+const memorial = order.memorialId ? await getMemorialById(env.DB, order.memorialId) : null;
+const shipping = parseShippingInfo(order.shippingInfo);
+const bank = bankConfigFrom(env);
+
+const qr = bank
+  ? qrSvg(
+      vietQrPayload({
+        bankCode: bank.bankCode,
+        accountNumber: bank.accountNumber,
+        amount: order.amount,
+        description: order.paymentCode,
+      }),
+    )
+  : null;
+
+const isPaid = order.status !== 'pending' && order.status !== 'cancelled';
+---
+
+<AppLayout
+  title={isPaid ? 'Đơn đã thanh toán' : 'Thanh toán chuyển khoản'}
+  backHref={memorial ? `/tai-khoan/be/${memorial.id}` : '/tai-khoan/don-hang'}
+  backLabel={memorial ? `Về trang của ${memorial.petName}` : 'Về danh sách đơn'}
+>
+  <div class="card p-6">
+    <div class="flex flex-wrap items-start justify-between gap-4 border-b border-cream-300 pb-5">
+      <div>
+        <p class="font-medium text-ink-900">{ORDER_TYPE_LABEL[order.type] ?? order.type}</p>
+        {memorial && <p class="text-sm text-ink-500">Cho bé {memorial.petName}</p>}
+        <p class="mt-1 text-xs text-ink-500">Tạo lúc {formatDateTime(order.createdAt)}</p>
+      </div>
+      <div class="text-right">
+        <p class="text-2xl font-semibold text-ink-900">{formatVnd(order.amount)}</p>
+        <span
+          class:list={[
+            'badge mt-1',
+            isPaid ? 'bg-sage-100 text-sage-700' : 'bg-cream-200 text-ink-500',
+          ]}
+        >
+          {ORDER_STATUS_LABEL[order.status] ?? order.status}
+        </span>
+      </div>
+    </div>
+
+    {
+      isPaid ? (
+        <div class="pt-5">
+          <p class="alert-success">
+            Đã nhận thanh toán lúc {formatDateTime(order.paidAt)}. Cảm ơn bạn!
+            {order.type === 'physical_combo' &&
+              ' Chúng tôi sẽ liên hệ khi thẻ QR được gửi đi.'}
+          </p>
+          {memorial && (
+            <a href={`/tai-khoan/be/${memorial.id}`} class="btn-primary mt-5">
+              Về trang của {memorial.petName}
+            </a>
+          )}
+        </div>
+      ) : !bank ? (
+        <p class="alert-error mt-5">
+          Chưa cấu hình tài khoản ngân hàng nhận tiền (BANK_CODE, BANK_ACCOUNT_NUMBER,
+          BANK_ACCOUNT_NAME). Bạn liên hệ {site.supportEmail} để được hỗ trợ nhé.
+        </p>
+      ) : (
+        <div class="pt-5" data-payment data-order-id={order.id}>
+          <div class="grid gap-6 sm:grid-cols-[auto_1fr] sm:items-start">
+            <div class="mx-auto rounded-2xl border border-cream-300 bg-white p-3">
+              <div class="h-52 w-52" set:html={qr} />
+            </div>
+
+            <div>
+              <p class="text-sm font-medium text-ink-900">Mở app ngân hàng và quét mã này</p>
+              <p class="mt-1 text-sm text-ink-500">
+                Số tiền và nội dung chuyển khoản đã có sẵn trong mã. Bạn chỉ cần xác nhận.
+              </p>
+
+              <dl class="mt-5 space-y-3 text-sm">
+                <div>
+                  <dt class="text-ink-500">Ngân hàng</dt>
+                  <dd class="font-medium text-ink-900">{bankLabel(bank.bankCode)}</dd>
+                </div>
+                <div>
+                  <dt class="text-ink-500">Số tài khoản</dt>
+                  <dd class="flex items-center gap-2 font-medium text-ink-900">
+                    <span>{bank.accountNumber}</span>
+                    <button type="button" class="btn-ghost btn-sm" data-copy={bank.accountNumber}>
+                      Copy
+                    </button>
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-ink-500">Chủ tài khoản</dt>
+                  <dd class="font-medium text-ink-900">{bank.accountName}</dd>
+                </div>
+                <div>
+                  <dt class="text-ink-500">Số tiền</dt>
+                  <dd class="font-medium text-ink-900">{formatVnd(order.amount)}</dd>
+                </div>
+                <div>
+                  <dt class="text-ink-500">Nội dung chuyển khoản (rất quan trọng)</dt>
+                  <dd class="flex items-center gap-2">
+                    <code class="rounded bg-cream-200 px-2 py-1 font-mono text-base font-semibold text-ink-900">
+                      {order.paymentCode}
+                    </code>
+                    <button type="button" class="btn-ghost btn-sm" data-copy={order.paymentCode}>
+                      Copy
+                    </button>
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          </div>
+
+          <div class="alert-info mt-6">
+            <p class="font-medium">Nếu bạn chuyển khoản tay</p>
+            <p class="mt-1">
+              Nhớ ghi đúng nội dung <strong>{order.paymentCode}</strong>. Thiếu nội dung này hệ thống
+              không biết đơn nào của bạn.
+            </p>
+          </div>
+
+          <p class="mt-6 text-sm text-ink-500" data-payment-status role="status" aria-live="polite">
+            Trang này tự cập nhật khi tiền vào — thường trong 1–2 phút. Bạn cứ để mở nhé.
+          </p>
+
+          <p class="hint mt-4">
+            Quá 15 phút vẫn chưa thấy? Gửi mã <strong>{order.paymentCode}</strong> tới{' '}
+            <a class="text-clay-600 hover:underline" href={`mailto:${site.supportEmail}`}>
+              {site.supportEmail}
+            </a>{' '}
+            để được xác nhận tay.
+          </p>
+        </div>
+      )
+    }
+
+    {
+      shipping && (
+        <div class="mt-6 border-t border-cream-300 pt-5">
+          <h2 class="font-serif text-lg font-semibold">Thông tin nhận thẻ</h2>
+          <dl class="mt-3 space-y-1.5 text-sm">
+            <div class="flex gap-2">
+              <dt class="text-ink-500">Người nhận:</dt>
+              <dd class="text-ink-900">{shipping.fullName}</dd>
+            </div>
+            <div class="flex gap-2">
+              <dt class="text-ink-500">Điện thoại:</dt>
+              <dd class="text-ink-900">{shipping.phone}</dd>
+            </div>
+            <div class="flex gap-2">
+              <dt class="text-ink-500">Địa chỉ:</dt>
+              <dd class="text-ink-900">{shipping.address}</dd>
+            </div>
+            <div class="flex gap-2">
+              <dt class="text-ink-500">Chất liệu:</dt>
+              <dd class="text-ink-900">{MATERIAL_LABEL[shipping.material] ?? shipping.material}</dd>
+            </div>
+            {shipping.note && (
+              <div class="flex gap-2">
+                <dt class="text-ink-500">Ghi chú:</dt>
+                <dd class="text-ink-900">{shipping.note}</dd>
+              </div>
+            )}
+          </dl>
+        </div>
+      )
+    }
+  </div>
+</AppLayout>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(button.dataset.copy!);
+        const original = button.textContent;
+        button.textContent = 'Đã copy ✓';
+        setTimeout(() => (button.textContent = original), 1800);
+      } catch {
+        window.prompt('Copy nội dung này:', button.dataset.copy!);
+      }
+    });
+  });
+
+  /** Hỏi máy chủ mỗi 5 giây xem tiền đã vào chưa; dừng sau 20 phút. */
+  const payment = document.querySelector<HTMLElement>('[data-payment]');
+  if (payment) {
+    const orderId = payment.dataset.orderId!;
+    const status = payment.querySelector<HTMLElement>('[data-payment-status]');
+    const startedAt = Date.now();
+
+    const poll = async () => {
+      if (Date.now() - startedAt > 20 * 60 * 1000) {
+        if (status) {
+          status.textContent =
+            'Đã dừng tự kiểm tra. Bạn tải lại trang để xem trạng thái mới nhất nhé.';
+        }
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/orders/${orderId}/status`);
+        const data = (await response.json()) as { status?: string };
+        if (data.status && data.status !== 'pending') {
+          window.location.reload();
+          return;
+        }
+      } catch {
+        // mất mạng tạm thời — thử lại vòng sau
+      }
+      setTimeout(poll, 5000);
+    };
+
+    setTimeout(poll, 5000);
+  }
+</script>

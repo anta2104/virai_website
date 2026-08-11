@@ -1,0 +1,402 @@
+---
+import { and, eq, sql } from 'drizzle-orm';
+import AppLayout from '../../../../layouts/AppLayout.astro';
+import { notFound, ownedMemorial } from '../../../../lib/guards';
+import { getDb } from '../../../../lib/db';
+import { guestbookEntries, memorials, photos as photosTable } from '../../../../lib/db/schema';
+import { listPhotos, photoUrl } from '../../../../lib/memorials';
+import { limitsFor, formatVnd, PRICES } from '../../../../lib/plans';
+import { formatDate } from '../../../../lib/format';
+import { upcomingMilestone } from '../../../../lib/memorial-dates';
+import { listRemindersOf, setRemindersEnabled } from '../../../../lib/reminders';
+import { memorialUrl } from '../../../../lib/site';
+import { env } from '../../../../lib/env';
+
+let memorial = await ownedMemorial(Astro.locals, Astro.params.id);
+if (!memorial) return notFound();
+
+const db = getDb(env.DB);
+let notice: string | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const intent = String(form.get('intent') ?? '');
+  const now = Math.floor(Date.now() / 1000);
+
+  if (intent === 'unpublish') {
+    await db.update(memorials).set({ isPublished: 0, updatedAt: now }).where(eq(memorials.id, memorial.id));
+    return Astro.redirect(`${Astro.url.pathname}?unpublished=1`);
+  }
+
+  if (intent === 'publish') {
+    await db.update(memorials).set({ isPublished: 1, updatedAt: now }).where(eq(memorials.id, memorial.id));
+    return Astro.redirect(`${Astro.url.pathname}?published=1`);
+  }
+
+  if (intent === 'reminders') {
+    const enabled = String(form.get('enabled') ?? '') === '1';
+    await setRemindersEnabled(env.DB, memorial.id, enabled);
+    return Astro.redirect(`${Astro.url.pathname}?reminders=${enabled ? 'on' : 'off'}`);
+  }
+
+  if (intent === 'delete') {
+    const confirmName = String(form.get('confirmName') ?? '').trim();
+    if (confirmName !== memorial.petName) {
+      notice = 'Tên chưa khớp nên chưa xoá gì cả.';
+    } else {
+      const all = await listPhotos(env.DB, memorial.id);
+      await Promise.all(
+        all.map((photo) =>
+          env.BUCKET.delete(photo.r2Key).catch((error: unknown) =>
+            console.error('Không xoá được object R2:', error),
+          ),
+        ),
+      );
+      await db.delete(photosTable).where(eq(photosTable.memorialId, memorial.id));
+      await db.delete(memorials).where(eq(memorials.id, memorial.id));
+      return Astro.redirect('/tai-khoan?deleted=1');
+    }
+  }
+}
+
+const params = Astro.url.searchParams;
+if (params.get('published')) notice = 'Trang đã được xuất bản. Bạn chia sẻ link hoặc mã QR được rồi.';
+if (params.get('unpublished')) notice = 'Trang đã chuyển về dạng nháp, người khác không xem được nữa.';
+if (params.get('reminders') === 'on') notice = 'Đã bật email nhắc ngày tưởng niệm.';
+if (params.get('reminders') === 'off') notice = 'Đã tắt email nhắc ngày tưởng niệm.';
+if (params.get('paid')) notice = 'Đã nhận thanh toán — trang của bé đã lên Premium. Cảm ơn bạn!';
+
+const photos = await listPhotos(env.DB, memorial.id);
+const limits = limitsFor(memorial.isPremium);
+const cover = photos.find((photo) => photo.id === memorial.coverPhotoId) ?? photos[0] ?? null;
+
+const pendingRows = await db
+  .select({ n: sql<number>`count(*)` })
+  .from(guestbookEntries)
+  .where(and(eq(guestbookEntries.memorialId, memorial.id), eq(guestbookEntries.status, 'pending')));
+const pendingCount = Number(pendingRows[0]?.n ?? 0);
+
+const reminderList = await listRemindersOf(env.DB, memorial.id);
+const remindersOn = reminderList.some((reminder) => reminder.enabled);
+const nextMilestone = upcomingMilestone(memorial.deathDate);
+const publicUrl = memorialUrl(memorial.slug, Astro.site?.origin);
+---
+
+<AppLayout title={memorial.petName} backHref="/tai-khoan" backLabel="Về danh sách" wide>
+  {notice && <p class="alert-success mb-6">{notice}</p>}
+
+  <div class="grid gap-6 lg:grid-cols-3">
+    <!-- Cột chính -->
+    <div class="space-y-6 lg:col-span-2">
+      <div class="card overflow-hidden">
+        <div class="flex flex-col gap-5 p-5 sm:flex-row">
+          <div class="h-28 w-28 shrink-0 overflow-hidden rounded-xl bg-cream-200">
+            {
+              cover ? (
+                <img src={photoUrl(cover.r2Key)} alt="" class="h-full w-full object-cover" />
+              ) : (
+                <span class="flex h-full items-center justify-center text-3xl" aria-hidden="true">🐾</span>
+              )
+            }
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <h2 class="font-serif text-xl font-semibold">{memorial.petName}</h2>
+              {
+                memorial.isPremium ? (
+                  <span class="badge bg-clay-100 text-clay-700">Premium</span>
+                ) : (
+                  <span class="badge bg-cream-200 text-ink-500">Miễn phí</span>
+                )
+              }
+              {
+                memorial.isPublished ? (
+                  <span class="badge bg-sage-100 text-sage-700">Đang công khai</span>
+                ) : (
+                  <span class="badge bg-cream-200 text-ink-500">Nháp</span>
+                )
+              }
+            </div>
+            <p class="mt-1 text-sm text-ink-500">
+              {[formatDate(memorial.birthDate), formatDate(memorial.deathDate)].filter(Boolean).join(' — ')}
+            </p>
+            {memorial.deathDateLunar && <p class="text-sm text-ink-500">{memorial.deathDateLunar}</p>}
+
+            <div class="mt-4 flex flex-wrap gap-2">
+              {
+                memorial.isPublished ? (
+                  <>
+                    <a href={`/be/${memorial.slug}`} class="btn-secondary btn-sm">Mở trang</a>
+                    <form method="POST">
+                      <input type="hidden" name="intent" value="unpublish" />
+                      <button type="submit" class="btn-ghost btn-sm">Chuyển về nháp</button>
+                    </form>
+                  </>
+                ) : (
+                  <>
+                    <a href={`/tai-khoan/be/${memorial.id}/xem-truoc`} class="btn-secondary btn-sm">Xem trước</a>
+                    <form method="POST">
+                      <input type="hidden" name="intent" value="publish" />
+                      <button type="submit" class="btn-primary btn-sm">Xuất bản</button>
+                    </form>
+                  </>
+                )
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 divide-x divide-cream-300 border-t border-cream-300 text-center">
+          <div class="p-4">
+            <p class="text-xl font-semibold text-ink-900">{memorial.visitCount.toLocaleString('vi-VN')}</p>
+            <p class="text-xs text-ink-500">lượt ghé thăm</p>
+          </div>
+          <div class="p-4">
+            <p class="text-xl font-semibold text-ink-900">{memorial.candleCount.toLocaleString('vi-VN')}</p>
+            <p class="text-xs text-ink-500">nến đã thắp</p>
+          </div>
+          <div class="p-4">
+            <p class="text-xl font-semibold text-ink-900">{memorial.flowerCount.toLocaleString('vi-VN')}</p>
+            <p class="text-xs text-ink-500">hoa đã thả</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Việc cần làm -->
+      <div class="card p-5">
+        <h3 class="font-serif text-lg font-semibold">Chỉnh sửa trang</h3>
+        <ul class="mt-4 divide-y divide-cream-300">
+          <li class="flex items-center justify-between gap-4 py-3">
+            <div>
+              <p class="font-medium text-ink-900">Thông tin về bé</p>
+              <p class="text-sm text-ink-500">Tên, giống loài, ngày sinh, ngày rời đi, đường dẫn</p>
+            </div>
+            <a href={`/tai-khoan/be/${memorial.id}/thong-tin`} class="btn-ghost btn-sm shrink-0">Sửa</a>
+          </li>
+          <li class="flex items-center justify-between gap-4 py-3">
+            <div>
+              <p class="font-medium text-ink-900">Ảnh &amp; video</p>
+              <p class="text-sm text-ink-500">
+                {photos.length}
+                {limits.photos === Number.POSITIVE_INFINITY ? ' tệp' : ` / ${limits.photos} tệp`}
+              </p>
+            </div>
+            <a href={`/tai-khoan/be/${memorial.id}/anh`} class="btn-ghost btn-sm shrink-0">Quản lý</a>
+          </li>
+          <li class="flex items-center justify-between gap-4 py-3">
+            <div>
+              <p class="font-medium text-ink-900">Câu chuyện</p>
+              <p class="text-sm text-ink-500">
+                {memorial.bio ? 'Đã có bài viết' : 'Chưa viết gì — có nút nhờ AI viết giúp'}
+              </p>
+            </div>
+            <a href={`/tai-khoan/be/${memorial.id}/cau-chuyen`} class="btn-ghost btn-sm shrink-0">Sửa</a>
+          </li>
+          <li class="flex items-center justify-between gap-4 py-3">
+            <div>
+              <p class="font-medium text-ink-900">Giao diện</p>
+              <p class="text-sm text-ink-500">Đang dùng: {memorial.theme}</p>
+            </div>
+            <a href={`/tai-khoan/be/${memorial.id}/giao-dien`} class="btn-ghost btn-sm shrink-0">Đổi</a>
+          </li>
+          <li class="flex items-center justify-between gap-4 py-3">
+            <div>
+              <p class="font-medium text-ink-900">
+                Sổ lưu bút
+                {pendingCount > 0 && <span class="badge ml-2 bg-clay-500 text-white">{pendingCount} chờ duyệt</span>}
+              </p>
+              <p class="text-sm text-ink-500">Duyệt hoặc ẩn lời nhắn của người ghé thăm</p>
+            </div>
+            <a href={`/tai-khoan/be/${memorial.id}/luu-but`} class="btn-ghost btn-sm shrink-0">Mở</a>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Xoá trang -->
+      <details class="card p-5">
+        <summary class="cursor-pointer text-sm font-medium text-red-700">Xoá trang kỷ niệm này</summary>
+        <p class="mt-3 text-sm text-ink-500">
+          Xoá là mất hẳn: ảnh, câu chuyện, lời lưu bút, số lượt ghé thăm. Không lấy lại được.
+        </p>
+        <form method="POST" class="mt-4 flex flex-wrap items-end gap-3">
+          <input type="hidden" name="intent" value="delete" />
+          <div>
+            <label class="label" for="confirmName">
+              Nhập “{memorial.petName}” để xác nhận
+            </label>
+            <input class="input" id="confirmName" name="confirmName" autocomplete="off" />
+          </div>
+          <button type="submit" class="btn-secondary border-red-200 text-red-700 hover:bg-red-50">
+            Xoá vĩnh viễn
+          </button>
+        </form>
+      </details>
+    </div>
+
+    <!-- Cột phụ -->
+    <div class="space-y-6">
+      <!-- Gói -->
+      <div class="card p-5">
+        <h3 class="font-serif text-lg font-semibold">Gói của trang này</h3>
+        {
+          memorial.isPremium ? (
+            <p class="mt-3 text-sm text-ink-500">
+              Premium — đã trả một lần, dùng trọn đời. Bạn có tất cả theme, ảnh không giới hạn, email
+              nhắc ngày tưởng niệm và tải thẻ QR in sẵn.
+            </p>
+          ) : (
+            <>
+              <p class="mt-3 text-sm text-ink-500">
+                Đang dùng gói miễn phí: {limits.photos} ảnh, 1 theme, có dòng thương hiệu ở chân
+                trang, chưa có email nhắc ngày giỗ.
+              </p>
+              <a href={`/tai-khoan/be/${memorial.id}/nang-cap`} class="btn-primary mt-4 w-full">
+                Nâng cấp Premium — {formatVnd(PRICES.premium)}
+              </a>
+            </>
+          )
+        }
+      </div>
+
+      <!-- Nhắc ngày tưởng niệm -->
+      <div class="card p-5">
+        <h3 class="font-serif text-lg font-semibold">Nhắc ngày tưởng niệm</h3>
+        {
+          !memorial.deathDate ? (
+            <p class="mt-3 text-sm text-ink-500">
+              Cần có ngày bé rời đi để tính ngày 49 và ngày giỗ.{' '}
+              <a class="text-clay-600 hover:underline" href={`/tai-khoan/be/${memorial.id}/thong-tin`}>
+                Thêm ngày
+              </a>
+            </p>
+          ) : (
+            <>
+              {nextMilestone && (
+                <div class="mt-3 rounded-xl bg-cream-100 p-3 text-sm">
+                  <p class="font-medium text-ink-900">Sắp tới: {nextMilestone.label}</p>
+                  <p class="mt-0.5 text-ink-500">
+                    {formatDate(nextMilestone.date)}
+                    {nextMilestone.lunarText && ` · ${nextMilestone.lunarText}`}
+                  </p>
+                </div>
+              )}
+              {memorial.isPremium ? (
+                <form method="POST" class="mt-4">
+                  <input type="hidden" name="intent" value="reminders" />
+                  <input type="hidden" name="enabled" value={remindersOn ? '0' : '1'} />
+                  <button type="submit" class="btn-secondary w-full">
+                    {remindersOn ? 'Tắt email nhắc' : 'Bật email nhắc'}
+                  </button>
+                </form>
+              ) : (
+                <p class="mt-4 text-sm text-ink-500">
+                  Email nhắc là quyền lợi của gói Premium.
+                </p>
+              )}
+            </>
+          )
+        }
+      </div>
+
+      <!-- QR -->
+      <div class="card p-5">
+        <h3 class="font-serif text-lg font-semibold">Mã QR</h3>
+        <div class="mt-4 rounded-xl border border-cream-300 bg-white p-3">
+          <img
+            src={`/be/${memorial.slug}/qr.svg`}
+            alt={`Mã QR trang kỷ niệm của ${memorial.petName}`}
+            class="mx-auto h-40 w-40"
+            width="160"
+            height="160"
+          />
+        </div>
+        <p class="mt-3 text-xs break-all text-ink-500">{publicUrl}</p>
+
+        <div class="mt-4 space-y-2">
+          <button type="button" class="btn-secondary w-full" data-copy-link data-url={publicUrl}>
+            Copy đường dẫn
+          </button>
+          {
+            memorial.isPremium ? (
+              <>
+                <a
+                  href={`/be/${memorial.slug}/qr.svg?card=1&download=1`}
+                  class="btn-secondary w-full"
+                  download
+                >
+                  Tải thẻ QR in sẵn (SVG)
+                </a>
+                <button type="button" class="btn-secondary w-full" data-download-png data-slug={memorial.slug}>
+                  Tải mã QR PNG 2048px
+                </button>
+              </>
+            ) : (
+              <p class="hint">Tải file QR chất lượng cao để tự in là quyền lợi gói Premium.</p>
+            )
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+</AppLayout>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('[data-copy-link]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const url = button.dataset.url!;
+      try {
+        await navigator.clipboard.writeText(url);
+        const original = button.textContent;
+        button.textContent = 'Đã copy ✓';
+        setTimeout(() => (button.textContent = original), 2000);
+      } catch {
+        window.prompt('Copy đường dẫn này:', url);
+      }
+    });
+  });
+
+  /** Chuyển SVG mã QR thành PNG cỡ lớn ngay trên máy người dùng. */
+  document.querySelectorAll<HTMLButtonElement>('[data-download-png]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const slug = button.dataset.slug!;
+      const original = button.textContent;
+      button.disabled = true;
+      button.textContent = 'Đang tạo…';
+      try {
+        const response = await fetch(`/be/${slug}/qr.svg`);
+        const svgText = await response.text();
+        const blob = new Blob([svgText], { type: 'image/svg+xml' });
+        const blobUrl = URL.createObjectURL(blob);
+
+        const image = new Image();
+        image.width = 2048;
+        image.height = 2048;
+        await new Promise((resolve, reject) => {
+          image.onload = resolve;
+          image.onerror = reject;
+          image.src = blobUrl;
+        });
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 2048;
+        canvas.height = 2048;
+        const context = canvas.getContext('2d')!;
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, 2048, 2048);
+        context.imageSmoothingEnabled = false;
+        context.drawImage(image, 0, 0, 2048, 2048);
+        URL.revokeObjectURL(blobUrl);
+
+        const link = document.createElement('a');
+        link.download = `${slug}-qr-2048.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      } catch {
+        alert('Chưa tạo được file PNG. Bạn thử tải bản SVG nhé.');
+      } finally {
+        button.disabled = false;
+        button.textContent = original;
+      }
+    });
+  });
+</script>

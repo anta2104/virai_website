@@ -1,0 +1,150 @@
+---
+import AppLayout from '../../../../layouts/AppLayout.astro';
+import WizardSteps from '../../../../components/WizardSteps.astro';
+import PhotoUploader from '../../../../components/PhotoUploader.astro';
+import { notFound, ownedMemorial } from '../../../../lib/guards';
+import { listPhotos, photoUrl } from '../../../../lib/memorials';
+import { handlePhotoAction } from '../../../../lib/photo-actions';
+import { limitsFor } from '../../../../lib/plans';
+import { env } from '../../../../lib/env';
+
+const memorial = await ownedMemorial(Astro.locals, Astro.params.id);
+if (!memorial) return notFound();
+
+let error: string | null = null;
+if (Astro.request.method === 'POST') {
+  error = await handlePhotoAction(env, memorial, await Astro.request.formData());
+  if (!error) return Astro.redirect(Astro.url.pathname);
+}
+
+const photos = await listPhotos(env.DB, memorial.id);
+const limits = limitsFor(memorial.isPremium);
+const limit = limits.photos === Number.POSITIVE_INFINITY ? null : limits.photos;
+---
+
+<AppLayout
+  title={`Ảnh của ${memorial.petName}`}
+  backHref={`/tai-khoan/be/${memorial.id}`}
+  backLabel="Về trang quản lý"
+  wide
+>
+  <WizardSteps current={2} memorialId={memorial.id} />
+
+  {error && <p class="alert-error mb-6">{error}</p>}
+
+  <PhotoUploader
+    memorialId={memorial.id}
+    used={photos.length}
+    limit={limit}
+    allowVideo={limits.videoUpload}
+  />
+
+  {
+    photos.length === 0 ? (
+      <p class="mt-8 text-center text-sm text-ink-500">
+        Chưa có ảnh nào. Một tấm thôi cũng đủ để bắt đầu.
+      </p>
+    ) : (
+      <ul class="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {photos.map((photo, index) => (
+          <li class="card overflow-hidden">
+            <div class="relative aspect-[4/3] bg-cream-200">
+              {photo.contentType.startsWith('video/') ? (
+                <video src={photoUrl(photo.r2Key)} class="h-full w-full object-cover" controls muted />
+              ) : (
+                <img
+                  src={photoUrl(photo.r2Key)}
+                  alt={photo.caption ?? `Ảnh ${index + 1} của ${memorial.petName}`}
+                  class="h-full w-full object-cover"
+                  loading="lazy"
+                />
+              )}
+              {memorial.coverPhotoId === photo.id && (
+                <span class="badge absolute top-2 left-2 bg-clay-500 text-white">Ảnh bìa</span>
+              )}
+            </div>
+
+            <div class="space-y-3 p-4">
+              <form method="POST" class="flex gap-2">
+                <input type="hidden" name="action" value="caption" />
+                <input type="hidden" name="photoId" value={photo.id} />
+                <input
+                  class="input py-1.5 text-sm"
+                  name="caption"
+                  maxlength="200"
+                  value={photo.caption ?? ''}
+                  placeholder="Chú thích (không bắt buộc)"
+                  aria-label="Chú thích ảnh"
+                />
+                <button type="submit" class="btn-secondary btn-sm shrink-0">Lưu</button>
+              </form>
+
+              <div class="flex flex-wrap items-center gap-2">
+                {memorial.coverPhotoId !== photo.id && photo.contentType.startsWith('image/') && (
+                  <form method="POST">
+                    <input type="hidden" name="action" value="cover" />
+                    <input type="hidden" name="photoId" value={photo.id} />
+                    <button type="submit" class="btn-ghost btn-sm">Làm ảnh bìa</button>
+                  </form>
+                )}
+
+                <form method="POST">
+                  <input type="hidden" name="action" value="move" />
+                  <input type="hidden" name="photoId" value={photo.id} />
+                  <input type="hidden" name="dir" value="up" />
+                  <button
+                    type="submit"
+                    class="btn-ghost btn-sm"
+                    disabled={index === 0}
+                    aria-label="Chuyển lên trước"
+                  >
+                    ↑
+                  </button>
+                </form>
+
+                <form method="POST">
+                  <input type="hidden" name="action" value="move" />
+                  <input type="hidden" name="photoId" value={photo.id} />
+                  <input type="hidden" name="dir" value="down" />
+                  <button
+                    type="submit"
+                    class="btn-ghost btn-sm"
+                    disabled={index === photos.length - 1}
+                    aria-label="Chuyển xuống sau"
+                  >
+                    ↓
+                  </button>
+                </form>
+
+                <form method="POST" class="ml-auto" data-confirm-delete>
+                  <input type="hidden" name="action" value="delete" />
+                  <input type="hidden" name="photoId" value={photo.id} />
+                  <button type="submit" class="btn-ghost btn-sm text-red-700 hover:bg-red-50">
+                    Xoá
+                  </button>
+                </form>
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
+  <div class="mt-10 flex items-center justify-between gap-4">
+    <a href={`/tai-khoan/be/${memorial.id}/thong-tin`} class="btn-ghost">← Quay lại</a>
+    <a href={`/tai-khoan/be/${memorial.id}/cau-chuyen`} class="btn-primary">
+      Tiếp tục — viết câu chuyện
+    </a>
+  </div>
+</AppLayout>
+
+<script>
+  document.querySelectorAll<HTMLFormElement>('form[data-confirm-delete]').forEach((form) => {
+    form.addEventListener('submit', (event) => {
+      if (!confirm('Xoá tệp này? Không lấy lại được đâu.')) {
+        event.preventDefault();
+      }
+    });
+  });
+</script>

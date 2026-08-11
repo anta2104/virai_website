@@ -1,0 +1,118 @@
+---
+import { desc, eq } from 'drizzle-orm';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { getDb } from '../../lib/db';
+import { memorials, users } from '../../lib/db/schema';
+import { formatDate, formatDateTime } from '../../lib/format';
+import { ensureRemindersFor } from '../../lib/reminders';
+import { getMemorialById } from '../../lib/memorials';
+import { env } from '../../lib/env';
+
+const db = getDb(env.DB);
+let notice: string | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('action') ?? '');
+  const memorialId = String(form.get('memorialId') ?? '');
+  const now = Math.floor(Date.now() / 1000);
+
+  if (action === 'grantPremium') {
+    await db.update(memorials).set({ isPremium: 1, updatedAt: now }).where(eq(memorials.id, memorialId));
+    const memorial = await getMemorialById(env.DB, memorialId);
+    if (memorial) await ensureRemindersFor(env.DB, memorial);
+    notice = 'Đã cấp Premium cho trang này.';
+  } else if (action === 'revokePremium') {
+    await db.update(memorials).set({ isPremium: 0, updatedAt: now }).where(eq(memorials.id, memorialId));
+    notice = 'Đã thu hồi Premium.';
+  } else if (action === 'unpublish') {
+    await db.update(memorials).set({ isPublished: 0, updatedAt: now }).where(eq(memorials.id, memorialId));
+    notice = 'Đã ẩn trang khỏi công khai.';
+  }
+}
+
+const rows = await db
+  .select({ memorial: memorials, user: users })
+  .from(memorials)
+  .innerJoin(users, eq(users.id, memorials.userId))
+  .orderBy(desc(memorials.createdAt))
+  .limit(300);
+---
+
+<AdminLayout title="Trang kỷ niệm">
+  {notice && <p class="alert-success mb-6">{notice}</p>}
+
+  <div class="card overflow-x-auto">
+    <table class="w-full min-w-[52rem] text-sm">
+      <thead class="border-b border-cream-300 text-left text-xs text-ink-500 uppercase">
+        <tr>
+          <th class="px-4 py-3">Bé</th>
+          <th class="px-4 py-3">Chủ nuôi</th>
+          <th class="px-4 py-3">Ngày mất</th>
+          <th class="px-4 py-3">Trạng thái</th>
+          <th class="px-4 py-3">Lượt xem</th>
+          <th class="px-4 py-3">Tạo lúc</th>
+          <th class="px-4 py-3">Thao tác</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-cream-300">
+        {
+          rows.map(({ memorial, user }) => (
+            <tr>
+              <td class="px-4 py-3">
+                <a class="font-medium text-clay-600 hover:underline" href={`/be/${memorial.slug}`}>
+                  {memorial.petName}
+                </a>
+                <p class="text-xs text-ink-500">/be/{memorial.slug}</p>
+              </td>
+              <td class="px-4 py-3">
+                <p>{user.name}</p>
+                <p class="text-xs text-ink-500">{user.email}</p>
+              </td>
+              <td class="px-4 py-3">
+                {formatDate(memorial.deathDate) || '—'}
+                {memorial.deathDateLunar && <p class="text-xs text-ink-500">{memorial.deathDateLunar}</p>}
+              </td>
+              <td class="px-4 py-3">
+                <div class="flex flex-wrap gap-1">
+                  {memorial.isPremium ? (
+                    <span class="badge bg-clay-100 text-clay-700">Premium</span>
+                  ) : (
+                    <span class="badge bg-cream-200 text-ink-500">Free</span>
+                  )}
+                  {memorial.isPublished ? (
+                    <span class="badge bg-sage-100 text-sage-700">Công khai</span>
+                  ) : (
+                    <span class="badge bg-cream-200 text-ink-500">Nháp</span>
+                  )}
+                </div>
+              </td>
+              <td class="px-4 py-3">{memorial.visitCount.toLocaleString('vi-VN')}</td>
+              <td class="px-4 py-3 text-xs text-ink-500">{formatDateTime(memorial.createdAt)}</td>
+              <td class="px-4 py-3">
+                <div class="flex flex-col gap-1">
+                  <form method="POST">
+                    <input type="hidden" name="action" value={memorial.isPremium ? 'revokePremium' : 'grantPremium'} />
+                    <input type="hidden" name="memorialId" value={memorial.id} />
+                    <button type="submit" class="btn-ghost btn-sm">
+                      {memorial.isPremium ? 'Thu hồi Premium' : 'Cấp Premium'}
+                    </button>
+                  </form>
+                  {memorial.isPublished && (
+                    <form method="POST">
+                      <input type="hidden" name="action" value="unpublish" />
+                      <input type="hidden" name="memorialId" value={memorial.id} />
+                      <button type="submit" class="btn-ghost btn-sm text-red-700 hover:bg-red-50">Ẩn trang</button>
+                    </form>
+                  )}
+                </div>
+              </td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+
+  {rows.length === 0 && <p class="mt-6 text-center text-sm text-ink-500">Chưa có trang nào.</p>}
+</AdminLayout>

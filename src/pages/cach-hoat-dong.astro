@@ -1,0 +1,80 @@
+---
+import SiteLayout from '../layouts/SiteLayout.astro';
+
+const sections = [
+  {
+    title: '1. Kể cho chúng tôi về bé',
+    body: [
+      'Tên bé, giống loài, ngày sinh và ngày bé rời đi. Nếu bạn không nhớ chính xác ngày sinh, để trống cũng được.',
+      'Ngay khi nhập ngày, hệ thống hiện luôn ngày âm lịch tương ứng — thứ mà các trang tưởng niệm nước ngoài không có.',
+    ],
+  },
+  {
+    title: '2. Tải ảnh của bé',
+    body: [
+      'Ảnh được thu nhỏ ngay trên máy bạn trước khi tải lên, nên nhanh và không tốn nhiều dữ liệu di động.',
+      'Gói miễn phí cho 10 ảnh. Bạn chọn một ảnh làm ảnh bìa — đây cũng là ảnh xuất hiện khi bạn chia sẻ link.',
+    ],
+  },
+  {
+    title: '3. Viết câu chuyện — hoặc để AI viết giúp',
+    body: [
+      'Nhiều người ngồi trước ô trống và không biết bắt đầu từ đâu. Vì vậy chúng tôi hỏi bạn vài câu đơn giản: bé thích ăn gì, bé có tật gì đáng yêu, kỷ niệm nào bạn nhớ nhất, bé đến với bạn thế nào.',
+      'Bấm “Nhờ AI viết giúp”, những mẩu ký ức rời rạc đó sẽ thành một bài viết liền mạch bằng tiếng Việt. Bạn đọc lại và sửa theo ý mình — bài viết là của bạn, AI chỉ giúp bạn bắt đầu.',
+    ],
+  },
+  {
+    title: '4. Xuất bản và chia sẻ',
+    body: [
+      'Trang của bé có địa chỉ riêng và một mã QR. Bạn có thể tải mã QR về in dán vào khung ảnh, hoặc đặt thẻ kim loại/gỗ khắc sẵn để đặt cạnh tro cốt.',
+      'Khi dán link lên Facebook hoặc Zalo, ảnh xem trước tự sinh với ảnh của bé, tên và ngày tháng.',
+    ],
+  },
+  {
+    title: '5. Bạn bè ghé thăm',
+    body: [
+      'Người ghé thăm có thể thắp một nén nến ảo, thả một cánh hoa, hoặc viết vài dòng vào sổ lưu bút.',
+      'Mọi lời nhắn đều chờ bạn duyệt trước khi hiện lên, nên trang của bé luôn giữ được sự trang trọng.',
+    ],
+  },
+  {
+    title: '6. Chúng tôi nhắc bạn ngày quan trọng',
+    body: [
+      'Với gói Premium, chúng tôi tự tính ngày cúng 49 ngày và ngày giỗ hằng năm theo âm lịch, rồi gửi email nhắc bạn trước.',
+      'Vì âm lịch lệch so với dương lịch mỗi năm, đây là việc rất dễ quên — và cũng là điều nhiều người thấy trân trọng nhất.',
+    ],
+  },
+];
+---
+
+<SiteLayout
+  title="Cách hoạt động"
+  description="Sáu bước từ lúc bắt đầu tới khi trang kỷ niệm của bé hoàn thiện và được chia sẻ."
+>
+  <section class="section">
+    <div class="container-narrow">
+      <h1 class="font-serif text-4xl font-semibold">Cách hoạt động</h1>
+      <p class="mt-4 text-lg text-ink-500">
+        Từ lúc bạn mở trang này tới khi trang kỷ niệm của bé sẵn sàng để chia sẻ, thường mất khoảng
+        5 phút.
+      </p>
+
+      <div class="mt-12 space-y-10">
+        {
+          sections.map((section) => (
+            <div>
+              <h2 class="font-serif text-2xl font-semibold">{section.title}</h2>
+              {section.body.map((paragraph) => (
+                <p class="mt-3 leading-relaxed text-ink-500">{paragraph}</p>
+              ))}
+            </div>
+          ))
+        }
+      </div>
+
+      <div class="mt-14 text-center">
+        <a href="/dang-ky" class="btn-primary px-8 py-3.5 text-base">Bắt đầu miễn phí</a>
+      </div>
+    </div>
+  </section>
+</SiteLayout>

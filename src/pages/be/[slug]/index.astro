@@ -1,0 +1,173 @@
+---
+import { eq, sql } from 'drizzle-orm';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import MemorialView from '../../../components/MemorialView.astro';
+import { getDb } from '../../../lib/db';
+import { guestbookEntries, memorials, users } from '../../../lib/db/schema';
+import { getMemorialBySlug, listApprovedGuestbook, listPhotos } from '../../../lib/memorials';
+import { limitsFor } from '../../../lib/plans';
+import { newId } from '../../../lib/ids';
+import { truncate } from '../../../lib/format';
+import { lifeSummary } from '../../../lib/memorial-dates';
+import { site } from '../../../lib/site';
+import { and } from 'drizzle-orm';
+import { env, waitUntil } from '../../../lib/env';
+import { newGuestbookEmail, sendEmail } from '../../../lib/email';
+
+const slug = Astro.params.slug!;
+const memorial = await getMemorialBySlug(env.DB, slug);
+
+if (!memorial) {
+  return new Response('Không tìm thấy trang kỷ niệm này', { status: 404 });
+}
+
+const isOwner = Astro.locals.user?.id === memorial.userId;
+
+if (!memorial.isPublished) {
+  if (isOwner) {
+    return Astro.redirect(`/tai-khoan/be/${memorial.id}/xem-truoc`);
+  }
+  return new Response('Trang kỷ niệm này chưa được xuất bản', { status: 404 });
+}
+
+const db = getDb(env.DB);
+const limits = limitsFor(memorial.isPremium);
+
+// ── Nhận lời lưu bút ────────────────────────────────────────────────────────
+let guestbookNotice: string | null = null;
+let guestbookError: string | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  if (String(form.get('action') ?? '') === 'guestbook') {
+    const authorName = String(form.get('authorName') ?? '').trim().slice(0, 60);
+    const messageText = String(form.get('message') ?? '').trim().slice(0, 1500);
+    const throttleCookie = `vm_gb_${memorial.id.slice(0, 8)}`;
+
+    if (!authorName || messageText.length < 2) {
+      guestbookError = 'Bạn điền giúp tên và lời nhắn nhé.';
+    } else if (Astro.cookies.get(throttleCookie)) {
+      guestbookError = 'Bạn vừa gửi một lời nhắn rồi. Đợi một chút nhé.';
+    } else {
+      const ip = Astro.request.headers.get('cf-connecting-ip') ?? '';
+      const ipHash = ip
+        ? [
+            ...new Uint8Array(
+              await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${memorial.id}:${ip}`)),
+            ),
+          ]
+            .slice(0, 8)
+            .map((byte) => byte.toString(16).padStart(2, '0'))
+            .join('')
+        : null;
+
+      await db.insert(guestbookEntries).values({
+        id: newId(),
+        memorialId: memorial.id,
+        authorName,
+        message: messageText,
+        status: 'pending',
+        ipHash,
+      });
+
+      Astro.cookies.set(throttleCookie, '1', {
+        path: '/',
+        httpOnly: true,
+        secure: Astro.url.protocol === 'https:',
+        sameSite: 'lax',
+        maxAge: 60,
+      });
+
+      // Báo cho chủ trang bằng email, chạy nền để khách không phải chờ
+      const notify = (async () => {
+        const owner = await db
+          .select({ email: users.email, name: users.name })
+          .from(users)
+          .where(eq(users.id, memorial.userId))
+          .limit(1);
+        if (!owner[0]) return;
+        const message = newGuestbookEmail({
+          ownerName: owner[0].name,
+          petName: memorial.petName,
+          authorName,
+          message: messageText,
+          moderateUrl: new URL(`/tai-khoan/be/${memorial.id}/luu-but`, site.url).href,
+        });
+        const result = await sendEmail(env, { ...message, to: owner[0].email });
+        if (!result.ok) console.error('Không gửi được email lưu bút:', result.error);
+      })();
+      waitUntil(Astro.locals, notify);
+
+      guestbookNotice = 'Cảm ơn bạn. Lời nhắn sẽ hiện lên sau khi gia đình duyệt.';
+    }
+  }
+}
+
+// ── Đếm lượt ghé thăm (bỏ qua chủ trang, dedupe bằng cookie 12 giờ) ─────────
+const seenCookie = `vm_seen_${memorial.id.slice(0, 8)}`;
+if (Astro.request.method === 'GET' && !isOwner && !Astro.cookies.get(seenCookie)) {
+  Astro.cookies.set(seenCookie, '1', {
+    path: '/',
+    httpOnly: true,
+    secure: Astro.url.protocol === 'https:',
+    sameSite: 'lax',
+    maxAge: 60 * 60 * 12,
+  });
+  const bump = db
+    .update(memorials)
+    .set({ visitCount: sql`${memorials.visitCount} + 1` })
+    .where(eq(memorials.id, memorial.id));
+  waitUntil(Astro.locals, bump);
+  memorial.visitCount += 1;
+}
+
+// ── Dữ liệu hiển thị ───────────────────────────────────────────────────────
+const photos = await listPhotos(env.DB, memorial.id);
+const visibleLimit =
+  limits.guestbookVisible === Number.POSITIVE_INFINITY ? 500 : limits.guestbookVisible;
+const entries = await listApprovedGuestbook(env.DB, memorial.id, visibleLimit);
+
+let hiddenEntries = 0;
+if (limits.guestbookVisible !== Number.POSITIVE_INFINITY && entries.length === visibleLimit) {
+  const totalRows = await db
+    .select({ n: sql<number>`count(*)` })
+    .from(guestbookEntries)
+    .where(and(eq(guestbookEntries.memorialId, memorial.id), eq(guestbookEntries.status, 'approved')));
+  hiddenEntries = Math.max(0, Number(totalRows[0]?.n ?? 0) - entries.length);
+}
+
+const summary = lifeSummary(memorial.birthDate, memorial.deathDate);
+const description = memorial.bio
+  ? truncate(memorial.bio, 180)
+  : `Trang kỷ niệm ${memorial.petName}${summary.dateLine ? ` (${summary.dateLine})` : ''}.`;
+
+// Thêm dấu thời gian để Facebook/Zalo tải lại ảnh khi chủ trang đổi ảnh bìa
+const ogImage = `/be/${memorial.slug}/og.png?v=${memorial.updatedAt}`;
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: `${memorial.petName} — trang kỷ niệm`,
+  description,
+  inLanguage: 'vi',
+  isPartOf: { '@type': 'WebSite', name: site.name, url: site.url },
+};
+---
+
+<BaseLayout
+  title={`${memorial.petName} — trang kỷ niệm`}
+  description={description}
+  ogImage={ogImage}
+  ogType="profile"
+  jsonLd={jsonLd}
+>
+  <MemorialView
+    memorial={memorial}
+    photos={photos}
+    entries={entries}
+    showBranding={!limits.hideBranding}
+    guestbookNotice={guestbookNotice}
+    guestbookError={guestbookError}
+    hiddenEntries={hiddenEntries}
+  />
+</BaseLayout>

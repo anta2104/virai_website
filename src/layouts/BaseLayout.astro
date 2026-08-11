@@ -1,93 +1,72 @@
 ---
 import '../styles/global.css';
-import { site as defaultSite } from '../data/site';
+import { site } from '../lib/site';
 
 interface Props {
   title?: string;
   description?: string;
-  site?: typeof defaultSite;
-  lang?: string;
-  alternateHref?: string;
-  alternateLang?: string;
+  /** Đường dẫn hoặc URL đầy đủ của ảnh chia sẻ */
+  ogImage?: string;
+  ogType?: 'website' | 'article' | 'profile';
+  /** Không cho search engine index (dashboard, admin) */
+  noindex?: boolean;
+  bodyClass?: string;
+  jsonLd?: unknown;
 }
 
 const {
-  site = defaultSite,
-  title = site.title,
+  title = `${site.name} — ${site.tagline}`,
   description = site.description,
-  lang = 'vi',
-  alternateHref,
-  alternateLang,
+  ogImage = '/og.png',
+  ogType = 'website',
+  noindex = false,
+  bodyClass = '',
+  jsonLd,
 } = Astro.props;
 
-const canonicalURL = new URL(Astro.url.pathname, site.url);
-/** URL riêng để Zalo/Facebook tải lại preview (tránh cache ảnh team cũ tại og-cover.jpg) */
-const ogImage = new URL('/images/og-virai-share.jpg', site.url).href;
-
-const jsonLd = {
-  '@context': 'https://schema.org',
-  '@graph': [
-    {
-      '@type': 'Organization',
-      name: site.name,
-      url: site.url,
-      description: site.description,
-      logo: new URL('/logo.svg', site.url).href,
-    },
-    {
-      '@type': 'WebSite',
-      name: site.name,
-      url: site.url,
-      description: site.description,
-      inLanguage: lang,
-    },
-  ],
-};
+const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? site.url);
+const ogImageURL = new URL(ogImage, Astro.site ?? site.url).href;
 ---
 
 <!doctype html>
-<html lang={lang}>
+<html lang="vi">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="canonical" href={canonicalURL} />
-    {alternateHref && alternateLang && <link rel="alternate" hreflang={alternateLang} href={new URL(alternateHref, site.url)} />}
-    <link rel="alternate" hreflang="x-default" href={new URL('/', site.url)} />
     <meta name="generator" content={Astro.generator} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
 
     <title>{title}</title>
     <meta name="description" content={description} />
 
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content={ogType} />
     <meta property="og:url" content={canonicalURL} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <link rel="image_src" href={ogImage} />
-    <meta property="og:image" content={ogImage} />
-    <meta property="og:image:secure_url" content={ogImage} />
-    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image" content={ogImageURL} />
+    <meta property="og:image:secure_url" content={ogImageURL} />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="Virai — Giải pháp AI cho doanh nghiệp" />
     <meta property="og:locale" content={site.locale} />
     <meta property="og:site_name" content={site.name} />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
-    <meta name="twitter:image" content={ogImage} />
+    <meta name="twitter:image" content={ogImageURL} />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Lora:ital,wght@0,400..700;1,400..600&display=swap"
       rel="stylesheet"
     />
 
-    <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+    {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
   </head>
-  <body>
+  <body class={bodyClass}>
     <slot />
   </body>
 </html>

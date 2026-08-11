@@ -1,0 +1,88 @@
+---
+import LunarDateField from './LunarDateField.astro';
+import { GENDER_OPTIONS, SPECIES_OPTIONS, type BasicInfo } from '../lib/memorial-form';
+import { todayInVietnam } from '../lib/format';
+
+interface Props {
+  values: BasicInfo;
+}
+
+const { values } = Astro.props;
+const today = todayInVietnam();
+---
+
+<div class="space-y-5">
+  <div>
+    <label class="label" for="petName">Tên bé</label>
+    <input
+      class="input"
+      id="petName"
+      name="petName"
+      required
+      maxlength="60"
+      value={values.petName}
+      placeholder="Ví dụ: Mít"
+    />
+  </div>
+
+  <fieldset>
+    <legend class="label">Bé là</legend>
+    <div class="flex flex-wrap gap-2">
+      {
+        SPECIES_OPTIONS.map((option) => (
+          <label class="cursor-pointer">
+            <input
+              type="radio"
+              name="species"
+              value={option.value}
+              checked={values.species === option.value}
+              class="peer sr-only"
+            />
+            <span class="block rounded-full border border-cream-300 px-4 py-2 text-sm peer-checked:border-clay-400 peer-checked:bg-clay-50 peer-checked:text-clay-700">
+              {option.label}
+            </span>
+          </label>
+        ))
+      }
+    </div>
+  </fieldset>
+
+  <div class="grid gap-5 sm:grid-cols-2">
+    <div>
+      <label class="label" for="breed">Giống loài</label>
+      <input
+        class="input"
+        id="breed"
+        name="breed"
+        maxlength="80"
+        value={values.breed}
+        placeholder="Ví dụ: Golden Retriever"
+      />
+      <p class="hint">Không biết chính xác thì để trống.</p>
+    </div>
+
+    <div>
+      <label class="label" for="gender">Giới tính</label>
+      <select class="input" id="gender" name="gender">
+        {
+          GENDER_OPTIONS.map((option) => (
+            <option value={option.value} selected={values.gender === option.value}>
+              {option.label}
+            </option>
+          ))
+        }
+      </select>
+    </div>
+  </div>
+
+  <div class="grid gap-5 sm:grid-cols-2">
+    <LunarDateField name="birthDate" label="Ngày sinh" value={values.birthDate} max={today} />
+    <LunarDateField
+      name="deathDate"
+      label="Ngày bé rời đi"
+      value={values.deathDate}
+      max={today}
+      hint="Dùng để tính ngày 49 và ngày giỗ."
+    />
+  </div>
+</div>

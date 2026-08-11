@@ -1,4 +1,7 @@
 User-agent: *
 Allow: /
+Disallow: /tai-khoan
+Disallow: /admin
+Disallow: /api
 
 Sitemap: https://virai.com.vn/sitemap-index.xml

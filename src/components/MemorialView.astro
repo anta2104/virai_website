@@ -1,0 +1,439 @@
+---
+import type { GuestbookEntry, Memorial, Photo } from '../lib/db/schema';
+import { photoUrl } from '../lib/memorials';
+import { lifeSummary, milestonesFor } from '../lib/memorial-dates';
+import { GENDER_LABEL, SPECIES_LABEL, formatDate, formatDateTime } from '../lib/format';
+import { site } from '../lib/site';
+
+interface Props {
+  memorial: Memorial;
+  photos: Photo[];
+  entries: GuestbookEntry[];
+  /** Hiện dòng "Tạo bởi..." (gói miễn phí) */
+  showBranding: boolean;
+  /** Chế độ xem trước trong khu quản lý: tắt tương tác, không đếm lượt */
+  preview?: boolean;
+  /** Thông báo sau khi gửi lưu bút */
+  guestbookNotice?: string | null;
+  guestbookError?: string | null;
+  /** Còn bao nhiêu lời lưu bút bị ẩn vì hạn mức gói miễn phí */
+  hiddenEntries?: number;
+}
+
+const {
+  memorial,
+  photos,
+  entries,
+  showBranding,
+  preview = false,
+  guestbookNotice = null,
+  guestbookError = null,
+  hiddenEntries = 0,
+} = Astro.props;
+
+const cover = photos.find((photo) => photo.id === memorial.coverPhotoId) ?? photos[0] ?? null;
+const gallery = photos.filter((photo) => photo.id !== cover?.id);
+const summary = lifeSummary(memorial.birthDate, memorial.deathDate);
+const milestones = milestonesFor(memorial.deathDate);
+const speciesLine = [SPECIES_LABEL[memorial.species], memorial.breed, GENDER_LABEL[memorial.gender]]
+  .filter(Boolean)
+  .join(' · ');
+---
+
+<div data-memorial-theme={memorial.theme} class="memorial-surface min-h-screen overflow-x-clip">
+  <div class="memorial-stars">
+    <!-- Ảnh bìa + tên -->
+    <section class="relative">
+      {
+        cover ? (
+          <div class="relative h-[52vh] max-h-[620px] min-h-72 w-full overflow-hidden sm:h-[62vh]">
+            <img
+              src={photoUrl(cover.r2Key)}
+              alt={`Ảnh của ${memorial.petName}`}
+              class="h-full w-full object-cover"
+            />
+            <div
+              class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"
+              aria-hidden="true"
+            />
+            <div class="absolute inset-x-0 bottom-0 p-6 text-center sm:p-10">
+              <p class="text-xs font-medium tracking-[0.2em] text-white/80 uppercase">Tưởng nhớ</p>
+              <h1 class="mt-2 font-serif text-4xl font-semibold text-white drop-shadow sm:text-5xl">
+                {memorial.petName}
+              </h1>
+              {summary.dateLine && (
+                <p class="mt-3 text-white/90">{summary.dateLine}</p>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div class="px-6 pt-16 pb-8 text-center">
+            <p class="memorial-muted text-xs font-medium tracking-[0.2em] uppercase">Tưởng nhớ</p>
+            <h1 class="memorial-heading mt-3 font-serif text-4xl font-semibold sm:text-5xl">
+              {memorial.petName}
+            </h1>
+            {summary.dateLine && <p class="memorial-muted mt-3">{summary.dateLine}</p>}
+          </div>
+        )
+      }
+    </section>
+
+    <div class="mx-auto w-full max-w-3xl px-4 pb-20 sm:px-6">
+      <!-- Thông tin nhanh -->
+      <div class="memorial-panel mt-8 rounded-2xl border p-5 text-center sm:p-6">
+        {speciesLine && <p class="memorial-muted text-sm">{speciesLine}</p>}
+        {summary.spanLine && (
+          <p class="memorial-heading mt-1 font-serif text-lg">{summary.spanLine}</p>
+        )}
+        {summary.lunarLine && <p class="memorial-muted mt-2 text-sm">{summary.lunarLine}</p>}
+
+        <div class="memorial-muted mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs sm:gap-x-6 sm:text-sm">
+          <span>👣 {memorial.visitCount.toLocaleString('vi-VN')} lượt ghé thăm</span>
+          <span data-count-candle>🕯️ {memorial.candleCount.toLocaleString('vi-VN')} nến</span>
+          <span data-count-flower>🌸 {memorial.flowerCount.toLocaleString('vi-VN')} hoa</span>
+        </div>
+      </div>
+
+      <!-- Thắp nến / thả hoa -->
+      <div class="mt-6 flex flex-wrap items-center justify-center gap-3" data-tributes data-slug={memorial.slug}>
+        <button
+          type="button"
+          class="memorial-panel flex items-center gap-2 rounded-full border px-4 py-2.5 text-xs font-medium transition hover:shadow-sm disabled:opacity-60 sm:px-5 sm:text-sm"
+          data-tribute="candle"
+          disabled={preview}
+        >
+          <span class="flame text-lg" aria-hidden="true">🕯️</span> Thắp một nén nến
+        </button>
+        <button
+          type="button"
+          class="memorial-panel flex items-center gap-2 rounded-full border px-4 py-2.5 text-xs font-medium transition hover:shadow-sm disabled:opacity-60 sm:px-5 sm:text-sm"
+          data-tribute="flower"
+          disabled={preview}
+        >
+          <span class="text-lg" aria-hidden="true">🌸</span> Thả một cánh hoa
+        </button>
+        <button
+          type="button"
+          class="memorial-panel hidden items-center gap-2 rounded-full border px-4 py-2.5 text-xs font-medium transition hover:shadow-sm sm:flex sm:px-5 sm:text-sm"
+          data-share
+        >
+          <span aria-hidden="true">🔗</span> Chia sẻ
+        </button>
+      </div>
+      <p class="memorial-muted mt-3 text-center text-xs" data-tribute-status role="status" aria-live="polite"></p>
+
+      <!-- Câu chuyện -->
+      {
+        memorial.bio && (
+          <section class="mt-14">
+            <h2 class="memorial-heading font-serif text-2xl font-semibold">
+              Câu chuyện của {memorial.petName}
+            </h2>
+            <div class="prose-story mt-5">{memorial.bio}</div>
+          </section>
+        )
+      }
+
+      <!-- Các mốc tưởng niệm -->
+      {
+        milestones.length > 0 && (
+          <section class="mt-14">
+            <h2 class="memorial-heading font-serif text-2xl font-semibold">Các mốc tưởng niệm</h2>
+            <ul class="mt-5 space-y-3">
+              {memorial.birthDate && (
+                <li class="memorial-panel flex items-start gap-4 rounded-xl border p-4">
+                  <span class="text-xl" aria-hidden="true">🌱</span>
+                  <div>
+                    <p class="memorial-heading font-medium">Ngày bé đến với thế giới</p>
+                    <p class="memorial-muted text-sm">{formatDate(memorial.birthDate)}</p>
+                  </div>
+                </li>
+              )}
+              {memorial.deathDate && (
+                <li class="memorial-panel flex items-start gap-4 rounded-xl border p-4">
+                  <span class="text-xl" aria-hidden="true">🤍</span>
+                  <div>
+                    <p class="memorial-heading font-medium">Ngày bé rời đi</p>
+                    <p class="memorial-muted text-sm">
+                      {formatDate(memorial.deathDate)}
+                      {memorial.deathDateLunar && ` · ${memorial.deathDateLunar}`}
+                    </p>
+                  </div>
+                </li>
+              )}
+              {milestones.map((milestone) => (
+                <li
+                  class:list={[
+                    'memorial-panel flex items-start gap-4 rounded-xl border p-4',
+                    milestone.passed && 'opacity-60',
+                  ]}
+                >
+                  <span class="text-xl" aria-hidden="true">
+                    {milestone.key === 'gio_hang_nam' ? '🕰️' : '🪷'}
+                  </span>
+                  <div>
+                    <p class="memorial-heading font-medium">{milestone.label}</p>
+                    <p class="memorial-muted text-sm">
+                      {formatDate(milestone.date)}
+                      {milestone.lunarText && ` · ${milestone.lunarText}`}
+                      {milestone.passed && ' · đã qua'}
+                    </p>
+                    {milestone.note && <p class="memorial-muted mt-1 text-xs">{milestone.note}</p>}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )
+      }
+
+      <!-- Album ảnh -->
+      {
+        gallery.length > 0 && (
+          <section class="mt-14">
+            <h2 class="memorial-heading font-serif text-2xl font-semibold">Album của bé</h2>
+            <div class="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {gallery.map((item, index) =>
+                item.contentType.startsWith('video/') ? (
+                  <video
+                    src={photoUrl(item.r2Key)}
+                    class="aspect-square w-full rounded-xl object-cover"
+                    controls
+                    preload="metadata"
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    class="aspect-square overflow-hidden rounded-xl"
+                    data-lightbox-open={index}
+                    aria-label={`Mở ảnh ${index + 1}`}
+                  >
+                    <img
+                      src={photoUrl(item.r2Key)}
+                      alt={item.caption ?? `Ảnh ${index + 1} của ${memorial.petName}`}
+                      class="h-full w-full object-cover transition duration-500 hover:scale-105"
+                      loading="lazy"
+                    />
+                  </button>
+                ),
+              )}
+            </div>
+          </section>
+        )
+      }
+
+      <!-- Sổ lưu bút -->
+      <section class="mt-14" id="luu-but">
+        <h2 class="memorial-heading font-serif text-2xl font-semibold">Sổ lưu bút</h2>
+        <p class="memorial-muted mt-2 text-sm">
+          Bạn có thể để lại một lời nhắn. Lời nhắn sẽ hiện lên sau khi gia đình duyệt.
+        </p>
+
+        {guestbookNotice && <p class="alert-success mt-4">{guestbookNotice}</p>}
+        {guestbookError && <p class="alert-error mt-4">{guestbookError}</p>}
+
+        <form method="POST" action={`/be/${memorial.slug}#luu-but`} class="memorial-panel mt-5 space-y-4 rounded-2xl border p-5">
+          <input type="hidden" name="action" value="guestbook" />
+          <div>
+            <label class="label memorial-heading" for="authorName">Tên bạn</label>
+            <input
+              class="input"
+              id="authorName"
+              name="authorName"
+              required
+              maxlength="60"
+              disabled={preview}
+            />
+          </div>
+          <div>
+            <label class="label memorial-heading" for="message">Lời nhắn</label>
+            <textarea
+              class="input min-h-28"
+              id="message"
+              name="message"
+              required
+              maxlength="1500"
+              rows="4"
+              placeholder="Một câu ngắn cũng được…"
+              disabled={preview}
+            />
+          </div>
+          <button type="submit" class="btn-primary" disabled={preview}>Gửi lời nhắn</button>
+          {preview && <p class="memorial-muted text-xs">Đang xem trước — form tạm khoá.</p>}
+        </form>
+
+        {
+          entries.length > 0 && (
+            <ul class="mt-6 space-y-4">
+              {entries.map((entry) => (
+                <li class="memorial-panel rounded-xl border p-4">
+                  <p class="prose-story text-[0.9375rem]">{entry.message}</p>
+                  <p class="memorial-muted mt-2 text-xs">
+                    {entry.authorName} · {formatDateTime(entry.createdAt)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )
+        }
+
+        {
+          hiddenEntries > 0 && (
+            <p class="memorial-muted mt-4 text-center text-xs">
+              Còn {hiddenEntries} lời nhắn nữa chưa hiện (gói miễn phí hiển thị {entries.length} lời
+              gần nhất).
+            </p>
+          )
+        }
+      </section>
+
+      <!-- Chân trang -->
+      {
+        showBranding && (
+          <p class="memorial-muted mt-16 text-center text-xs">
+            Trang kỷ niệm này được tạo bằng{' '}
+            <a class="memorial-accent font-medium hover:underline" href={site.url}>
+              {site.name}
+            </a>
+          </p>
+        )
+      }
+    </div>
+  </div>
+
+  <!-- Lightbox ảnh -->
+  <dialog
+    class="fixed inset-0 z-70 h-full max-h-none w-full max-w-none bg-black/90 backdrop:bg-black/80"
+    data-lightbox
+  >
+    <button
+      type="button"
+      class="absolute top-4 right-4 z-10 rounded-full bg-white/15 px-4 py-2 text-white"
+      data-lightbox-close>Đóng ✕</button
+    >
+    <div class="flex h-full items-center justify-center p-4">
+      <figure class="max-h-full">
+        <img src="" alt="" class="mx-auto max-h-[80vh] w-auto rounded-lg" data-lightbox-image />
+        <figcaption class="mt-3 text-center text-sm text-white/80" data-lightbox-caption></figcaption>
+      </figure>
+    </div>
+  </dialog>
+</div>
+
+<script>
+  // ── Thắp nến / thả hoa ───────────────────────────────────────────────────
+  const tributes = document.querySelector<HTMLElement>('[data-tributes]');
+  if (tributes) {
+    const slug = tributes.dataset.slug!;
+    const status = document.querySelector<HTMLElement>('[data-tribute-status]');
+    const candleLabel = document.querySelector<HTMLElement>('[data-count-candle]');
+    const flowerLabel = document.querySelector<HTMLElement>('[data-count-flower]');
+
+    function rainPetals() {
+      const petals = ['🌸', '🌺', '🌼'];
+      for (let i = 0; i < 14; i++) {
+        const petal = document.createElement('span');
+        petal.className = 'petal';
+        petal.textContent = petals[i % petals.length]!;
+        petal.style.left = `${Math.random() * 96}vw`;
+        petal.style.fontSize = `${14 + Math.random() * 16}px`;
+        petal.style.animationDuration = `${4 + Math.random() * 3}s`;
+        petal.style.animationDelay = `${Math.random() * 1.2}s`;
+        document.body.appendChild(petal);
+        setTimeout(() => petal.remove(), 9000);
+      }
+    }
+
+    tributes.querySelectorAll<HTMLButtonElement>('[data-tribute]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const type = button.dataset.tribute!;
+        button.disabled = true;
+        try {
+          const response = await fetch('/api/tribute', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ slug, type }),
+          });
+          const data = (await response.json()) as {
+            candles?: number;
+            flowers?: number;
+            alreadyDone?: boolean;
+            error?: string;
+          };
+
+          if (!response.ok) {
+            if (status) status.textContent = data.error ?? 'Chưa gửi được, bạn thử lại nhé.';
+            button.disabled = false;
+            return;
+          }
+
+          if (candleLabel && typeof data.candles === 'number') {
+            candleLabel.textContent = `🕯️ ${data.candles.toLocaleString('vi-VN')} nến`;
+          }
+          if (flowerLabel && typeof data.flowers === 'number') {
+            flowerLabel.textContent = `🌸 ${data.flowers.toLocaleString('vi-VN')} hoa`;
+          }
+
+          if (status) {
+            status.textContent = data.alreadyDone
+              ? 'Hôm nay bạn đã gửi rồi — cảm ơn bạn.'
+              : type === 'candle'
+                ? 'Đã thắp một nén nến. Cảm ơn bạn.'
+                : 'Đã thả một cánh hoa. Cảm ơn bạn.';
+          }
+          if (type === 'flower' && !data.alreadyDone) rainPetals();
+        } catch {
+          if (status) status.textContent = 'Mất kết nối, bạn thử lại nhé.';
+          button.disabled = false;
+        }
+      });
+    });
+  }
+
+  // ── Chia sẻ ─────────────────────────────────────────────────────────────
+  const shareButton = document.querySelector<HTMLButtonElement>('[data-share]');
+  if (shareButton) {
+    shareButton.classList.remove('hidden');
+    shareButton.addEventListener('click', async () => {
+      const url = window.location.href;
+      const title = document.title;
+      if (navigator.share) {
+        try {
+          await navigator.share({ title, url });
+          return;
+        } catch {
+          // người dùng huỷ — bỏ qua
+        }
+      }
+      try {
+        await navigator.clipboard.writeText(url);
+        shareButton.textContent = 'Đã copy link ✓';
+      } catch {
+        window.prompt('Copy đường dẫn này:', url);
+      }
+    });
+  }
+
+  // ── Lightbox ────────────────────────────────────────────────────────────
+  const lightbox = document.querySelector<HTMLDialogElement>('[data-lightbox]');
+  if (lightbox) {
+    const image = lightbox.querySelector<HTMLImageElement>('[data-lightbox-image]')!;
+    const caption = lightbox.querySelector<HTMLElement>('[data-lightbox-caption]')!;
+
+    document.querySelectorAll<HTMLButtonElement>('[data-lightbox-open]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const source = button.querySelector('img');
+        if (!source) return;
+        image.src = source.src;
+        image.alt = source.alt;
+        caption.textContent = source.alt;
+        lightbox.showModal();
+      });
+    });
+
+    lightbox.querySelector('[data-lightbox-close]')?.addEventListener('click', () => lightbox.close());
+    lightbox.addEventListener('click', (event) => {
+      if (event.target === lightbox) lightbox.close();
+    });
+  }
+</script>

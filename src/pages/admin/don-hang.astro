@@ -1,0 +1,156 @@
+---
+import { desc, eq } from 'drizzle-orm';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { getDb } from '../../lib/db';
+import { memorials, orders, users } from '../../lib/db/schema';
+import {
+  MATERIAL_LABEL,
+  ORDER_STATUS_LABEL,
+  ORDER_TYPE_LABEL,
+  getOrder,
+  markOrderPaid,
+  parseShippingInfo,
+} from '../../lib/orders';
+import { formatVnd } from '../../lib/plans';
+import { formatDateTime } from '../../lib/format';
+import { env } from '../../lib/env';
+
+const db = getDb(env.DB);
+let notice: string | null = null;
+let error: string | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('action') ?? '');
+  const orderId = String(form.get('orderId') ?? '');
+  const order = await getOrder(orderId);
+
+  if (!order) {
+    error = 'Không tìm thấy đơn.';
+  } else if (action === 'confirmPaid') {
+    await markOrderPaid(order, `Xác nhận tay bởi admin lúc ${new Date().toISOString()}`);
+    notice = `Đã xác nhận thanh toán cho đơn ${order.paymentCode}.`;
+  } else if (action === 'ship') {
+    await db.update(orders).set({ status: 'shipped' }).where(eq(orders.id, order.id));
+    notice = `Đơn ${order.paymentCode} đã chuyển sang trạng thái đã gửi hàng.`;
+  } else if (action === 'done') {
+    await db.update(orders).set({ status: 'done' }).where(eq(orders.id, order.id));
+    notice = `Đơn ${order.paymentCode} đã hoàn tất.`;
+  } else if (action === 'cancel') {
+    await db.update(orders).set({ status: 'cancelled' }).where(eq(orders.id, order.id));
+    notice = `Đơn ${order.paymentCode} đã huỷ.`;
+  }
+}
+
+const rows = await db
+  .select({ order: orders, user: users, memorial: memorials })
+  .from(orders)
+  .innerJoin(users, eq(users.id, orders.userId))
+  .leftJoin(memorials, eq(memorials.id, orders.memorialId))
+  .orderBy(desc(orders.createdAt))
+  .limit(200);
+---
+
+<AdminLayout title="Đơn hàng">
+  {notice && <p class="alert-success mb-6">{notice}</p>}
+  {error && <p class="alert-error mb-6">{error}</p>}
+
+  {
+    rows.length === 0 ? (
+      <div class="card p-8 text-center text-sm text-ink-500">Chưa có đơn nào.</div>
+    ) : (
+      <ul class="space-y-4">
+        {rows.map(({ order, user, memorial }) => {
+          const shipping = parseShippingInfo(order.shippingInfo);
+          return (
+            <li class="card p-5">
+              <div class="flex flex-wrap items-start justify-between gap-4">
+                <div class="min-w-0">
+                  <p class="font-medium text-ink-900">
+                    {ORDER_TYPE_LABEL[order.type] ?? order.type} ·{' '}
+                    <code class="font-mono text-sm">{order.paymentCode}</code>
+                  </p>
+                  <p class="mt-1 text-sm text-ink-500">
+                    {user.name} ({user.email})
+                    {memorial && ` · bé ${memorial.petName}`}
+                  </p>
+                  <p class="mt-1 text-xs text-ink-500">
+                    Tạo {formatDateTime(order.createdAt)}
+                    {order.paidAt && ` · thanh toán ${formatDateTime(order.paidAt)}`}
+                  </p>
+                  {shipping && (
+                    <div class="mt-3 rounded-xl bg-cream-100 p-3 text-sm">
+                      <p class="font-medium text-ink-900">Giao hàng</p>
+                      <p class="text-ink-500">
+                        {shipping.fullName} · {shipping.phone}
+                      </p>
+                      <p class="text-ink-500">{shipping.address}</p>
+                      <p class="text-ink-500">
+                        Chất liệu: {MATERIAL_LABEL[shipping.material] ?? shipping.material}
+                        {shipping.note && ` · Ghi chú: ${shipping.note}`}
+                      </p>
+                    </div>
+                  )}
+                  {order.note && (
+                    <details class="mt-2">
+                      <summary class="cursor-pointer text-xs text-ink-500">Dữ liệu thanh toán</summary>
+                      <pre class="mt-2 max-h-40 overflow-auto rounded-lg bg-ink-900 p-3 text-xs text-cream-100">{order.note}</pre>
+                    </details>
+                  )}
+                </div>
+
+                <div class="text-right">
+                  <p class="font-semibold text-ink-900">{formatVnd(order.amount)}</p>
+                  <span
+                    class:list={[
+                      'badge mt-1',
+                      order.status === 'pending' && 'bg-cream-200 text-ink-500',
+                      order.status === 'paid' && 'bg-sage-100 text-sage-700',
+                      order.status === 'shipped' && 'bg-clay-100 text-clay-700',
+                      order.status === 'done' && 'bg-sage-100 text-sage-700',
+                      order.status === 'cancelled' && 'bg-red-50 text-red-700',
+                    ]}
+                  >
+                    {ORDER_STATUS_LABEL[order.status] ?? order.status}
+                  </span>
+
+                  <div class="mt-3 flex flex-col items-end gap-1.5">
+                    {order.status === 'pending' && (
+                      <>
+                        <form method="POST">
+                          <input type="hidden" name="action" value="confirmPaid" />
+                          <input type="hidden" name="orderId" value={order.id} />
+                          <button type="submit" class="btn-primary btn-sm">Xác nhận đã nhận tiền</button>
+                        </form>
+                        <form method="POST">
+                          <input type="hidden" name="action" value="cancel" />
+                          <input type="hidden" name="orderId" value={order.id} />
+                          <button type="submit" class="btn-ghost btn-sm">Huỷ đơn</button>
+                        </form>
+                      </>
+                    )}
+                    {order.status === 'paid' && order.type === 'physical_combo' && (
+                      <form method="POST">
+                        <input type="hidden" name="action" value="ship" />
+                        <input type="hidden" name="orderId" value={order.id} />
+                        <button type="submit" class="btn-secondary btn-sm">Đánh dấu đã gửi hàng</button>
+                      </form>
+                    )}
+                    {(order.status === 'shipped' ||
+                      (order.status === 'paid' && order.type === 'premium')) && (
+                      <form method="POST">
+                        <input type="hidden" name="action" value="done" />
+                        <input type="hidden" name="orderId" value={order.id} />
+                        <button type="submit" class="btn-ghost btn-sm">Đánh dấu hoàn tất</button>
+                      </form>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    )
+  }
+</AdminLayout>
