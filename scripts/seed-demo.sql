@@ -4,8 +4,13 @@
 -- Thật:   npm run db:seed
 --
 -- Tài khoản demo: demo@virai.com.vn / mật khẩu: demo-virai-2026
--- Đăng nhập bằng tài khoản này để tải ảnh thật cho ba trang mẫu (seed không tạo
--- được ảnh vì ảnh nằm trên R2). Chưa có ảnh thì trang mẫu hiện hình dấu chân.
+-- Đăng nhập bằng tài khoản này để tải ảnh cho ba trang mẫu (seed không tạo được
+-- ảnh vì ảnh nằm trên R2). Chưa có ảnh thì trang mẫu hiện hình dấu chân.
+--
+-- CẢNH BÁO: mật khẩu trên nằm trong file đã commit, nên chỉ dùng cho môi trường
+-- local. Trên production hãy đổi mật khẩu tài khoản demo ngay sau khi seed:
+--   UPDATE users SET password_hash = '<hash mới>' WHERE email = 'demo@virai.com.vn';
+-- (Mật khẩu production của dự án này đã được đổi, không còn là giá trị dưới đây.)
 --
 -- Chạy lại nhiều lần cũng được: dùng INSERT OR REPLACE với id cố định.
 

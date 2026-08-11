@@ -100,9 +100,11 @@ export const DEMO_SLUGS = ['mit-golden', 'bap-meo-tam-the', 'lucky-corgi'];
 export async function listDemoMemorials(d1: D1Database): Promise<Memorial[]> {
   if (DEMO_SLUGS.length === 0) return [];
   const db = getDb(d1);
-  return db
+  const rows = await db
     .select()
     .from(memorials)
-    .where(and(inArray(memorials.slug, DEMO_SLUGS), eq(memorials.isPublished, 1)))
-    .orderBy(asc(memorials.createdAt));
+    .where(and(inArray(memorials.slug, DEMO_SLUGS), eq(memorials.isPublished, 1)));
+
+  // Giữ đúng thứ tự khai trong DEMO_SLUGS, không phụ thuộc thứ tự D1 trả về
+  return rows.sort((a, b) => DEMO_SLUGS.indexOf(a.slug) - DEMO_SLUGS.indexOf(b.slug));
 }
