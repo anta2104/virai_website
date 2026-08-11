@@ -97,6 +97,30 @@ export function bankLabel(bankCode: string): string {
   return BANK_NAMES[bankCode] ?? `Ngân hàng mã ${bankCode}`;
 }
 
+/**
+ * URL ảnh QR do SePay sinh (https://qr.sepay.vn). Vẫn truyền nội dung chuyển
+ * khoản riêng của từng đơn nên việc đối chiếu đơn hàng không đổi.
+ *
+ * Đã kiểm tra: endpoint nhận `bank` ở cả dạng mã BIN (970415) lẫn tên viết tắt
+ * (ICB), nên truyền thẳng BANK_CODE là được.
+ */
+export function sepayQrUrl(input: VietQrInput): string {
+  const params = new URLSearchParams({
+    acc: input.accountNumber,
+    bank: input.bankCode,
+  });
+  if (input.amount) params.set('amount', String(Math.round(input.amount)));
+  if (input.description) params.set('des', input.description);
+  return `https://qr.sepay.vn/img?${params.toString()}`;
+}
+
+/** 'local' = tự sinh trong Worker (mặc định), 'sepay' = dùng ảnh của SePay. */
+export type QrProvider = 'local' | 'sepay';
+
+export function qrProviderFrom(env: Env): QrProvider {
+  return env.QR_PROVIDER?.trim().toLowerCase() === 'sepay' ? 'sepay' : 'local';
+}
+
 export interface BankConfig {
   bankCode: string;
   accountNumber: string;

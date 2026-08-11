@@ -11,7 +11,7 @@ import {
 import { getMemorialById } from '../../../lib/memorials';
 import { formatVnd } from '../../../lib/plans';
 import { formatDateTime } from '../../../lib/format';
-import { bankConfigFrom, bankLabel, vietQrPayload } from '../../../lib/vietqr';
+import { bankConfigFrom, bankLabel, qrProviderFrom, sepayQrUrl, vietQrPayload } from '../../../lib/vietqr';
 import { qrSvg } from '../../../lib/qr';
 import { site } from '../../../lib/site';
 import { env } from '../../../lib/env';
@@ -24,16 +24,20 @@ const memorial = order.memorialId ? await getMemorialById(env.DB, order.memorial
 const shipping = parseShippingInfo(order.shippingInfo);
 const bank = bankConfigFrom(env);
 
-const qr = bank
-  ? qrSvg(
-      vietQrPayload({
-        bankCode: bank.bankCode,
-        accountNumber: bank.accountNumber,
-        amount: order.amount,
-        description: order.paymentCode,
-      }),
-    )
+const qrInput = bank
+  ? {
+      bankCode: bank.bankCode,
+      accountNumber: bank.accountNumber,
+      amount: order.amount,
+      description: order.paymentCode,
+    }
   : null;
+
+// QR tự sinh trong Worker luôn được dựng sẵn: vừa là mặc định, vừa là phương án
+// dự phòng nếu ảnh của SePay không tải được.
+const qr = qrInput ? qrSvg(vietQrPayload(qrInput)) : null;
+const qrProvider = qrProviderFrom(env);
+const sepayImageUrl = qrInput && qrProvider === 'sepay' ? sepayQrUrl(qrInput) : null;
 
 const isPaid = order.status !== 'pending' && order.status !== 'cancelled';
 ---
@@ -86,7 +90,24 @@ const isPaid = order.status !== 'pending' && order.status !== 'cancelled';
         <div class="pt-5" data-payment data-order-id={order.id}>
           <div class="grid gap-6 sm:grid-cols-[auto_1fr] sm:items-start">
             <div class="mx-auto rounded-2xl border border-cream-300 bg-white p-3">
-              <div class="h-52 w-52" set:html={qr} />
+              {
+                sepayImageUrl ? (
+                  <div class="h-52 w-52" data-qr-holder>
+                    <img
+                      src={sepayImageUrl}
+                      alt={`Mã QR chuyển khoản ${order.paymentCode}`}
+                      width="208"
+                      height="208"
+                      class="h-full w-full object-contain"
+                      data-sepay-qr
+                    />
+                    {/* Ảnh SePay lỗi thì hiện mã tự sinh, khách không bị kẹt */}
+                    <div class="hidden h-full w-full" data-local-qr set:html={qr} />
+                  </div>
+                ) : (
+                  <div class="h-52 w-52" set:html={qr} />
+                )
+              }
             </div>
 
             <div>
@@ -190,6 +211,18 @@ const isPaid = order.status !== 'pending' && order.status !== 'cancelled';
 </AppLayout>
 
 <script>
+  // Ảnh QR của SePay tải lỗi → chuyển sang mã QR tự sinh trong Worker
+  document.querySelectorAll<HTMLImageElement>('[data-sepay-qr]').forEach((image) => {
+    image.addEventListener('error', () => {
+      const holder = image.closest('[data-qr-holder]');
+      const local = holder?.querySelector<HTMLElement>('[data-local-qr]');
+      if (!local) return;
+      image.classList.add('hidden');
+      local.classList.remove('hidden');
+      console.warn('Không tải được QR của SePay, dùng mã tự sinh.');
+    });
+  });
+
   document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((button) => {
     button.addEventListener('click', async () => {
       try {
