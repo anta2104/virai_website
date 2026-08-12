@@ -1,5 +1,6 @@
 ---
 import { and, eq, sql } from 'drizzle-orm';
+import Icon from '../../../../components/Icon.astro';
 import AppLayout from '../../../../layouts/AppLayout.astro';
 import { notFound, ownedMemorial } from '../../../../lib/guards';
 import { getDb } from '../../../../lib/db';
@@ -95,7 +96,7 @@ const publicUrl = memorialUrl(memorial.slug, Astro.site?.origin);
               cover ? (
                 <img src={photoUrl(cover.r2Key)} alt="" class="h-full w-full object-cover" />
               ) : (
-                <span class="flex h-full items-center justify-center text-3xl" aria-hidden="true">🐾</span>
+                <span class="flex h-full items-center justify-center text-3xl text-cream-400"><Icon name="paw" size={30} /></span>
               )
             }
           </div>

@@ -1,5 +1,6 @@
 ---
 import AppLayout from '../../../../layouts/AppLayout.astro';
+import Icon from '../../../../components/Icon.astro';
 import WizardSteps from '../../../../components/WizardSteps.astro';
 import { notFound, ownedMemorial } from '../../../../lib/guards';
 import { getDb } from '../../../../lib/db';
@@ -102,7 +103,7 @@ const aiRemaining = await remainingAiQuota(env.DB, user.id, Boolean(memorial.isP
             </p>
           </div>
           <button type="button" class="btn-primary btn-sm shrink-0" data-ai-button>
-            ✍️ Nhờ AI viết giúp
+            <Icon name="quill" size={16} /> Nhờ AI viết giúp
           </button>
         </div>
         <p class="mt-2 text-xs text-clay-700" data-ai-status role="status" aria-live="polite">

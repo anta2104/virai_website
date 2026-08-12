@@ -1,5 +1,6 @@
 ---
 import AppLayout from '../../../../layouts/AppLayout.astro';
+import Icon from '../../../../components/Icon.astro';
 import { currentUser, notFound, ownedMemorial } from '../../../../lib/guards';
 import { PRICES, formatVnd } from '../../../../lib/plans';
 import { getOrCreateOrder, MATERIAL_LABEL, type OrderType, type ShippingInfo } from '../../../../lib/orders';
@@ -75,12 +76,12 @@ if (Astro.request.method === 'POST') {
         </div>
 
         <ul class="mt-5 space-y-2 text-sm">
-          <li class="flex gap-2.5"><span class="text-clay-500" aria-hidden="true">✓</span> Tối đa 200 ảnh và tải được cả video</li>
-          <li class="flex gap-2.5"><span class="text-clay-500" aria-hidden="true">✓</span> Tất cả giao diện, kể cả “Thanh tịnh” và “Đêm sao”</li>
-          <li class="flex gap-2.5"><span class="text-clay-500" aria-hidden="true">✓</span> Email nhắc 49 ngày và giỗ hằng năm theo âm lịch</li>
-          <li class="flex gap-2.5"><span class="text-clay-500" aria-hidden="true">✓</span> Sổ lưu bút không giới hạn</li>
-          <li class="flex gap-2.5"><span class="text-clay-500" aria-hidden="true">✓</span> Ẩn dòng thương hiệu ở chân trang</li>
-          <li class="flex gap-2.5"><span class="text-clay-500" aria-hidden="true">✓</span> Tải thẻ QR in sẵn (SVG và PNG 2048px)</li>
+          <li class="flex gap-2.5"><span class="mt-1 shrink-0 text-clay-500"><Icon name="check" size={15} weight={2} /></span> Tối đa 200 ảnh và tải được cả video</li>
+          <li class="flex gap-2.5"><span class="mt-1 shrink-0 text-clay-500"><Icon name="check" size={15} weight={2} /></span> Tất cả giao diện, kể cả “Thanh tịnh” và “Đêm sao”</li>
+          <li class="flex gap-2.5"><span class="mt-1 shrink-0 text-clay-500"><Icon name="check" size={15} weight={2} /></span> Email nhắc 49 ngày và giỗ hằng năm theo âm lịch</li>
+          <li class="flex gap-2.5"><span class="mt-1 shrink-0 text-clay-500"><Icon name="check" size={15} weight={2} /></span> Sổ lưu bút không giới hạn</li>
+          <li class="flex gap-2.5"><span class="mt-1 shrink-0 text-clay-500"><Icon name="check" size={15} weight={2} /></span> Ẩn dòng thương hiệu ở chân trang</li>
+          <li class="flex gap-2.5"><span class="mt-1 shrink-0 text-clay-500"><Icon name="check" size={15} weight={2} /></span> Tải thẻ QR in sẵn (SVG và PNG 2048px)</li>
         </ul>
 
         <button type="submit" class="btn-primary mt-6 w-full sm:w-auto">

@@ -1,5 +1,6 @@
 ---
 import { PRICES, formatVnd } from '../lib/plans';
+import Icon from './Icon.astro';
 
 interface Props {
   /** Đích của nút CTA — khác nhau giữa landing và trang bảng giá */
@@ -78,7 +79,9 @@ const plans = [
         <ul class="mt-5 flex-1 space-y-2.5 text-sm">
           {plan.features.map((feature) => (
             <li class="flex gap-2.5">
-              <span class="mt-0.5 text-clay-500" aria-hidden="true">✓</span>
+              <span class="mt-1 shrink-0 text-clay-500">
+                <Icon name="check" size={15} weight={2} />
+              </span>
               <span set:html={feature} />
             </li>
           ))}

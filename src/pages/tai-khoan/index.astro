@@ -1,5 +1,6 @@
 ---
 import AppLayout from '../../layouts/AppLayout.astro';
+import Icon from '../../components/Icon.astro';
 import { currentUser } from '../../lib/guards';
 import { listMemorialsOfUser, listPhotos, photoUrl } from '../../lib/memorials';
 import { formatDate } from '../../lib/format';
@@ -34,7 +35,7 @@ const deleted = Astro.url.searchParams.has('deleted');
   {
     cards.length === 0 ? (
       <div class="card p-8 text-center">
-        <p class="text-4xl" aria-hidden="true">🐾</p>
+        <p class="text-4xl" aria-hidden="true"></p>
         <h2 class="mt-4 font-serif text-xl font-semibold">Bạn chưa có trang nào</h2>
         <p class="mx-auto mt-2 max-w-md text-sm text-ink-500">
           Bắt đầu bằng tên bé và một tấm ảnh. Phần còn lại làm dần cũng được — trang lưu ở dạng nháp
@@ -51,7 +52,7 @@ const deleted = Astro.url.searchParams.has('deleted');
                 {cover ? (
                   <img src={photoUrl(cover.r2Key)} alt="" class="h-full w-full object-cover" loading="lazy" />
                 ) : (
-                  <span class="flex h-full items-center justify-center text-2xl" aria-hidden="true">🐾</span>
+                  <span class="flex h-full items-center justify-center text-2xl text-cream-400"><Icon name="paw" size={30} /></span>
                 )}
               </div>
               <div class="min-w-0 flex-1">

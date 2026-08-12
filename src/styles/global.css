@@ -67,6 +67,61 @@
     disabled:cursor-not-allowed disabled:opacity-50;
 }
 
+/* ── Nền tảng chữ nghĩa ───────────────────────────────────────────────────── */
+
+@layer base {
+  /* Tiếng Việt có dấu chồng hai tầng (ế, ộ, ữ) nên cần dòng thoáng hơn mặc định,
+     không thì dấu của dòng dưới chạm chân chữ dòng trên. */
+  body {
+    line-height: 1.7;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    line-height: 1.25;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+}
+
+@layer components {
+  /* Nhãn nhỏ in hoa giãn chữ — thay cho việc mục nào cũng mở đầu bằng một dòng
+     phụ đề cỡ vừa, kiểu rất dễ nhận ra là dựng nhanh. */
+  .eyebrow {
+    @apply text-xs font-semibold tracking-[0.18em] text-clay-600 uppercase;
+  }
+
+  .display {
+    font-family: var(--font-serif);
+    @apply text-4xl leading-[1.1] font-semibold text-ink-900 sm:text-5xl;
+  }
+
+  /* Giới hạn độ dài dòng cho dễ đọc; văn xuôi dài không nên tràn hết bề ngang. */
+  .measure {
+    max-width: 62ch;
+  }
+
+  .measure-tight {
+    max-width: 48ch;
+  }
+
+  /* Đường kẻ tóc — dùng thay cho việc bọc mọi thứ vào thẻ có viền và đổ bóng. */
+  .rule {
+    @apply border-t border-cream-300;
+  }
+
+  .link-quiet {
+    @apply text-clay-700 underline decoration-clay-300 underline-offset-4 transition
+      hover:decoration-clay-600;
+  }
+}
+
 @layer components {
   .btn-primary {
     @apply btn bg-clay-500 text-white shadow-sm hover:bg-clay-600;

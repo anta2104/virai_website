@@ -1,6 +1,7 @@
 ---
 import type { GuestbookEntry, Memorial, Photo } from '../lib/db/schema';
 import CandleIcon from './CandleIcon.astro';
+import Icon from './Icon.astro';
 import { photoUrl } from '../lib/memorials';
 import { lifeSummary, milestonesFor } from '../lib/memorial-dates';
 import { GENDER_LABEL, SPECIES_LABEL, formatDate, formatDateTime } from '../lib/format';
@@ -165,7 +166,7 @@ const extraCandles = Math.max(0, memorial.candleCount - WALL_LIMIT);
             class="memorial-panel hidden items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-medium transition hover:shadow-md sm:flex"
             data-share
           >
-            <span aria-hidden="true">🔗</span> Chia sẻ
+            <Icon name="link" size={17} /> Chia sẻ
           </button>
         </div>
 
@@ -199,7 +200,7 @@ const extraCandles = Math.max(0, memorial.candleCount - WALL_LIMIT);
             <ul class="mt-5 space-y-3">
               {memorial.birthDate && (
                 <li class="memorial-panel flex items-start gap-4 rounded-xl border p-4">
-                  <span class="text-xl" aria-hidden="true">🌱</span>
+                  <span class="memorial-accent mt-0.5 shrink-0"><Icon name="sprout" size={22} /></span>
                   <div>
                     <p class="memorial-heading font-medium">Ngày bé đến với thế giới</p>
                     <p class="memorial-muted text-sm">{formatDate(memorial.birthDate)}</p>
@@ -208,7 +209,7 @@ const extraCandles = Math.max(0, memorial.candleCount - WALL_LIMIT);
               )}
               {memorial.deathDate && (
                 <li class="memorial-panel flex items-start gap-4 rounded-xl border p-4">
-                  <span class="text-xl" aria-hidden="true">🤍</span>
+                  <span class="memorial-accent mt-0.5 shrink-0"><Icon name="heart" size={22} /></span>
                   <div>
                     <p class="memorial-heading font-medium">Ngày bé rời đi</p>
                     <p class="memorial-muted text-sm">
@@ -225,8 +226,8 @@ const extraCandles = Math.max(0, memorial.candleCount - WALL_LIMIT);
                     milestone.passed && 'opacity-60',
                   ]}
                 >
-                  <span class="text-xl" aria-hidden="true">
-                    {milestone.key === 'gio_hang_nam' ? '🕰️' : '🪷'}
+                  <span class="memorial-accent mt-0.5 shrink-0">
+                    <Icon name={milestone.key === 'gio_hang_nam' ? 'clock' : 'lotus'} size={22} />
                   </span>
                   <div>
                     <p class="memorial-heading font-medium">{milestone.label}</p>
