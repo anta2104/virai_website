@@ -1,16 +1,28 @@
 ---
 import BaseLayout from './BaseLayout.astro';
+import Icon from '../components/Icon.astro';
 import { site } from '../lib/site';
 
 interface Props {
   title: string;
-  /** Hiển thị breadcrumb quay lại */
+  /** Nhãn nhỏ phía trên tiêu đề, cho biết đang ở phần nào */
+  eyebrow?: string;
+  /** Một dòng giải thích ngắn dưới tiêu đề */
+  description?: string;
   backHref?: string;
   backLabel?: string;
   wide?: boolean;
 }
 
-const { title, backHref, backLabel = 'Quay lại', wide = false } = Astro.props;
+const {
+  title,
+  eyebrow,
+  description,
+  backHref,
+  backLabel = 'Quay lại',
+  wide = false,
+} = Astro.props;
+
 const user = Astro.locals.user!;
 const path = Astro.url.pathname;
 
@@ -21,10 +33,10 @@ const navItems = [
 ---
 
 <BaseLayout title={`${title} · ${site.name}`} noindex>
-  <div class="flex min-h-screen flex-col bg-cream-100">
-    <header class="border-b border-cream-300 bg-cream-50">
-      <div class="container-page flex items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
-        <a href="/" class="flex items-center gap-2.5">
+  <div class="flex min-h-screen flex-col bg-cream-50">
+    <header class="sticky top-0 z-40 border-b border-cream-300 bg-cream-50/95 backdrop-blur">
+      <div class="mx-auto flex w-full max-w-6xl items-center gap-6 px-4 py-3 sm:px-6 lg:px-8">
+        <a href="/" class="flex shrink-0 items-center gap-2.5">
           <span
             class="flex h-8 w-8 items-center justify-center rounded-full bg-clay-500 font-serif text-white"
             aria-hidden="true">V</span
@@ -32,51 +44,82 @@ const navItems = [
           <span class="hidden font-serif font-semibold text-ink-900 sm:inline">{site.name}</span>
         </a>
 
-        <nav class="flex items-center gap-1" aria-label="Khu vực tài khoản">
+        <nav class="flex items-center gap-5 text-sm" aria-label="Khu vực tài khoản">
           {
-            navItems.map((item) => (
-              <a
-                href={item.href}
-                class:list={[
-                  'rounded-full px-3 py-1.5 text-sm transition',
-                  path === item.href
-                    ? 'bg-cream-200 text-ink-900'
-                    : 'text-ink-500 hover:text-ink-900',
-                ]}
-              >
-                {item.label}
-              </a>
-            ))
+            navItems.map((item) => {
+              const active = path === item.href;
+              return (
+                <a
+                  href={item.href}
+                  aria-current={active ? 'page' : undefined}
+                  class:list={[
+                    'py-1 transition',
+                    active
+                      ? 'font-medium text-ink-900 underline decoration-clay-400 decoration-2 underline-offset-[7px]'
+                      : 'text-ink-500 hover:text-ink-900',
+                  ]}
+                >
+                  {item.label}
+                </a>
+              );
+            })
           }
           {
             user.role === 'admin' && (
-              <a href="/admin" class="rounded-full px-3 py-1.5 text-sm text-ink-500 hover:text-ink-900">
+              <a
+                href="/admin"
+                class:list={[
+                  'py-1 transition',
+                  path.startsWith('/admin')
+                    ? 'font-medium text-ink-900'
+                    : 'text-ink-500 hover:text-ink-900',
+                ]}
+              >
                 Quản trị
               </a>
             )
           }
         </nav>
 
-        <div class="flex items-center gap-3">
+        <div class="ml-auto flex items-center gap-4">
           <span class="hidden text-sm text-ink-500 sm:inline">{user.name}</span>
           <form method="POST" action="/dang-xuat">
-            <button type="submit" class="btn-ghost btn-sm">Đăng xuất</button>
+            <button type="submit" class="text-sm text-ink-500 transition hover:text-ink-900">
+              Đăng xuất
+            </button>
           </form>
         </div>
       </div>
     </header>
 
-    <main class="flex-1 px-4 py-8 sm:px-6 lg:px-8">
+    <main class="flex-1 px-4 py-10 sm:px-6 lg:px-8">
       <div class:list={['mx-auto w-full', wide ? 'max-w-6xl' : 'max-w-3xl']}>
         {
           backHref && (
-            <a href={backHref} class="mb-4 inline-flex items-center gap-1 text-sm text-ink-500 hover:text-clay-600">
-              <span aria-hidden="true">←</span> {backLabel}
+            <a
+              href={backHref}
+              class="mb-6 inline-flex items-center gap-2 text-sm text-ink-500 transition hover:text-clay-700"
+            >
+              <Icon name="arrow-left" size={16} />
+              {backLabel}
             </a>
           )
         }
-        <h1 class="mb-6 font-serif text-2xl font-semibold sm:text-3xl">{title}</h1>
-        <slot />
+
+        <div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+          <div>
+            {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+            <h1 class:list={['font-serif text-3xl font-semibold sm:text-4xl', eyebrow && 'mt-2.5']}>
+              {title}
+            </h1>
+            {description && <p class="measure mt-3 text-ink-500">{description}</p>}
+          </div>
+          <slot name="actions" />
+        </div>
+
+        <div class="mt-8">
+          <slot />
+        </div>
       </div>
     </main>
   </div>

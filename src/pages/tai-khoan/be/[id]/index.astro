@@ -6,7 +6,7 @@ import { notFound, ownedMemorial } from '../../../../lib/guards';
 import { getDb } from '../../../../lib/db';
 import { guestbookEntries, memorials, photos as photosTable } from '../../../../lib/db/schema';
 import { listPhotos, photoUrl } from '../../../../lib/memorials';
-import { limitsFor, formatVnd, PRICES } from '../../../../lib/plans';
+import { limitsFor, formatVnd, PRICES, THEMES } from '../../../../lib/plans';
 import { formatDate } from '../../../../lib/format';
 import { upcomingMilestone } from '../../../../lib/memorial-dates';
 import { listRemindersOf, setRemindersEnabled } from '../../../../lib/reminders';
@@ -81,150 +81,181 @@ const reminderList = await listRemindersOf(env.DB, memorial.id);
 const remindersOn = reminderList.some((reminder) => reminder.enabled);
 const nextMilestone = upcomingMilestone(memorial.deathDate);
 const publicUrl = memorialUrl(memorial.slug, Astro.site?.origin);
+const themeName = THEMES.find((theme) => theme.id === memorial.theme)?.name ?? memorial.theme;
 ---
 
-<AppLayout title={memorial.petName} backHref="/tai-khoan" backLabel="Về danh sách" wide>
-  {notice && <p class="alert-success mb-6">{notice}</p>}
+<AppLayout
+  title={memorial.petName}
+  eyebrow="Trang kỷ niệm"
+  backHref="/tai-khoan"
+  backLabel="Tất cả trang kỷ niệm"
+  wide
+>
+  <div slot="actions" class="flex flex-wrap items-center gap-2">
+    {
+      memorial.isPublished ? (
+        <>
+          <a href={`/be/${memorial.slug}`} class="btn-secondary">
+            <Icon name="external" size={16} />
+            Mở trang thật
+          </a>
+          <form method="POST">
+            <input type="hidden" name="intent" value="unpublish" />
+            <button type="submit" class="btn-ghost">Chuyển về nháp</button>
+          </form>
+        </>
+      ) : (
+        <>
+          <a href={`/tai-khoan/be/${memorial.id}/xem-truoc`} class="btn-secondary">
+            <Icon name="eye" size={16} />
+            Xem trước
+          </a>
+          <form method="POST">
+            <input type="hidden" name="intent" value="publish" />
+            <button type="submit" class="btn-primary">Xuất bản</button>
+          </form>
+        </>
+      )
+    }
+  </div>
 
-  <div class="grid gap-6 lg:grid-cols-3">
-    <!-- Cột chính -->
-    <div class="space-y-6 lg:col-span-2">
-      <div class="card overflow-hidden">
-        <div class="flex flex-col gap-5 p-5 sm:flex-row">
-          <div class="h-28 w-28 shrink-0 overflow-hidden rounded-xl bg-cream-200">
+  {notice && <p class="alert-success mb-8">{notice}</p>}
+
+  <div class="grid gap-x-14 gap-y-10 lg:grid-cols-[1.35fr_0.65fr]">
+    <div>
+      <!-- Tóm tắt: ảnh bìa, trạng thái, số liệu -->
+      <div class="flex items-start gap-5 border-b border-cream-300 pb-7">
+        <span class="h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-cream-200">
+          {
+            cover ? (
+              <img src={photoUrl(cover.r2Key)} alt="" class="h-full w-full object-cover" />
+            ) : (
+              <span class="flex h-full items-center justify-center text-cream-400">
+                <Icon name="paw" size={32} />
+              </span>
+            )
+          }
+        </span>
+
+        <div class="min-w-0 flex-1">
+          <div class="flex flex-wrap items-center gap-2">
             {
-              cover ? (
-                <img src={photoUrl(cover.r2Key)} alt="" class="h-full w-full object-cover" />
+              memorial.isPremium ? (
+                <span class="badge bg-clay-100 text-clay-700">Premium</span>
               ) : (
-                <span class="flex h-full items-center justify-center text-3xl text-cream-400"><Icon name="paw" size={30} /></span>
+                <span class="badge bg-cream-200 text-ink-500">Miễn phí</span>
+              )
+            }
+            {
+              memorial.isPublished ? (
+                <span class="badge bg-sage-100 text-sage-700">Đang công khai</span>
+              ) : (
+                <span class="badge bg-cream-200 text-ink-500">Nháp</span>
               )
             }
           </div>
-          <div class="min-w-0 flex-1">
-            <div class="flex flex-wrap items-center gap-2">
-              <h2 class="font-serif text-xl font-semibold">{memorial.petName}</h2>
-              {
-                memorial.isPremium ? (
-                  <span class="badge bg-clay-100 text-clay-700">Premium</span>
-                ) : (
-                  <span class="badge bg-cream-200 text-ink-500">Miễn phí</span>
-                )
-              }
-              {
-                memorial.isPublished ? (
-                  <span class="badge bg-sage-100 text-sage-700">Đang công khai</span>
-                ) : (
-                  <span class="badge bg-cream-200 text-ink-500">Nháp</span>
-                )
-              }
-            </div>
-            <p class="mt-1 text-sm text-ink-500">
-              {[formatDate(memorial.birthDate), formatDate(memorial.deathDate)].filter(Boolean).join(' — ')}
-            </p>
-            {memorial.deathDateLunar && <p class="text-sm text-ink-500">{memorial.deathDateLunar}</p>}
-
-            <div class="mt-4 flex flex-wrap gap-2">
-              {
-                memorial.isPublished ? (
-                  <>
-                    <a href={`/be/${memorial.slug}`} class="btn-secondary btn-sm">Mở trang</a>
-                    <form method="POST">
-                      <input type="hidden" name="intent" value="unpublish" />
-                      <button type="submit" class="btn-ghost btn-sm">Chuyển về nháp</button>
-                    </form>
-                  </>
-                ) : (
-                  <>
-                    <a href={`/tai-khoan/be/${memorial.id}/xem-truoc`} class="btn-secondary btn-sm">Xem trước</a>
-                    <form method="POST">
-                      <input type="hidden" name="intent" value="publish" />
-                      <button type="submit" class="btn-primary btn-sm">Xuất bản</button>
-                    </form>
-                  </>
-                )
-              }
-            </div>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-3 divide-x divide-cream-300 border-t border-cream-300 text-center">
-          <div class="p-4">
-            <p class="text-xl font-semibold text-ink-900">{memorial.visitCount.toLocaleString('vi-VN')}</p>
-            <p class="text-xs text-ink-500">lượt ghé thăm</p>
-          </div>
-          <div class="p-4">
-            <p class="text-xl font-semibold text-ink-900">{memorial.candleCount.toLocaleString('vi-VN')}</p>
-            <p class="text-xs text-ink-500">nến đã thắp</p>
-          </div>
-          <div class="p-4">
-            <p class="text-xl font-semibold text-ink-900">{memorial.flowerCount.toLocaleString('vi-VN')}</p>
-            <p class="text-xs text-ink-500">hoa đã thả</p>
-          </div>
+          <p class="mt-2 text-sm text-ink-500 tabular-nums">
+            {[formatDate(memorial.birthDate), formatDate(memorial.deathDate)].filter(Boolean).join(' — ') ||
+              'Chưa có ngày tháng'}
+          </p>
+          {memorial.deathDateLunar && <p class="text-sm text-ink-500">{memorial.deathDateLunar}</p>}
         </div>
       </div>
 
-      <!-- Việc cần làm -->
-      <div class="card p-5">
-        <h3 class="font-serif text-lg font-semibold">Chỉnh sửa trang</h3>
-        <ul class="mt-4 divide-y divide-cream-300">
-          <li class="flex items-center justify-between gap-4 py-3">
-            <div>
-              <p class="font-medium text-ink-900">Thông tin về bé</p>
-              <p class="text-sm text-ink-500">Tên, giống loài, ngày sinh, ngày rời đi, đường dẫn</p>
-            </div>
-            <a href={`/tai-khoan/be/${memorial.id}/thong-tin`} class="btn-ghost btn-sm shrink-0">Sửa</a>
-          </li>
-          <li class="flex items-center justify-between gap-4 py-3">
-            <div>
-              <p class="font-medium text-ink-900">Ảnh &amp; video</p>
-              <p class="text-sm text-ink-500">
-                {photos.length}
-                {limits.photos === Number.POSITIVE_INFINITY ? ' tệp' : ` / ${limits.photos} tệp`}
-              </p>
-            </div>
-            <a href={`/tai-khoan/be/${memorial.id}/anh`} class="btn-ghost btn-sm shrink-0">Quản lý</a>
-          </li>
-          <li class="flex items-center justify-between gap-4 py-3">
-            <div>
-              <p class="font-medium text-ink-900">Câu chuyện</p>
-              <p class="text-sm text-ink-500">
-                {memorial.bio ? 'Đã có bài viết' : 'Chưa viết gì — có nút nhờ AI viết giúp'}
-              </p>
-            </div>
-            <a href={`/tai-khoan/be/${memorial.id}/cau-chuyen`} class="btn-ghost btn-sm shrink-0">Sửa</a>
-          </li>
-          <li class="flex items-center justify-between gap-4 py-3">
-            <div>
-              <p class="font-medium text-ink-900">Giao diện</p>
-              <p class="text-sm text-ink-500">Đang dùng: {memorial.theme}</p>
-            </div>
-            <a href={`/tai-khoan/be/${memorial.id}/giao-dien`} class="btn-ghost btn-sm shrink-0">Đổi</a>
-          </li>
-          <li class="flex items-center justify-between gap-4 py-3">
-            <div>
-              <p class="font-medium text-ink-900">
-                Sổ lưu bút
-                {pendingCount > 0 && <span class="badge ml-2 bg-clay-500 text-white">{pendingCount} chờ duyệt</span>}
-              </p>
-              <p class="text-sm text-ink-500">Duyệt hoặc ẩn lời nhắn của người ghé thăm</p>
-            </div>
-            <a href={`/tai-khoan/be/${memorial.id}/luu-but`} class="btn-ghost btn-sm shrink-0">Mở</a>
-          </li>
-        </ul>
-      </div>
+      <dl class="grid grid-cols-3 border-b border-cream-300 py-6 text-center">
+        <div>
+          <dt class="text-xs text-ink-500">Lượt ghé thăm</dt>
+          <dd class="mt-1 font-serif text-2xl text-ink-900 tabular-nums">
+            {memorial.visitCount.toLocaleString('vi-VN')}
+          </dd>
+        </div>
+        <div class="border-x border-cream-300">
+          <dt class="text-xs text-ink-500">Ngọn nến</dt>
+          <dd class="mt-1 font-serif text-2xl text-ink-900 tabular-nums">
+            {memorial.candleCount.toLocaleString('vi-VN')}
+          </dd>
+        </div>
+        <div>
+          <dt class="text-xs text-ink-500">Cánh hoa</dt>
+          <dd class="mt-1 font-serif text-2xl text-ink-900 tabular-nums">
+            {memorial.flowerCount.toLocaleString('vi-VN')}
+          </dd>
+        </div>
+      </dl>
+
+      <!-- Các mục chỉnh sửa -->
+      <h2 class="mt-10 font-serif text-xl font-semibold">Chỉnh sửa trang</h2>
+      <ul class="mt-4">
+        {
+          [
+            {
+              icon: 'pencil' as const,
+              href: `/tai-khoan/be/${memorial.id}/thong-tin`,
+              title: 'Thông tin về bé',
+              note: 'Tên, giống loài, ngày sinh, ngày rời đi, đường dẫn',
+            },
+            {
+              icon: 'image' as const,
+              href: `/tai-khoan/be/${memorial.id}/anh`,
+              title: 'Ảnh và video',
+              note:
+                limits.photos === Number.POSITIVE_INFINITY
+                  ? `${photos.length} tệp`
+                  : `${photos.length} / ${limits.photos} tệp`,
+            },
+            {
+              icon: 'quill' as const,
+              href: `/tai-khoan/be/${memorial.id}/cau-chuyen`,
+              title: 'Câu chuyện',
+              note: memorial.bio ? 'Đã có bài viết' : 'Chưa viết gì — có nút nhờ AI viết giúp',
+            },
+            {
+              icon: 'palette' as const,
+              href: `/tai-khoan/be/${memorial.id}/giao-dien`,
+              title: 'Giao diện',
+              note: `Đang dùng: ${themeName}`,
+            },
+            {
+              icon: 'book' as const,
+              href: `/tai-khoan/be/${memorial.id}/luu-but`,
+              title: 'Sổ lưu bút',
+              note: 'Duyệt hoặc ẩn lời nhắn của người ghé thăm',
+              badge: pendingCount > 0 ? `${pendingCount} chờ duyệt` : null,
+            },
+          ].map((item) => (
+            <li class="border-t border-cream-300 last:border-b">
+              <a href={item.href} class="group flex items-center gap-4 py-4">
+                <span class="shrink-0 text-clay-500">
+                  <Icon name={item.icon} size={20} />
+                </span>
+                <span class="min-w-0 flex-1">
+                  <span class="flex flex-wrap items-center gap-2">
+                    <span class="font-medium text-ink-900">{item.title}</span>
+                    {item.badge && <span class="badge bg-clay-500 text-white">{item.badge}</span>}
+                  </span>
+                  <span class="mt-0.5 block text-sm text-ink-500">{item.note}</span>
+                </span>
+                <span class="shrink-0 text-cream-400 transition group-hover:translate-x-0.5 group-hover:text-clay-500">
+                  <Icon name="chevron-right" size={18} />
+                </span>
+              </a>
+            </li>
+          ))
+        }
+      </ul>
 
       <!-- Xoá trang -->
-      <details class="card p-5">
-        <summary class="cursor-pointer text-sm font-medium text-red-700">Xoá trang kỷ niệm này</summary>
-        <p class="mt-3 text-sm text-ink-500">
+      <details class="mt-10 border-t border-cream-300 pt-6">
+        <summary class="cursor-pointer text-sm font-medium text-red-700">
+          Xoá trang kỷ niệm này
+        </summary>
+        <p class="measure mt-3 text-sm text-ink-500">
           Xoá là mất hẳn: ảnh, câu chuyện, lời lưu bút, số lượt ghé thăm. Không lấy lại được.
         </p>
         <form method="POST" class="mt-4 flex flex-wrap items-end gap-3">
           <input type="hidden" name="intent" value="delete" />
           <div>
-            <label class="label" for="confirmName">
-              Nhập “{memorial.petName}” để xác nhận
-            </label>
+            <label class="label" for="confirmName">Nhập “{memorial.petName}” để xác nhận</label>
             <input class="input" id="confirmName" name="confirmName" autocomplete="off" />
           </div>
           <button type="submit" class="btn-secondary border-red-200 text-red-700 hover:bg-red-50">
@@ -234,51 +265,54 @@ const publicUrl = memorialUrl(memorial.slug, Astro.site?.origin);
       </details>
     </div>
 
-    <!-- Cột phụ -->
-    <div class="space-y-6">
-      <!-- Gói -->
-      <div class="card p-5">
-        <h3 class="font-serif text-lg font-semibold">Gói của trang này</h3>
+    <!-- Cột phải -->
+    <div class="space-y-10">
+      <section>
+        <h2 class="eyebrow">Gói của trang này</h2>
         {
           memorial.isPremium ? (
-            <p class="mt-3 text-sm text-ink-500">
-              Premium — đã trả một lần, dùng trọn đời. Bạn có tất cả theme, ảnh không giới hạn, email
-              nhắc ngày tưởng niệm và tải thẻ QR in sẵn.
+            <p class="mt-3 text-sm leading-relaxed text-ink-500">
+              Premium — đã trả một lần, dùng trọn đời. Bạn có tất cả giao diện, ảnh không giới hạn,
+              email nhắc ngày tưởng niệm và tải thẻ QR in sẵn.
             </p>
           ) : (
             <>
-              <p class="mt-3 text-sm text-ink-500">
-                Đang dùng gói miễn phí: {limits.photos} ảnh, 1 theme, có dòng thương hiệu ở chân
-                trang, chưa có email nhắc ngày giỗ.
+              <p class="mt-3 text-sm leading-relaxed text-ink-500">
+                Đang dùng gói miễn phí: {limits.photos} ảnh, một giao diện, có dòng thương hiệu ở
+                chân trang, chưa có email nhắc ngày giỗ.
               </p>
               <a href={`/tai-khoan/be/${memorial.id}/nang-cap`} class="btn-primary mt-4 w-full">
-                Nâng cấp Premium — {formatVnd(PRICES.premium)}
+                Nâng cấp — {formatVnd(PRICES.premium)}
               </a>
             </>
           )
         }
-      </div>
+      </section>
 
-      <!-- Nhắc ngày tưởng niệm -->
-      <div class="card p-5">
-        <h3 class="font-serif text-lg font-semibold">Nhắc ngày tưởng niệm</h3>
+      <section class="border-t border-cream-300 pt-8">
+        <h2 class="eyebrow">Nhắc ngày tưởng niệm</h2>
         {
           !memorial.deathDate ? (
             <p class="mt-3 text-sm text-ink-500">
               Cần có ngày bé rời đi để tính ngày 49 và ngày giỗ.{' '}
-              <a class="text-clay-600 hover:underline" href={`/tai-khoan/be/${memorial.id}/thong-tin`}>
+              <a class="link-quiet" href={`/tai-khoan/be/${memorial.id}/thong-tin`}>
                 Thêm ngày
               </a>
             </p>
           ) : (
             <>
               {nextMilestone && (
-                <div class="mt-3 rounded-xl bg-cream-100 p-3 text-sm">
-                  <p class="font-medium text-ink-900">Sắp tới: {nextMilestone.label}</p>
-                  <p class="mt-0.5 text-ink-500">
-                    {formatDate(nextMilestone.date)}
-                    {nextMilestone.lunarText && ` · ${nextMilestone.lunarText}`}
-                  </p>
+                <div class="mt-3 flex gap-3">
+                  <span class="mt-0.5 shrink-0 text-clay-500">
+                    <Icon name="lotus" size={18} />
+                  </span>
+                  <div>
+                    <p class="text-sm font-medium text-ink-900">{nextMilestone.label}</p>
+                    <p class="mt-0.5 text-sm text-ink-500 tabular-nums">
+                      {formatDate(nextMilestone.date)}
+                      {nextMilestone.lunarText && ` · ${nextMilestone.lunarText}`}
+                    </p>
+                  </div>
                 </div>
               )}
               {memorial.isPremium ? (
@@ -290,41 +324,35 @@ const publicUrl = memorialUrl(memorial.slug, Astro.site?.origin);
                   </button>
                 </form>
               ) : (
-                <p class="mt-4 text-sm text-ink-500">
-                  Email nhắc là quyền lợi của gói Premium.
-                </p>
+                <p class="mt-3 text-sm text-ink-500">Email nhắc là quyền lợi của gói Premium.</p>
               )}
             </>
           )
         }
-      </div>
+      </section>
 
-      <!-- QR -->
-      <div class="card p-5">
-        <h3 class="font-serif text-lg font-semibold">Mã QR</h3>
-        <div class="mt-4 rounded-xl border border-cream-300 bg-white p-3">
+      <section class="border-t border-cream-300 pt-8">
+        <h2 class="eyebrow">Mã QR</h2>
+        <div class="mt-4 border border-cream-300 bg-white p-3">
           <img
             src={`/be/${memorial.slug}/qr.svg`}
             alt={`Mã QR trang kỷ niệm của ${memorial.petName}`}
-            class="mx-auto h-40 w-40"
-            width="160"
-            height="160"
+            class="mx-auto h-36 w-36"
+            width="144"
+            height="144"
           />
         </div>
         <p class="mt-3 text-xs break-all text-ink-500">{publicUrl}</p>
 
         <div class="mt-4 space-y-2">
           <button type="button" class="btn-secondary w-full" data-copy-link data-url={publicUrl}>
+            <Icon name="link" size={16} />
             Copy đường dẫn
           </button>
           {
             memorial.isPremium ? (
               <>
-                <a
-                  href={`/be/${memorial.slug}/qr.svg?card=1&download=1`}
-                  class="btn-secondary w-full"
-                  download
-                >
+                <a href={`/be/${memorial.slug}/qr.svg?card=1&download=1`} class="btn-secondary w-full" download>
                   Tải thẻ QR in sẵn (SVG)
                 </a>
                 <button type="button" class="btn-secondary w-full" data-download-png data-slug={memorial.slug}>
@@ -336,7 +364,7 @@ const publicUrl = memorialUrl(memorial.slug, Astro.site?.origin);
             )
           }
         </div>
-      </div>
+      </section>
     </div>
   </div>
 </AppLayout>

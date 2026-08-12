@@ -1,4 +1,6 @@
 ---
+import Icon from './Icon.astro';
+
 interface Props {
   /** Bước hiện tại, tính từ 1 */
   current: number;
@@ -17,46 +19,76 @@ const steps = [
 ];
 ---
 
-<ol class="mb-8 flex flex-wrap items-center gap-x-2 gap-y-2 text-sm" aria-label="Các bước tạo trang">
-  {
-    steps.map((step, index) => {
-      const number = index + 1;
-      const state = number === current ? 'current' : number < current ? 'done' : 'todo';
-      const content = (
-        <span class="flex items-center gap-2">
+<nav class="mb-10" aria-label="Các bước tạo trang">
+  <ol class="flex items-start">
+    {
+      steps.map((step, index) => {
+        const number = index + 1;
+        const state = number === current ? 'current' : number < current ? 'done' : 'todo';
+        const isLast = index === steps.length - 1;
+
+        const marker = (
           <span
             class:list={[
-              'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
-              state === 'current' && 'bg-clay-500 text-white',
-              state === 'done' && 'bg-sage-300 text-sage-700',
-              state === 'todo' && 'bg-cream-300 text-ink-500',
+              'flex h-7 w-7 items-center justify-center rounded-full border text-xs font-semibold transition',
+              state === 'current' && 'border-clay-500 bg-clay-500 text-white',
+              state === 'done' && 'border-sage-300 bg-sage-100 text-sage-700',
+              state === 'todo' && 'border-cream-300 bg-cream-100 text-ink-500',
             ]}
-            aria-hidden="true"
           >
-            {state === 'done' ? '✓' : number}
+            {state === 'done' ? <Icon name="check" size={13} weight={2.2} /> : number}
           </span>
-          <span class:list={[state === 'current' ? 'font-semibold text-ink-900' : 'text-ink-500']}>
+        );
+
+        const label = (
+          <span
+            class:list={[
+              'mt-2 block text-xs sm:text-[0.8125rem]',
+              state === 'current' ? 'font-semibold text-ink-900' : 'text-ink-500',
+            ]}
+          >
             {step.label}
           </span>
-        </span>
-      );
+        );
 
-      return (
-        <li class="flex items-center gap-2">
-          {step.href && state !== 'current' ? (
-            <a href={step.href} class="rounded-full px-1 hover:text-clay-600">
-              {content}
-            </a>
-          ) : (
-            <span aria-current={state === 'current' ? 'step' : undefined}>{content}</span>
-          )}
-          {index < steps.length - 1 && (
-            <span class="text-cream-400" aria-hidden="true">
-              ›
+        return (
+          <li class:list={['flex flex-1 flex-col items-center', isLast && 'flex-none']}>
+            <span class="flex w-full items-center">
+              {/* Đường nối bên trái, ẩn ở bước đầu */}
+              <span
+                class:list={[
+                  'h-px flex-1',
+                  index === 0 ? 'invisible' : number <= current ? 'bg-clay-300' : 'bg-cream-300',
+                ]}
+              />
+              {step.href && state !== 'current' ? (
+                <a href={step.href} class="shrink-0" aria-label={`Tới bước ${step.label}`}>
+                  {marker}
+                </a>
+              ) : (
+                <span class="shrink-0" aria-current={state === 'current' ? 'step' : undefined}>
+                  {marker}
+                </span>
+              )}
+              {/* Đường nối bên phải, ẩn ở bước cuối */}
+              <span
+                class:list={[
+                  'h-px flex-1',
+                  isLast ? 'invisible' : number < current ? 'bg-clay-300' : 'bg-cream-300',
+                ]}
+              />
             </span>
-          )}
-        </li>
-      );
-    })
-  }
-</ol>
+
+            {step.href && state !== 'current' ? (
+              <a href={step.href} class="transition hover:text-clay-700">
+                {label}
+              </a>
+            ) : (
+              label
+            )}
+          </li>
+        );
+      })
+    }
+  </ol>
+</nav>

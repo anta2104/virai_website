@@ -98,7 +98,7 @@ const rows = await db
                       {memorial.isPremium ? 'Thu hồi Premium' : 'Cấp Premium'}
                     </button>
                   </form>
-                  {memorial.isPublished && (
+                  {Boolean(memorial.isPublished) && (
                     <form method="POST">
                       <input type="hidden" name="action" value="unpublish" />
                       <input type="hidden" name="memorialId" value={memorial.id} />

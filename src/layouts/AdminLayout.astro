@@ -20,24 +20,33 @@ const navItems = [
 
 <BaseLayout title={`${title} · Quản trị ${site.name}`} noindex>
   <div class="flex min-h-screen flex-col bg-cream-100">
-    <header class="border-b border-cream-300 bg-ink-900 text-cream-100">
+    <header class="border-b border-ink-900/20 bg-ink-900 text-cream-100">
       <div class="container-page flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
-        <span class="font-serif font-semibold">Quản trị</span>
-        <nav class="flex flex-wrap items-center gap-1 text-sm" aria-label="Điều hướng quản trị">
+        <span class="flex items-center gap-2.5 font-serif font-semibold">
+          <span
+            class="flex h-7 w-7 items-center justify-center rounded-full bg-cream-100 font-serif text-sm text-ink-900"
+            aria-hidden="true">V</span
+          >
+          Quản trị
+        </span>
+        <nav class="flex flex-wrap items-center gap-5 text-sm" aria-label="Điều hướng quản trị">
           {
             navItems.map((item) => (
               <a
                 href={item.href}
+                aria-current={path === item.href ? 'page' : undefined}
                 class:list={[
-                  'rounded-full px-3 py-1.5 transition',
-                  path === item.href ? 'bg-cream-100 text-ink-900' : 'text-cream-300 hover:text-white',
+                  'py-1 transition',
+                  path === item.href
+                    ? 'font-medium text-white underline decoration-clay-400 decoration-2 underline-offset-[7px]'
+                    : 'text-cream-300 hover:text-white',
                 ]}
               >
                 {item.label}
               </a>
             ))
           }
-          <a href="/tai-khoan" class="rounded-full px-3 py-1.5 text-cream-300 hover:text-white">
+          <a href="/tai-khoan" class="py-1 text-cream-300 transition hover:text-white">
             Về tài khoản
           </a>
         </nav>
@@ -46,7 +55,8 @@ const navItems = [
 
     <main class="flex-1 px-4 py-8 sm:px-6 lg:px-8">
       <div class="mx-auto w-full max-w-6xl">
-        <h1 class="mb-6 font-serif text-2xl font-semibold sm:text-3xl">{title}</h1>
+        <p class="eyebrow">Khu quản trị</p>
+        <h1 class="mt-2.5 mb-8 font-serif text-3xl font-semibold sm:text-4xl">{title}</h1>
         <slot />
       </div>
     </main>

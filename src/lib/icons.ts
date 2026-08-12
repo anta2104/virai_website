@@ -25,7 +25,15 @@ export type IconName =
   | 'arrow-right'
   | 'link'
   | 'mail'
-  | 'book';
+  | 'book'
+  | 'arrow-left'
+  | 'plus'
+  | 'image'
+  | 'pencil'
+  | 'palette'
+  | 'eye'
+  | 'external'
+  | 'chevron-right';
 
 export const ICON_PATHS: Record<IconName, string> = {
   moon: '<path d="M20.5 14.8A8.6 8.6 0 0 1 9.2 3.5a8.6 8.6 0 1 0 11.3 11.3Z"/><path d="M17 4.2v3.1M15.4 5.8h3.1"/>',
@@ -55,6 +63,18 @@ export const ICON_PATHS: Record<IconName, string> = {
   link:
     '<path d="M10.2 13.8a3.6 3.6 0 0 0 5.1 0l3-3a3.6 3.6 0 1 0-5.1-5.1l-1.4 1.4"/><path d="M13.8 10.2a3.6 3.6 0 0 0-5.1 0l-3 3a3.6 3.6 0 1 0 5.1 5.1l1.4-1.4"/>',
   mail: '<rect x="3.4" y="5.6" width="17.2" height="12.8" rx="2"/><path d="m4.4 7.4 7.6 5.4 7.6-5.4"/>',
+  'arrow-left': '<path d="M19.5 12h-15"/><path d="m10.5 6-6 6 6 6"/>',
+  plus: '<path d="M12 4.5v15M4.5 12h15"/>',
+  image:
+    '<rect x="3.4" y="4.6" width="17.2" height="14.8" rx="2.2"/><circle cx="8.8" cy="9.8" r="1.6"/><path d="m4 17.2 4.6-4.3a2 2 0 0 1 2.7 0l3.2 3a2 2 0 0 0 2.7 0l3.4-3.1"/>',
+  pencil:
+    '<path d="M4.5 19.5h3.2L18.9 8.3a2.3 2.3 0 0 0-3.2-3.2L4.5 16.3v3.2Z"/><path d="m14.6 6.2 3.2 3.2"/>',
+  palette:
+    '<path d="M12 3.6a8.4 8.4 0 0 0 0 16.8c1.4 0 2.2-.9 2.2-2 0-.6-.2-1-.5-1.4-.3-.4-.5-.8-.5-1.3 0-1 .8-1.8 1.9-1.8h1.4a3.9 3.9 0 0 0 3.9-4c0-3.5-3.6-6.3-8.4-6.3Z"/><circle cx="8" cy="10.4" r="1.1"/><circle cx="12" cy="7.9" r="1.1"/><circle cx="16" cy="10.4" r="1.1"/>',
+  eye: '<path d="M2.6 12S6 6.2 12 6.2 21.4 12 21.4 12 18 17.8 12 17.8 2.6 12 2.6 12Z"/><circle cx="12" cy="12" r="2.9"/>',
+  external:
+    '<path d="M13.5 4.5h6v6"/><path d="m19.5 4.5-8 8"/><path d="M18 14.2v4.1a1.6 1.6 0 0 1-1.6 1.6H5.7a1.6 1.6 0 0 1-1.6-1.6V7.6A1.6 1.6 0 0 1 5.7 6h4.1"/>',
+  'chevron-right': '<path d="m9.5 5.5 6.5 6.5-6.5 6.5"/>',
   book:
     '<path d="M4.5 5.2c2.5-.7 5-.7 7.5 0v14.2c-2.5-.7-5-.7-7.5 0V5.2Z"/><path d="M19.5 5.2c-2.5-.7-5-.7-7.5 0v14.2c2.5-.7 5-.7 7.5 0V5.2Z"/>',
 };

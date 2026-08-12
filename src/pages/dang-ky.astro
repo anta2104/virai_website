@@ -49,15 +49,17 @@ if (Astro.request.method === 'POST') {
 ---
 
 <SiteLayout title="Tạo tài khoản" description="Tạo tài khoản miễn phí để lập trang kỷ niệm cho bé.">
-  <section class="section">
-    <div class="mx-auto w-full max-w-md">
-      <div class="card p-6 sm:p-8">
-        <h1 class="font-serif text-2xl font-semibold">Tạo tài khoản</h1>
-        <p class="mt-2 text-sm text-ink-500">
-          Miễn phí, không cần thẻ. Bạn sẽ tạo được trang kỷ niệm đầu tiên ngay sau bước này.
+  <section class="px-4 py-16 sm:px-6 lg:py-24">
+    <div class="mx-auto w-full max-w-sm">
+      <div>
+        <p class="eyebrow">Bắt đầu</p>
+        <h1 class="mt-3 font-serif text-3xl font-semibold">Tạo tài khoản</h1>
+        <p class="mt-3 text-ink-500">
+          Miễn phí, không cần thẻ ngân hàng. Bạn sẽ tạo được trang kỷ niệm đầu tiên ngay sau bước
+          này.
         </p>
 
-        {error && <p class="alert-error mt-5">{error}</p>}
+        {error && <p class="alert-error mt-6">{error}</p>}
 
         <form method="POST" class="mt-6 space-y-4">
           <div>
@@ -93,8 +95,8 @@ if (Astro.request.method === 'POST') {
           <button type="submit" class="btn-primary w-full">Tạo tài khoản</button>
         </form>
 
-        <p class="mt-6 text-center text-sm text-ink-500">
-          Đã có tài khoản? <a class="font-medium text-clay-600 hover:underline" href="/dang-nhap">Đăng nhập</a>
+        <p class="mt-8 border-t border-cream-300 pt-6 text-sm text-ink-500">
+          Đã có tài khoản? <a class="link-quiet font-medium" href="/dang-nhap">Đăng nhập</a>
         </p>
       </div>
     </div>

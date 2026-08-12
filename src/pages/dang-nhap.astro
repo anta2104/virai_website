@@ -38,12 +38,13 @@ if (Astro.request.method === 'POST') {
 ---
 
 <SiteLayout title="Đăng nhập" noindex>
-  <section class="section">
-    <div class="mx-auto w-full max-w-md">
-      <div class="card p-6 sm:p-8">
-        <h1 class="font-serif text-2xl font-semibold">Đăng nhập</h1>
+  <section class="px-4 py-16 sm:px-6 lg:py-24">
+    <div class="mx-auto w-full max-w-sm">
+      <div>
+        <p class="eyebrow">Chào bạn quay lại</p>
+        <h1 class="mt-3 font-serif text-3xl font-semibold">Đăng nhập</h1>
 
-        {error && <p class="alert-error mt-5">{error}</p>}
+        {error && <p class="alert-error mt-6">{error}</p>}
 
         <form method="POST" class="mt-6 space-y-4">
           <input type="hidden" name="next" value={next} />
@@ -65,8 +66,8 @@ if (Astro.request.method === 'POST') {
           <button type="submit" class="btn-primary w-full">Đăng nhập</button>
         </form>
 
-        <p class="mt-6 text-center text-sm text-ink-500">
-          Chưa có tài khoản? <a class="font-medium text-clay-600 hover:underline" href="/dang-ky">Tạo miễn phí</a>
+        <p class="mt-8 border-t border-cream-300 pt-6 text-sm text-ink-500">
+          Chưa có tài khoản? <a class="link-quiet font-medium" href="/dang-ky">Tạo miễn phí</a>
         </p>
       </div>
     </div>
