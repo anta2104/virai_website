@@ -1,8 +1,8 @@
 /** Giá và hạn mức của từng gói. Sửa giá ở đây là đổi toàn bộ site. */
 
 export const PRICES = {
-  premium: 249_000,
-  physicalCombo: 499_000,
+  premium: 119_000,
+  physicalCombo: 299_000,
 } as const;
 
 export const LIMITS = {
