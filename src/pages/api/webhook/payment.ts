@@ -42,7 +42,7 @@ function firstNumber(payload: Record<string, unknown>, keys: string[]): number |
   return null;
 }
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, locals }) => {
   const secret = env.PAYMENT_WEBHOOK_SECRET;
   if (!secret) {
     console.error('[webhook] PAYMENT_WEBHOOK_SECRET chưa được cấu hình');
@@ -129,6 +129,7 @@ export const POST: APIRoute = async ({ request }) => {
   await markOrderPaid(
     order,
     `Tự động qua webhook: ${JSON.stringify(payload).slice(0, 900)}`,
+    locals,
   );
 
   console.log(`[webhook] Đơn ${order.paymentCode} đã thanh toán ${amount}đ`);

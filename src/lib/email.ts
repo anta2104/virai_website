@@ -160,6 +160,121 @@ export function reminderEmail(input: ReminderEmailInput): EmailMessage {
   return { to: '', subject, html, text };
 }
 
+/**
+ * Email báo đã nhận thanh toán.
+ *
+ * Với hình thức chuyển khoản thì đây là thứ duy nhất chứng minh tiền đã tới nơi —
+ * không có email này khách chỉ biết ngồi đoán.
+ */
+export function orderPaidEmail(input: {
+  ownerName: string;
+  petName: string | null;
+  amountText: string;
+  paymentCode: string;
+  memorialUrl: string | null;
+  /** Đơn combo thẻ vật lý thì hẹn ngày gửi thẻ */
+  physical: boolean;
+  shippingDays?: number;
+}): EmailMessage {
+  const petPhrase = input.petName ? ` cho bé ${input.petName}` : '';
+
+  const physicalNote = input.physical
+    ? `<p style="margin:0 0 14px;">Thẻ QR khắc sẵn của bé sẽ được gửi đi trong khoảng <strong>${input.shippingDays ?? 7} ngày</strong>. Chúng tôi sẽ báo bạn ngay khi thẻ rời kho.</p>`
+    : '';
+
+  const body = `
+    <p style="margin:0 0 14px;">Chào ${escapeHtml(input.ownerName)},</p>
+    <p style="margin:0 0 14px;">Chúng tôi đã nhận được <strong>${escapeHtml(input.amountText)}</strong> cho đơn <code>${escapeHtml(input.paymentCode)}</code>. Premium đã được kích hoạt${escapeHtml(petPhrase)}.</p>
+    <p style="margin:0 0 14px;">Từ giờ trang của bé không còn giới hạn ảnh, không hiện thương hiệu của chúng tôi, và bạn dùng được toàn bộ tính năng.</p>
+    ${physicalNote}
+    <p style="margin:0 0 14px;">Cảm ơn bạn đã tin chúng tôi giữ giúp những kỷ niệm này.</p>
+  `;
+
+  return {
+    to: '',
+    subject: input.petName
+      ? `Đã nhận thanh toán — Premium đã kích hoạt cho bé ${input.petName}`
+      : 'Đã nhận thanh toán — Premium đã kích hoạt',
+    html: layout({
+      heading: 'Đã nhận thanh toán',
+      body,
+      ctaLabel: input.memorialUrl ? `Ghé trang của ${input.petName ?? 'bé'}` : undefined,
+      ctaHref: input.memorialUrl ?? undefined,
+      footerNote: `Mã đơn: ${escapeHtml(input.paymentCode)}. Cần hỗ trợ, bạn trả lời email này hoặc viết cho ${escapeHtml(site.supportEmail)}.`,
+    }),
+    text: [
+      `Chào ${input.ownerName},`,
+      '',
+      `Chúng tôi đã nhận được ${input.amountText} cho đơn ${input.paymentCode}. Premium đã được kích hoạt${petPhrase}.`,
+      input.physical
+        ? `Thẻ QR khắc sẵn sẽ được gửi đi trong khoảng ${input.shippingDays ?? 7} ngày.`
+        : '',
+      '',
+      input.memorialUrl ? `Trang của bé: ${input.memorialUrl}` : '',
+      '',
+      `${site.name} — vận hành bởi ${site.company}.`,
+    ]
+      .filter((line) => line !== '')
+      .join('\n'),
+  };
+}
+
+/** Email báo thẻ QR vật lý đã gửi đi. */
+export function orderShippedEmail(input: {
+  ownerName: string;
+  petName: string | null;
+  paymentCode: string;
+  /** Địa chỉ đã lưu lúc đặt, nhắc lại để khách đối chiếu */
+  recipientName?: string;
+  address?: string;
+  materialLabel?: string;
+}): EmailMessage {
+  const petPhrase = input.petName ? `của bé ${input.petName}` : 'của bạn';
+
+  const addressBlock =
+    input.recipientName || input.address
+      ? `<p style="margin:0 0 6px;">Gửi tới:</p>
+         <p style="margin:0 0 14px;padding:12px 16px;background:#faf5ec;border-left:3px solid #daa484;border-radius:8px;">
+           ${input.recipientName ? `<strong>${escapeHtml(input.recipientName)}</strong><br>` : ''}
+           ${input.address ? escapeHtml(input.address) : ''}
+         </p>`
+      : '';
+
+  const body = `
+    <p style="margin:0 0 14px;">Chào ${escapeHtml(input.ownerName)},</p>
+    <p style="margin:0 0 14px;">Thẻ kỷ niệm ${escapeHtml(petPhrase)}${input.materialLabel ? ` (${escapeHtml(input.materialLabel)})` : ''} đã được gửi đi.</p>
+    ${addressBlock}
+    <p style="margin:0 0 14px;">Quét mã QR trên thẻ là mở thẳng trang của bé — bạn thử quét một lần khi nhận được để chắc chắn mã in rõ nhé.</p>
+    <p style="margin:0 0 14px;">Nếu sau một tuần vẫn chưa thấy thẻ, bạn báo lại giúp chúng tôi.</p>
+  `;
+
+  return {
+    to: '',
+    subject: input.petName
+      ? `Thẻ kỷ niệm của bé ${input.petName} đã được gửi đi`
+      : 'Thẻ kỷ niệm của bạn đã được gửi đi',
+    html: layout({
+      heading: 'Thẻ đã lên đường',
+      body,
+      footerNote: `Mã đơn: ${escapeHtml(input.paymentCode)}. Cần hỗ trợ, bạn viết cho ${escapeHtml(site.supportEmail)}.`,
+    }),
+    text: [
+      `Chào ${input.ownerName},`,
+      '',
+      `Thẻ kỷ niệm ${petPhrase}${input.materialLabel ? ` (${input.materialLabel})` : ''} đã được gửi đi.`,
+      input.recipientName ? `Gửi tới: ${input.recipientName}` : '',
+      input.address ?? '',
+      '',
+      'Quét mã QR trên thẻ là mở thẳng trang của bé.',
+      `Mã đơn: ${input.paymentCode}`,
+      '',
+      `${site.name} — vận hành bởi ${site.company}.`,
+    ]
+      .filter((line) => line !== '')
+      .join('\n'),
+  };
+}
+
 /** Email chứa link đặt lại mật khẩu. */
 export function passwordResetEmail(input: {
   userName: string;
