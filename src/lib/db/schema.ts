@@ -17,8 +17,22 @@ export const users = sqliteTable(
     /** 'user' | 'admin' */
     role: text('role').notNull().default('user'),
     createdAt: createdAt(),
+    /**
+     * `sub` của tài khoản Google đã liên kết, null nếu chưa liên kết.
+     *
+     * `password_hash` cố ý **vẫn là NOT NULL**. Cho phép NULL thì drizzle-kit
+     * sinh migration xoá và dựng lại bảng `users` — trên database đang phục vụ
+     * người dùng thật, với sessions/memorials/orders đều tham chiếu tới nó.
+     * Tài khoản chỉ dùng Google lưu giá trị đánh dấu `google-only`; verifyPassword
+     * chỉ chấp nhận chuỗi đúng định dạng `pbkdf2$...` nên nó không đăng nhập
+     * bằng mật khẩu được.
+     */
+    googleId: text('google_id'),
   },
-  (t) => [uniqueIndex('users_email_unique').on(t.email)],
+  (t) => [
+    uniqueIndex('users_email_unique').on(t.email),
+    uniqueIndex('users_google_id_unique').on(t.googleId),
+  ],
 );
 
 export const sessions = sqliteTable(
@@ -32,6 +46,27 @@ export const sessions = sqliteTable(
     createdAt: createdAt(),
   },
   (t) => [index('sessions_user_idx').on(t.userId)],
+);
+
+/**
+ * Token đặt lại mật khẩu.
+ *
+ * `id` là SHA-256 (hex) của token gửi trong email, không phải token thô: ai đọc
+ * được database cũng không dựng lại được đường link trong hộp thư của người dùng.
+ */
+export const passwordResetTokens = sqliteTable(
+  'password_reset_tokens',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    expiresAt: integer('expires_at').notNull(),
+    /** Null khi chưa dùng; đặt một lần rồi thôi để token không dùng lại được */
+    usedAt: integer('used_at'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('password_reset_tokens_user_idx').on(t.userId)],
 );
 
 export const memorials = sqliteTable(
@@ -69,6 +104,20 @@ export const memorials = sqliteTable(
     updatedAt: integer('updated_at')
       .notNull()
       .default(sql`(unixepoch())`),
+    /**
+     * 'memorial' = bé đã về cầu vồng | 'living' = sổ ký ức cho bé đang sống.
+     *
+     * Mặc định 'memorial' để 27 trang đang có giữ nguyên hành vi cũ.
+     */
+    mode: text('mode').notNull().default('memorial'),
+    /**
+     * Chủ nuôi tự bật để bé xuất hiện ở Vườn tưởng niệm chung.
+     *
+     * Mặc định TẮT, và phải giữ như vậy: trang chủ đã hứa với người dùng rằng
+     * trang của họ "không nằm trong danh sách công khai nào". Chỉ những trang
+     * chủ nuôi chủ động bật mới được vào vườn và vào sitemap.
+     */
+    showInGarden: integer('show_in_garden').notNull().default(0),
   },
   (t) => [
     uniqueIndex('memorials_slug_unique').on(t.slug),
@@ -181,6 +230,7 @@ export const aiUsage = sqliteTable(
 
 export type User = typeof users.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type Memorial = typeof memorials.$inferSelect;
 export type Photo = typeof photos.$inferSelect;
 export type GuestbookEntry = typeof guestbookEntries.$inferSelect;

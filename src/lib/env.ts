@@ -9,12 +9,23 @@ import { env as cloudflareEnv } from 'cloudflare:workers';
  */
 export const env = cloudflareEnv as Env;
 
-/** `waitUntil` cho việc chạy nền (ví dụ tăng bộ đếm lượt ghé thăm). */
+/**
+ * `waitUntil` cho việc chạy nền (gửi email, tăng bộ đếm lượt ghé thăm).
+ *
+ * `locals.cfContext` do adapter `@astrojs/cloudflare` gán sẵn — không tự gán ở
+ * middleware, và **không** đọc `locals.runtime.ctx`: Astro 6 đã bỏ, chạm vào là
+ * ném lỗi. Lúc `astro dev` thì không có context, việc nền vẫn chạy nhưng không
+ * được bảo đảm; chỉ cảnh báo khi bản build production thiếu, vì khi ấy việc nền
+ * có thể bị cắt ngang giữa chừng sau khi response đã trả về.
+ */
 export function waitUntil(locals: App.Locals, promise: Promise<unknown>): void {
   const ctx = locals.cfContext;
   if (ctx?.waitUntil) {
     ctx.waitUntil(promise);
-  } else {
-    void promise;
+    return;
   }
+  if (import.meta.env.PROD) {
+    console.warn('[env] Thiếu locals.cfContext — việc chạy nền có thể bị cắt giữa chừng');
+  }
+  void promise;
 }

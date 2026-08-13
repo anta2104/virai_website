@@ -5,6 +5,7 @@ import { milestonesFor } from './memorial-dates';
 import { newId } from './ids';
 import { addDays, nextAnniversary } from './lunar';
 import { todayInVietnam } from './format';
+import { isLiving } from './memorial-mode';
 
 /**
  * Tạo/cập nhật lịch nhắc của một trang kỷ niệm dựa trên ngày mất.
@@ -15,7 +16,8 @@ export async function ensureRemindersFor(d1: D1Database, memorial: Memorial): Pr
   const existing = await db.select().from(reminders).where(eq(reminders.memorialId, memorial.id));
   const byType = new Map(existing.map((reminder) => [reminder.type, reminder]));
 
-  if (!memorial.deathDate) {
+  // Bé còn sống, hoặc chưa biết ngày mất → không có mốc nào để nhắc
+  if (!memorial.deathDate || isLiving(memorial.mode)) {
     if (existing.length > 0) {
       await db.delete(reminders).where(eq(reminders.memorialId, memorial.id));
     }
@@ -82,6 +84,10 @@ export async function dueReminders(d1: D1Database, today = todayInVietnam()): Pr
         lte(reminders.nextDate, cutoff),
         eq(memorials.isPremium, 1),
         eq(memorials.isPublished, 1),
+        // Sổ ký ức của bé đang sống thì tuyệt đối không gửi email nhắc giỗ.
+        // ensureRemindersFor đã xoá lịch nhắc khi không có ngày mất, nhưng lọc
+        // thêm ở đây để một bản ghi sót lại cũng không lọt ra ngoài.
+        eq(memorials.mode, 'memorial'),
       ),
     );
 

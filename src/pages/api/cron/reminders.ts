@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { advanceReminder, dueReminders } from '../../../lib/reminders';
 import { reminderEmail, sendEmail } from '../../../lib/email';
-import { jsonResponse } from '../../../lib/guards';
+import { jsonResponse, timingSafeEqual } from '../../../lib/guards';
 import { daysSince, todayInVietnam } from '../../../lib/format';
 import { memorialUrl, site } from '../../../lib/site';
 import { env } from '../../../lib/env';
@@ -17,7 +17,7 @@ export const POST: APIRoute = async ({ request, locals, url }) => {
   const secret = env.CRON_SECRET;
   const providedSecret = request.headers.get('x-cron-secret');
   const isAdmin = locals.user?.role === 'admin';
-  const isCron = Boolean(secret && providedSecret && providedSecret === secret);
+  const isCron = Boolean(secret && providedSecret && timingSafeEqual(providedSecret, secret));
 
   if (!isCron && !isAdmin) {
     return jsonResponse({ error: 'Unauthorized' }, 401);

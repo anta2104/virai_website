@@ -1,5 +1,6 @@
 import { addDays, canChiOfYear, lunarShort, nextAnniversary, parseIsoDate, solarToLunar } from './lunar';
 import { daysSince, formatDate, humanSpan, todayInVietnam } from './format';
+import { isLiving } from './memorial-mode';
 
 export interface Milestone {
   /** Khoá kỹ thuật, cũng là `reminders.type` */
@@ -77,9 +78,21 @@ export interface LifeSummary {
 export function lifeSummary(
   birthDate: string | null,
   deathDate: string | null,
+  mode: string | null = 'memorial',
+  today = todayInVietnam(),
 ): LifeSummary {
   const birthText = formatDate(birthDate);
   const deathText = formatDate(deathDate);
+
+  // Bé còn sống thì đếm tới hôm nay, và không nói gì tới chuyện rời đi
+  if (isLiving(mode)) {
+    const span = humanSpan(birthDate, today);
+    return {
+      dateLine: birthText ? `Sinh ngày ${birthText}` : '',
+      lunarLine: birthDate ? `Sinh ${lunarWithYear(birthDate)}` : null,
+      spanLine: span ? `${span} bên nhau` : null,
+    };
+  }
 
   let dateLine = '';
   if (birthText && deathText) dateLine = `${birthText} — ${deathText}`;

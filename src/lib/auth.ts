@@ -190,6 +190,7 @@ export async function registerUser(
     name: input.name.trim(),
     role,
     createdAt: Math.floor(Date.now() / 1000),
+    googleId: null,
   };
   await db.insert(users).values(user);
   return { ok: true, user };

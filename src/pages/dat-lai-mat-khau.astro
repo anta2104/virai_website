@@ -1,0 +1,113 @@
+---
+import SiteLayout from '../layouts/SiteLayout.astro';
+import { validatePassword } from '../lib/auth';
+import { completeReset, isTokenUsable } from '../lib/password-reset';
+import { env } from '../lib/env';
+import { describeDbError } from '../lib/db';
+
+if (Astro.locals.user) {
+  return Astro.redirect('/tai-khoan');
+}
+
+let error: string | null = null;
+let token = Astro.url.searchParams.get('token') ?? '';
+/** Token hỏng/hết hạn thì hiện lối gửi lại thay vì cái form vô nghĩa. */
+let tokenDead = false;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  token = String(form.get('token') ?? '');
+  const password = String(form.get('password') ?? '');
+  const confirm = String(form.get('confirm') ?? '');
+
+  error =
+    validatePassword(password) ??
+    (password !== confirm ? 'Hai ô mật khẩu chưa giống nhau.' : null);
+
+  if (!error) {
+    try {
+      const result = await completeReset(env.DB, token, password);
+      if (result.ok) {
+        return Astro.redirect('/dang-nhap?dat-lai=xong');
+      }
+      error = result.error;
+      tokenDead = true;
+    } catch (dbError) {
+      console.error('[dat-lai-mat-khau] Lỗi:', describeDbError(dbError));
+      error = 'Hệ thống đang trục trặc, bạn thử lại sau ít phút nhé.';
+    }
+  }
+} else {
+  try {
+    tokenDead = !token || !(await isTokenUsable(env.DB, token));
+  } catch (dbError) {
+    console.error('[dat-lai-mat-khau] Lỗi:', describeDbError(dbError));
+    error = 'Hệ thống đang trục trặc, bạn thử lại sau ít phút nhé.';
+  }
+}
+---
+
+<SiteLayout title="Đặt lại mật khẩu" noindex>
+  <section class="px-4 py-16 sm:px-6 lg:py-24">
+    <div class="mx-auto w-full max-w-sm">
+      {
+        tokenDead ? (
+          <div>
+            <p class="eyebrow">Link không dùng được</p>
+            <h1 class="mt-3 font-serif text-3xl font-semibold">Link đã hết hạn</h1>
+            <p class="mt-4 text-ink-500">
+              {error ??
+                'Đường link này đã được dùng rồi hoặc đã quá 60 phút. Bạn gửi lại một yêu cầu mới nhé — mất chưa tới một phút.'}
+            </p>
+            <a class="btn-primary mt-6 w-full" href="/quen-mat-khau">Gửi lại yêu cầu</a>
+            <p class="mt-8 border-t border-cream-300 pt-6 text-sm text-ink-500">
+              <a class="link-quiet font-medium" href="/dang-nhap">Quay lại đăng nhập</a>
+            </p>
+          </div>
+        ) : (
+          <div>
+            <p class="eyebrow">Gần xong rồi</p>
+            <h1 class="mt-3 font-serif text-3xl font-semibold">Chọn mật khẩu mới</h1>
+            <p class="mt-3 text-ink-500">
+              Sau khi đổi, bạn sẽ được đăng xuất khỏi tất cả thiết bị và đăng nhập lại bằng mật khẩu
+              mới.
+            </p>
+
+            {error && <p class="alert-error mt-6">{error}</p>}
+
+            <form method="POST" class="mt-6 space-y-4">
+              <input type="hidden" name="token" value={token} />
+              <div>
+                <label class="label" for="password">Mật khẩu mới</label>
+                <input
+                  class="input"
+                  id="password"
+                  name="password"
+                  type="password"
+                  required
+                  minlength="8"
+                  autocomplete="new-password"
+                  autofocus
+                />
+                <p class="hint">Ít nhất 8 ký tự.</p>
+              </div>
+              <div>
+                <label class="label" for="confirm">Nhập lại mật khẩu mới</label>
+                <input
+                  class="input"
+                  id="confirm"
+                  name="confirm"
+                  type="password"
+                  required
+                  minlength="8"
+                  autocomplete="new-password"
+                />
+              </div>
+              <button type="submit" class="btn-primary w-full">Đổi mật khẩu</button>
+            </form>
+          </div>
+        )
+      }
+    </div>
+  </section>
+</SiteLayout>

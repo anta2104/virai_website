@@ -1,5 +1,6 @@
 import { jdFromDate, parseIsoDate } from './lunar';
 import { todayInVietnam } from './format';
+import { isLiving, parseMode, type MemorialMode } from './memorial-mode';
 
 export const SPECIES_OPTIONS = [
   { value: 'cho', label: 'Chó' },
@@ -20,6 +21,7 @@ export interface BasicInfo {
   gender: string;
   birthDate: string;
   deathDate: string;
+  mode: MemorialMode;
 }
 
 export const EMPTY_BASIC_INFO: BasicInfo = {
@@ -29,6 +31,7 @@ export const EMPTY_BASIC_INFO: BasicInfo = {
   gender: 'khong_ro',
   birthDate: '',
   deathDate: '',
+  mode: 'memorial',
 };
 
 /** Đọc và kiểm tra thông tin cơ bản từ form. Trả về cả giá trị để render lại. */
@@ -40,7 +43,14 @@ export function parseBasicInfo(form: FormData): { values: BasicInfo; error: stri
     gender: String(form.get('gender') ?? 'khong_ro'),
     birthDate: String(form.get('birthDate') ?? '').trim(),
     deathDate: String(form.get('deathDate') ?? '').trim(),
+    mode: parseMode(form.get('mode')),
   };
+
+  // Bé còn sống thì không có ngày mất — kể cả khi ô đó lọt qua vì trình duyệt
+  // không chạy JS hay ai đó gửi form bằng tay.
+  if (isLiving(values.mode)) {
+    values.deathDate = '';
+  }
 
   if (!SPECIES_OPTIONS.some((option) => option.value === values.species)) {
     values.species = 'khac';
@@ -90,5 +100,6 @@ export function toDbFields(values: BasicInfo) {
     gender: values.gender,
     birthDate: values.birthDate || null,
     deathDate: values.deathDate || null,
+    mode: values.mode,
   };
 }

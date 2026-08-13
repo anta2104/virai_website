@@ -8,6 +8,7 @@ import { getDb } from '../../../../lib/db';
 import { memorials } from '../../../../lib/db/schema';
 import { lunarFieldsFor, slugExists } from '../../../../lib/memorials';
 import { parseBasicInfo, toDbFields, type BasicInfo } from '../../../../lib/memorial-form';
+import { parseMode } from '../../../../lib/memorial-mode';
 import { isValidSlug } from '../../../../lib/slug';
 import { ensureRemindersFor } from '../../../../lib/reminders';
 import { env } from '../../../../lib/env';
@@ -26,6 +27,7 @@ let values: BasicInfo = {
   gender: memorial.gender,
   birthDate: memorial.birthDate ?? '',
   deathDate: memorial.deathDate ?? '',
+  mode: parseMode(memorial.mode),
 };
 let slugValue = memorial.slug;
 

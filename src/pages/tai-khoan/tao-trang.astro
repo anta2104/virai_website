@@ -68,7 +68,7 @@ if (Astro.request.method === 'POST' && canCreate) {
 
         {error && <p class="alert-error mb-6">{error}</p>}
 
-        <BasicInfoFields values={values} />
+        <BasicInfoFields values={values} allowModeChange />
 
         <div class="mt-8 flex items-center justify-between gap-4">
           <a href="/tai-khoan" class="btn-ghost">Huỷ</a>

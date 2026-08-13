@@ -1,0 +1,111 @@
+---
+import SiteLayout from '../layouts/SiteLayout.astro';
+import { validateEmail } from '../lib/auth';
+import { passwordResetEmail, sendEmail } from '../lib/email';
+import { createResetRequest } from '../lib/password-reset';
+import { env } from '../lib/env';
+import { site } from '../lib/site';
+import { describeDbError } from '../lib/db';
+
+if (Astro.locals.user) {
+  return Astro.redirect('/tai-khoan');
+}
+
+let error: string | null = null;
+let sent = false;
+let email = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  email = String(form.get('email') ?? '').trim();
+  error = validateEmail(email);
+
+  if (!error) {
+    // Cùng một câu trả lời cho mọi trường hợp — email có tồn tại hay không,
+    // có vượt hạn mức hay không — để trang này không dùng được vào việc dò
+    // xem ai đã đăng ký.
+    sent = true;
+
+    try {
+      const request = await createResetRequest(env.DB, email);
+      if (request) {
+        const resetUrl = new URL(
+          `/dat-lai-mat-khau?token=${request.token}`,
+          site.url,
+        ).href;
+        const message = passwordResetEmail({
+          userName: request.userName,
+          resetUrl,
+          minutesValid: 60,
+        });
+        const result = await sendEmail(env, { ...message, to: request.userEmail });
+        if (!result.ok) {
+          console.error('[quen-mat-khau] Không gửi được email:', result.error);
+        }
+      }
+    } catch (dbError) {
+      console.error('[quen-mat-khau] Lỗi:', describeDbError(dbError));
+      sent = false;
+      error = 'Hệ thống đang trục trặc, bạn thử lại sau ít phút nhé.';
+    }
+  }
+}
+---
+
+<SiteLayout title="Quên mật khẩu" noindex>
+  <section class="px-4 py-16 sm:px-6 lg:py-24">
+    <div class="mx-auto w-full max-w-sm">
+      {
+        sent ? (
+          <div>
+            <p class="eyebrow">Đã gửi</p>
+            <h1 class="mt-3 font-serif text-3xl font-semibold">Kiểm tra hộp thư</h1>
+            <p class="mt-4 text-ink-500">
+              Nếu <strong>{email}</strong> có tài khoản, chúng tôi vừa gửi một đường link để đặt lại
+              mật khẩu. Link dùng được một lần và hết hạn sau 60 phút.
+            </p>
+            <p class="mt-4 text-sm text-ink-500">
+              Chưa thấy thư sau vài phút? Ngó thử hộp spam, hoặc
+              <a class="link-quiet font-medium" href="/quen-mat-khau">gửi lại yêu cầu</a>.
+            </p>
+            <p class="mt-8 border-t border-cream-300 pt-6 text-sm text-ink-500">
+              <a class="link-quiet font-medium" href="/dang-nhap">Quay lại đăng nhập</a>
+            </p>
+          </div>
+        ) : (
+          <div>
+            <p class="eyebrow">Không sao cả</p>
+            <h1 class="mt-3 font-serif text-3xl font-semibold">Quên mật khẩu</h1>
+            <p class="mt-3 text-ink-500">
+              Nhập email bạn đã dùng để đăng ký. Chúng tôi gửi cho bạn một đường link để chọn mật
+              khẩu mới.
+            </p>
+
+            {error && <p class="alert-error mt-6">{error}</p>}
+
+            <form method="POST" class="mt-6 space-y-4">
+              <div>
+                <label class="label" for="email">Email</label>
+                <input
+                  class="input"
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  value={email}
+                  autocomplete="email"
+                  autofocus
+                />
+              </div>
+              <button type="submit" class="btn-primary w-full">Gửi link đặt lại</button>
+            </form>
+
+            <p class="mt-8 border-t border-cream-300 pt-6 text-sm text-ink-500">
+              Nhớ ra rồi? <a class="link-quiet font-medium" href="/dang-nhap">Đăng nhập</a>
+            </p>
+          </div>
+        )
+      }
+    </div>
+  </section>
+</SiteLayout>

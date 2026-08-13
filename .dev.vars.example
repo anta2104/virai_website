@@ -1,5 +1,9 @@
 # Copy sang .dev.vars để chạy local: cp .dev.vars.example .dev.vars
 # Production: đặt bằng `wrangler secret put <TÊN>`
+#
+# Đây là toàn bộ secret mà code đọc. Hai thứ KHÔNG nằm ở đây:
+#  - PUBLIC_SITE_URL: là biến thường, khai trong `vars` của wrangler.jsonc
+#  - DB / BUCKET / AI / ASSETS: là binding, cũng khai trong wrangler.jsonc
 
 # Chuỗi ngẫu nhiên dài để ký session cookie (tạo bằng: openssl rand -hex 32)
 SESSION_SECRET=doi-thanh-chuoi-ngau-nhien-that-dai
@@ -28,3 +32,11 @@ QR_PROVIDER=local
 # Tiền tố mã đơn trong nội dung chuyển khoản — phải khớp tiền tố mà ngân hàng/
 # SePay nhận diện, nếu không ngân hàng sẽ không đẩy thông báo. Mặc định SEVQR.
 PAYMENT_CODE_PREFIX=SEVQR
+
+# Google OAuth — nút "Tiếp tục với Google". Bỏ trống thì nút tự ẩn, không lỗi.
+# Tạo OAuth Client (loại Web application) tại console.cloud.google.com,
+# thêm Authorized redirect URI:
+#   https://virai.com.vn/api/auth/google/callback
+#   http://localhost:4321/api/auth/google/callback   (cho lúc dev)
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=

@@ -1,11 +1,13 @@
 import { and, desc, eq } from 'drizzle-orm';
 import { getDb, withDbRetry } from './db';
-import { memorials, orders, type Memorial, type Order } from './db/schema';
+import { memorials, orders, users, type Memorial, type Order } from './db/schema';
 import { newId } from './ids';
 import { newPaymentCode } from './payment-code';
-import { amountToCharge } from './plans';
+import { amountToCharge, formatVnd } from './plans';
 import { ensureRemindersFor } from './reminders';
-import { env } from './env';
+import { orderPaidEmail, orderShippedEmail, sendEmail } from './email';
+import { memorialUrl } from './site';
+import { env, waitUntil } from './env';
 
 export type OrderType = 'premium' | 'physical_combo';
 
@@ -119,11 +121,15 @@ export async function findOrderByPaymentCode(code: string): Promise<Order | null
 export async function markOrderPaid(
   order: Order,
   note: string,
+  locals?: App.Locals,
 ): Promise<{ order: Order; memorial: Memorial | null }> {
   const db = getDb(env.DB);
   const now = Math.floor(Date.now() / 1000);
 
-  if (order.status === 'pending') {
+  // Chỉ lần chuyển pending → paid mới gửi email. Webhook có thể gọi trùng, mà
+  // khách thì không nên nhận hai lần cùng một tin báo.
+  const firstTime = order.status === 'pending';
+  if (firstTime) {
     await db
       .update(orders)
       .set({ status: 'paid', paidAt: now, note })
@@ -144,10 +150,83 @@ export async function markOrderPaid(
     }
   }
 
+  if (firstTime) {
+    notify(locals, sendOrderPaidEmail(order, memorial));
+  }
+
   return {
     order: { ...order, status: order.status === 'pending' ? 'paid' : order.status, paidAt: order.paidAt ?? now },
     memorial,
   };
+}
+
+/** Gửi email báo thẻ vật lý đã lên đường (admin bấm "Đã gửi hàng"). */
+export async function sendOrderShippedEmail(order: Order): Promise<void> {
+  const owner = await ownerOf(order);
+  if (!owner) return;
+
+  const memorial = order.memorialId ? await memorialOf(order.memorialId) : null;
+  const shipping = parseShippingInfo(order.shippingInfo);
+
+  const message = orderShippedEmail({
+    ownerName: owner.name,
+    petName: memorial?.petName ?? null,
+    paymentCode: order.paymentCode,
+    recipientName: shipping?.fullName,
+    address: shipping?.address,
+    materialLabel: shipping ? MATERIAL_LABEL[shipping.material] : undefined,
+  });
+
+  const result = await sendEmail(env, { ...message, to: owner.email });
+  if (!result.ok) {
+    console.error(`[orders] Không gửi được email giao hàng cho đơn ${order.paymentCode}:`, result.error);
+  }
+}
+
+async function sendOrderPaidEmail(order: Order, memorial: Memorial | null): Promise<void> {
+  const owner = await ownerOf(order);
+  if (!owner) return;
+
+  const message = orderPaidEmail({
+    ownerName: owner.name,
+    petName: memorial?.petName ?? null,
+    amountText: formatVnd(order.amount),
+    paymentCode: order.paymentCode,
+    memorialUrl: memorial ? memorialUrl(memorial.slug) : null,
+    physical: order.type === 'physical_combo',
+  });
+
+  const result = await sendEmail(env, { ...message, to: owner.email });
+  if (!result.ok) {
+    console.error(`[orders] Không gửi được email thanh toán cho đơn ${order.paymentCode}:`, result.error);
+  }
+}
+
+async function ownerOf(order: Order) {
+  const rows = await getDb(env.DB).select().from(users).where(eq(users.id, order.userId)).limit(1);
+  return rows[0] ?? null;
+}
+
+async function memorialOf(id: string) {
+  const rows = await getDb(env.DB).select().from(memorials).where(eq(memorials.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
+/**
+ * Đẩy việc gửi email ra nền và nuốt mọi lỗi.
+ *
+ * Resend hỏng thì khách vẫn phải được ghi nhận đã thanh toán — email chỉ là tin
+ * báo, không phải một phần của giao dịch.
+ */
+function notify(locals: App.Locals | undefined, task: Promise<void>): void {
+  const guarded = task.catch((error) => {
+    console.error('[orders] Lỗi khi gửi email đơn hàng:', error);
+  });
+  if (locals) {
+    waitUntil(locals, guarded);
+  } else {
+    void guarded;
+  }
 }
 
 export function parseShippingInfo(raw: string | null): ShippingInfo | null {

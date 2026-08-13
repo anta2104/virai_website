@@ -4,6 +4,7 @@ import CandleIcon from './CandleIcon.astro';
 import Icon from './Icon.astro';
 import { photoUrl } from '../lib/memorials';
 import { lifeSummary, milestonesFor } from '../lib/memorial-dates';
+import { isLiving, wordingFor } from '../lib/memorial-mode';
 import { GENDER_LABEL, SPECIES_LABEL, formatDate, formatDateTime } from '../lib/format';
 import { site } from '../lib/site';
 
@@ -40,8 +41,11 @@ const {
 
 const cover = photos.find((photo) => photo.id === memorial.coverPhotoId) ?? photos[0] ?? null;
 const gallery = photos.filter((photo) => photo.id !== cover?.id);
-const summary = lifeSummary(memorial.birthDate, memorial.deathDate);
-const milestones = milestonesFor(memorial.deathDate);
+const living = isLiving(memorial.mode);
+const wording = wordingFor(memorial.mode);
+const summary = lifeSummary(memorial.birthDate, memorial.deathDate, memorial.mode);
+// Bé còn sống thì không có mốc nào — milestonesFor cũng trả rỗng vì thiếu ngày mất
+const milestones = living ? [] : milestonesFor(memorial.deathDate);
 const speciesLine = [SPECIES_LABEL[memorial.species], memorial.breed, GENDER_LABEL[memorial.gender]]
   .filter(Boolean)
   .join(' · ');
@@ -69,7 +73,7 @@ const extraCandles = Math.max(0, memorial.candleCount - WALL_LIMIT);
               aria-hidden="true"
             />
             <div class="absolute inset-x-0 bottom-0 p-6 text-center sm:p-10">
-              <p class="text-xs font-medium tracking-[0.2em] text-white/80 uppercase">Tưởng nhớ</p>
+              <p class="text-xs font-medium tracking-[0.2em] text-white/80 uppercase">{wording.eyebrow}</p>
               <h1 class="mt-2 font-serif text-4xl font-semibold text-white drop-shadow sm:text-5xl">
                 {memorial.petName}
               </h1>
@@ -80,7 +84,7 @@ const extraCandles = Math.max(0, memorial.candleCount - WALL_LIMIT);
           </div>
         ) : (
           <div class="px-6 pt-16 pb-8 text-center">
-            <p class="memorial-muted text-xs font-medium tracking-[0.2em] uppercase">Tưởng nhớ</p>
+            <p class="memorial-muted text-xs font-medium tracking-[0.2em] uppercase">{wording.eyebrow}</p>
             <h1 class="memorial-heading mt-3 font-serif text-4xl font-semibold sm:text-5xl">
               {memorial.petName}
             </h1>
@@ -105,23 +109,30 @@ const extraCandles = Math.max(0, memorial.candleCount - WALL_LIMIT);
       </div>
 
       <!-- Nến của mọi người + nút gửi -->
-      <section class="mt-10" data-tributes data-slug={memorial.slug} data-wall-limit={WALL_LIMIT}>
-        <div class="vm-candle-wall" data-candle-wall>
-          {
-            Array.from({ length: wallCandles }).map((_, index) => (
-              <CandleIcon lit delay={(index % 7) * 0.21} size="sm" />
-            ))
-          }
-        </div>
+      <section
+        class="mt-10"
+        data-tributes
+        data-slug={memorial.slug}
+        data-wall-limit={WALL_LIMIT}
+        data-candle-summary={wording.tributeCountTemplate}
+      >
+        {
+          /* Bé còn sống thì không vẽ dãy nến — hình ảnh đó chỉ hợp trang tưởng niệm */
+          !living && (
+            <div class="vm-candle-wall" data-candle-wall>
+              {Array.from({ length: wallCandles }).map((_, index) => (
+                <CandleIcon lit delay={(index % 7) * 0.21} size="sm" />
+              ))}
+            </div>
+          )
+        }
 
         <p class="memorial-muted mt-4 text-center text-sm" data-tribute-summary>
           {
             memorial.candleCount === 0 && memorial.flowerCount === 0
-              ? `Chưa có ai thắp nến cho ${memorial.petName}. Bạn là người đầu tiên.`
+              ? wording.emptyTribute(memorial.petName)
               : [
-                  memorial.candleCount > 0
-                    ? `${memorial.candleCount.toLocaleString('vi-VN')} ngọn nến đã được thắp`
-                    : null,
+                  memorial.candleCount > 0 ? wording.tributeCount(memorial.candleCount) : null,
                   memorial.flowerCount > 0
                     ? `${memorial.flowerCount.toLocaleString('vi-VN')} cánh hoa đã thả`
                     : null,
@@ -137,11 +148,25 @@ const extraCandles = Math.max(0, memorial.candleCount - WALL_LIMIT);
             type="button"
             class="memorial-panel flex items-center gap-2.5 rounded-full border px-5 py-2.5 text-sm font-medium transition hover:shadow-md disabled:cursor-default disabled:opacity-100"
             data-tribute="candle"
-            data-label-done="Bạn đã thắp nến hôm nay"
+            data-label-done={wording.tributeDoneLabel}
             disabled={preview || litCandle}
           >
-            <CandleIcon lit={litCandle} size="sm" class="-my-1" />
-            <span data-tribute-label>{litCandle ? 'Bạn đã thắp nến hôm nay' : 'Thắp một ngọn nến'}</span>
+            {
+              living ? (
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                  <path
+                    d="M12 20.7 4.7 13.6a4.6 4.6 0 0 1 6.5-6.5l.8.8.8-.8a4.6 4.6 0 0 1 6.5 6.5Z"
+                    fill={litCandle ? '#e0748f' : 'none'}
+                    stroke="#e0748f"
+                    stroke-width="1.6"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              ) : (
+                <CandleIcon lit={litCandle} size="sm" class="-my-1" />
+              )
+            }
+            <span data-tribute-label>{litCandle ? wording.tributeDoneLabel : wording.tributeLabel}</span>
           </button>
 
           <button
@@ -384,6 +409,9 @@ const extraCandles = Math.max(0, memorial.candleCount - WALL_LIMIT);
   if (tributes) {
     const slug = tributes.dataset.slug!;
     const wallLimit = Number(tributes.dataset.wallLimit ?? 24);
+    // Chế độ sổ ký ức gọi là "lượt gửi yêu thương", không phải nến — câu mẫu do
+    // server truyền xuống, JS chỉ thay {n} bằng con số mới.
+    const candleSummary = tributes.dataset.candleSummary ?? '{n} ngọn nến đã được thắp';
     const wall = tributes.querySelector<HTMLElement>('[data-candle-wall]');
     const summary = tributes.querySelector<HTMLElement>('[data-tribute-summary]');
     const status = tributes.querySelector<HTMLElement>('[data-tribute-status]');
@@ -459,7 +487,7 @@ const extraCandles = Math.max(0, memorial.candleCount - WALL_LIMIT);
       if (!summary) return;
       const parts: string[] = [];
       if (typeof candles === 'number' && candles > 0) {
-        parts.push(`${candles.toLocaleString('vi-VN')} ngọn nến đã được thắp`);
+        parts.push(candleSummary.replace('{n}', candles.toLocaleString('vi-VN')));
       }
       if (typeof flowers === 'number' && flowers > 0) {
         parts.push(`${flowers.toLocaleString('vi-VN')} cánh hoa đã thả`);

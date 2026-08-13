@@ -2,15 +2,52 @@
 import SiteLayout from '../layouts/SiteLayout.astro';
 import PricingTable from '../components/PricingTable.astro';
 import { formatVnd, priceView, isPromoActive, PROMO } from '../lib/plans';
+import { site } from '../lib/site';
 
 const ctaHref = Astro.locals.user ? '/tai-khoan' : '/dang-ky';
 const premium = priceView('premium');
 const combo = priceView('physicalCombo');
+
+/** Giá trả một lần, không phải thuê bao — nên dùng Offer chứ không phải Subscription. */
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Product',
+      name: `${site.name} Premium`,
+      description:
+        'Trang kỷ niệm không giới hạn ảnh, đủ giao diện, email nhắc ngày tưởng niệm theo âm lịch, ẩn thương hiệu, tải mã QR chất lượng cao.',
+      brand: { '@type': 'Brand', name: site.name },
+      offers: {
+        '@type': 'Offer',
+        price: premium.price,
+        priceCurrency: 'VND',
+        availability: 'https://schema.org/InStock',
+        url: new URL('/bang-gia', site.url).href,
+      },
+    },
+    {
+      '@type': 'Product',
+      name: `${site.name} Combo thẻ QR`,
+      description:
+        'Gói Premium kèm thẻ kim loại hoặc gỗ khắc sẵn mã QR của bé, gửi tận nơi.',
+      brand: { '@type': 'Brand', name: site.name },
+      offers: {
+        '@type': 'Offer',
+        price: combo.price,
+        priceCurrency: 'VND',
+        availability: 'https://schema.org/InStock',
+        url: new URL('/bang-gia', site.url).href,
+      },
+    },
+  ],
+};
 ---
 
 <SiteLayout
   title="Bảng giá"
   description={`Miễn phí để bắt đầu. Premium ${formatVnd(premium.price)} trả một lần cho mỗi bé. Combo thẻ QR khắc sẵn từ ${formatVnd(combo.price)}.`}
+  jsonLd={jsonLd}
 >
   <section class="section">
     <div class="container-page">

@@ -21,9 +21,16 @@ export default defineConfig({
 
   integrations: [
     sitemap({
-      // Chỉ index trang công khai, không index khu vực tài khoản/admin/api
+      // Chỉ những trang tĩnh đáng cho công cụ tìm kiếm biết. Loại khu tài
+      // khoản/admin/api, và loại cả các trang đăng nhập/đăng ký/đặt lại mật
+      // khẩu — chúng không có nội dung gì để tìm kiếm.
+      //
+      // Các trang /be/[slug] không nằm ở đây vì chạy SSR. Trang nào chủ nuôi
+      // bật "Hiện trong vườn" thì có mặt ở /sitemap-vuon.xml (sinh lúc chạy).
       filter: (page) =>
-        !/\/(tai-khoan|admin|api)(\/|$)/.test(new URL(page).pathname),
+        !/\/(tai-khoan|admin|api|dang-nhap|dang-ky|dang-xuat|quen-mat-khau|dat-lai-mat-khau)(\/|$)/.test(
+          new URL(page).pathname,
+        ),
     }),
   ],
   adapter: cloudflare({

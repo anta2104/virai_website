@@ -10,10 +10,11 @@ import {
   getOrder,
   markOrderPaid,
   parseShippingInfo,
+  sendOrderShippedEmail,
 } from '../../lib/orders';
 import { formatVnd } from '../../lib/plans';
 import { formatDateTime } from '../../lib/format';
-import { env } from '../../lib/env';
+import { env, waitUntil } from '../../lib/env';
 
 const db = getDb(env.DB);
 let notice: string | null = null;
@@ -28,11 +29,19 @@ if (Astro.request.method === 'POST') {
   if (!order) {
     error = 'Không tìm thấy đơn.';
   } else if (action === 'confirmPaid') {
-    await markOrderPaid(order, `Xác nhận tay bởi admin lúc ${new Date().toISOString()}`);
-    notice = `Đã xác nhận thanh toán cho đơn ${order.paymentCode}.`;
+    await markOrderPaid(
+      order,
+      `Xác nhận tay bởi admin lúc ${new Date().toISOString()}`,
+      Astro.locals,
+    );
+    notice = `Đã xác nhận thanh toán cho đơn ${order.paymentCode} — đã gửi email báo khách.`;
   } else if (action === 'ship') {
     await db.update(orders).set({ status: 'shipped' }).where(eq(orders.id, order.id));
-    notice = `Đơn ${order.paymentCode} đã chuyển sang trạng thái đã gửi hàng.`;
+    // Chỉ báo khi vừa chuyển sang shipped, bấm lại lần nữa thì thôi
+    if (order.status !== 'shipped') {
+      waitUntil(Astro.locals, sendOrderShippedEmail(order));
+    }
+    notice = `Đơn ${order.paymentCode} đã chuyển sang đã gửi hàng — đã gửi email báo khách.`;
   } else if (action === 'done') {
     await db.update(orders).set({ status: 'done' }).where(eq(orders.id, order.id));
     notice = `Đơn ${order.paymentCode} đã hoàn tất.`;
