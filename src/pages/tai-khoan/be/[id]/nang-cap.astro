@@ -2,7 +2,8 @@
 import AppLayout from '../../../../layouts/AppLayout.astro';
 import Icon from '../../../../components/Icon.astro';
 import { currentUser, notFound, ownedMemorial } from '../../../../lib/guards';
-import { PRICES, formatVnd } from '../../../../lib/plans';
+import { PRICES, formatVnd, amountToCharge } from '../../../../lib/plans';
+import PriceTag from '../../../../components/PriceTag.astro';
 import { getOrCreateOrder, MATERIAL_LABEL, type OrderType, type ShippingInfo } from '../../../../lib/orders';
 
 const user = currentUser(Astro.locals);
@@ -72,7 +73,7 @@ if (Astro.request.method === 'POST') {
             <h2 class="font-serif text-xl font-semibold">Premium</h2>
             <p class="mt-1 text-sm text-ink-500">Trả một lần cho bé này, dùng trọn đời.</p>
           </div>
-          <p class="text-2xl font-semibold text-ink-900">{formatVnd(PRICES.premium)}</p>
+          <PriceTag plan="premium" size="md" class="text-right" />
         </div>
 
         <ul class="mt-5 space-y-2 text-sm">
@@ -85,7 +86,7 @@ if (Astro.request.method === 'POST') {
         </ul>
 
         <button type="submit" class="btn-primary mt-6 w-full sm:w-auto">
-          Nâng cấp Premium — {formatVnd(PRICES.premium)}
+          Nâng cấp Premium — {formatVnd(amountToCharge('premium'))}
         </button>
       </form>
     )
@@ -100,7 +101,7 @@ if (Astro.request.method === 'POST') {
           Premium + một thẻ khắc mã QR của bé, gửi tới địa chỉ của bạn.
         </p>
       </div>
-      <p class="text-2xl font-semibold text-ink-900">{formatVnd(PRICES.physicalCombo)}</p>
+      <PriceTag plan="physicalCombo" size="md" class="text-right" />
     </div>
 
     <div class="mt-6 space-y-5">

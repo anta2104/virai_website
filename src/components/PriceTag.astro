@@ -1,0 +1,48 @@
+---
+import { formatVnd, priceView, type PriceKey } from '../lib/plans';
+
+interface Props {
+  plan: PriceKey;
+  /** Cỡ chữ của số tiền chính */
+  size?: 'md' | 'lg';
+  /** Thêm chữ "từ" phía trước, dùng cho gói combo */
+  from?: boolean;
+  class?: string;
+}
+
+const { plan, size = 'lg', from = false, class: className = '' } = Astro.props;
+const view = priceView(plan);
+// Tính sẵn ở đây: dấu `<=` viết thẳng trong JSX bị Astro hiểu nhầm là mở thẻ
+const showDaysLeft = view.daysLeft > 0 && view.daysLeft <= 10;
+---
+
+<div class={className}>
+  <p class="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+    {from && <span class="text-sm text-ink-500">từ</span>}
+    <span
+      class:list={[
+        'font-semibold text-ink-900 tabular-nums',
+        size === 'lg' ? 'text-3xl' : 'text-2xl',
+      ]}
+    >
+      {formatVnd(view.price)}
+    </span>
+    {
+      view.discounted && (
+        <span class="flex items-baseline gap-2.5">
+          <span class="text-lg text-ink-500 line-through tabular-nums">{formatVnd(view.base)}</span>
+          <span class="badge bg-clay-500 text-white">−{view.percent}%</span>
+        </span>
+      )
+    }
+  </p>
+
+  {
+    view.discounted && (
+      <p class="mt-1.5 text-xs font-medium text-clay-700">
+        Ưu đãi đến hết {view.endsAtLabel}
+        {showDaysLeft && ` · còn ${view.daysLeft} ngày`}
+      </p>
+    )
+  }
+</div>

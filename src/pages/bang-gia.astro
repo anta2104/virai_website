@@ -1,14 +1,16 @@
 ---
 import SiteLayout from '../layouts/SiteLayout.astro';
 import PricingTable from '../components/PricingTable.astro';
-import { PRICES, formatVnd } from '../lib/plans';
+import { formatVnd, priceView, isPromoActive, PROMO } from '../lib/plans';
 
 const ctaHref = Astro.locals.user ? '/tai-khoan' : '/dang-ky';
+const premium = priceView('premium');
+const combo = priceView('physicalCombo');
 ---
 
 <SiteLayout
   title="Bảng giá"
-  description={`Miễn phí để bắt đầu. Premium ${formatVnd(PRICES.premium)} trả một lần cho mỗi bé. Combo thẻ QR khắc sẵn từ ${formatVnd(PRICES.physicalCombo)}.`}
+  description={`Miễn phí để bắt đầu. Premium ${formatVnd(premium.price)} trả một lần cho mỗi bé. Combo thẻ QR khắc sẵn từ ${formatVnd(combo.price)}.`}
 >
   <section class="section">
     <div class="container-page">
@@ -19,6 +21,15 @@ const ctaHref = Astro.locals.user ? '/tai-khoan' : '/dang-ky';
           đời.
         </p>
       </div>
+
+      {
+        isPromoActive() && (
+          <p class="mx-auto mt-8 flex max-w-xl flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-full border border-clay-200 bg-clay-50 px-5 py-2.5 text-sm text-clay-800">
+            <strong class="font-semibold">{PROMO.label}:</strong>
+            giảm {PROMO.percent}% gói Premium, đến hết {PROMO.endsAtLabel}
+          </p>
+        )
+      }
 
       <div class="mt-14">
         <PricingTable ctaHref={ctaHref} />

@@ -5,6 +5,71 @@ export const PRICES = {
   physicalCombo: 299_000,
 } as const;
 
+export type PriceKey = keyof typeof PRICES;
+
+/**
+ * Đợt ưu đãi có hạn.
+ *
+ * Hạn chót tính bằng mốc UTC tương ứng 23:59:59 ngày 31/08/2026 giờ Việt Nam.
+ * Hết hạn là giá tự về mức thường, không cần ai tắt bằng tay — điều này quan
+ * trọng: hiện "giá gốc gạch ngang" mà giá không bao giờ quay lại thì là quảng
+ * cáo sai sự thật.
+ */
+export const PROMO = {
+  /** Chỉ áp cho gói nào */
+  applies: 'premium' as PriceKey,
+  percent: 50,
+  label: 'Ưu đãi ra mắt',
+  /** 23:59:59 ngày 31/08/2026 theo giờ Việt Nam (UTC+7) */
+  endsAtUtc: Date.UTC(2026, 7, 31, 16, 59, 59, 999),
+  /** Hiển thị cho người đọc */
+  endsAtLabel: '31/08/2026',
+} as const;
+
+export interface PriceView {
+  /** Giá thường, dùng để gạch ngang khi có ưu đãi */
+  base: number;
+  /** Số tiền khách thật sự trả */
+  price: number;
+  /** Có đang giảm không */
+  discounted: boolean;
+  percent: number;
+  endsAtLabel: string;
+  /** Số ngày còn lại, tính theo ngày giờ Việt Nam */
+  daysLeft: number;
+}
+
+/** Làm tròn xuống hàng nghìn cho số tiền dễ nhìn và luôn có lợi cho khách. */
+function roundDown(amount: number): number {
+  return Math.floor(amount / 1000) * 1000;
+}
+
+export function isPromoActive(now: number = Date.now()): boolean {
+  return now <= PROMO.endsAtUtc;
+}
+
+/** Giá hiển thị của một gói tại thời điểm `now`. */
+export function priceView(key: PriceKey, now: number = Date.now()): PriceView {
+  const base = PRICES[key];
+  const active = key === PROMO.applies && isPromoActive(now);
+  const price = active ? roundDown((base * (100 - PROMO.percent)) / 100) : base;
+  const msLeft = PROMO.endsAtUtc - now;
+
+  return {
+    base,
+    price,
+    discounted: active && price < base,
+    percent: PROMO.percent,
+    endsAtLabel: PROMO.endsAtLabel,
+    daysLeft: active ? Math.max(0, Math.ceil(msLeft / 86_400_000)) : 0,
+  };
+}
+
+/** Số tiền thật sự tính vào đơn hàng — nguồn duy nhất cho việc thu tiền. */
+export function amountToCharge(key: PriceKey, now: number = Date.now()): number {
+  return priceView(key, now).price;
+}
+
 export const LIMITS = {
   free: {
     /** Số trang kỷ niệm miễn phí mỗi tài khoản */

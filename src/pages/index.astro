@@ -6,6 +6,7 @@ import type { IconName } from '../lib/icons';
 import { site } from '../lib/site';
 import { listDemoMemorials, listPhotos, coverUrlOf } from '../lib/memorials';
 import { formatDate } from '../lib/format';
+import { isPromoActive, PROMO } from '../lib/plans';
 import { env } from '../lib/env';
 
 // Trang mẫu để khách bấm xem ngay — chỉ hiện nếu đã seed trong D1
@@ -311,6 +312,15 @@ const jsonLd = {
         <Icon name="arrow-right" size={16} />
       </a>
     </div>
+    {
+      isPromoActive() && (
+        <p class="mt-6 inline-flex flex-wrap items-center gap-x-2 gap-y-1 rounded-full border border-clay-200 bg-clay-50 px-5 py-2.5 text-sm text-clay-800">
+          <strong class="font-semibold">{PROMO.label}:</strong>
+          giảm {PROMO.percent}% gói Premium, đến hết {PROMO.endsAtLabel}
+        </p>
+      )
+    }
+
     <div class="mt-12">
       <PricingTable />
     </div>

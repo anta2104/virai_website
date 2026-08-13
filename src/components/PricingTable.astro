@@ -1,5 +1,6 @@
 ---
-import { PRICES, formatVnd } from '../lib/plans';
+import { PRICES, formatVnd, type PriceKey } from '../lib/plans';
+import PriceTag from './PriceTag.astro';
 import Icon from './Icon.astro';
 
 interface Props {
@@ -12,6 +13,7 @@ const { ctaHref = '/dang-ky' } = Astro.props;
 const plans = [
   {
     name: 'Miễn phí',
+    plan: null as PriceKey | null,
     price: '0đ',
     note: 'Dùng mãi mãi',
     highlight: false,
@@ -28,7 +30,8 @@ const plans = [
   },
   {
     name: 'Premium',
-    price: formatVnd(PRICES.premium),
+    plan: 'premium' as PriceKey | null,
+    price: '',
     note: 'Trả một lần cho mỗi bé, dùng trọn đời',
     highlight: true,
     features: [
@@ -45,7 +48,8 @@ const plans = [
   },
   {
     name: 'Combo thẻ QR',
-    price: `từ ${formatVnd(PRICES.physicalCombo)}`,
+    plan: 'physicalCombo' as PriceKey | null,
+    price: '',
     note: 'Premium + thẻ khắc QR gửi tận nhà',
     highlight: false,
     features: [
@@ -73,8 +77,14 @@ const plans = [
           <span class="badge mb-3 self-start bg-clay-100 text-clay-700">Phổ biến nhất</span>
         )}
         <h3 class="font-serif text-xl font-semibold">{plan.name}</h3>
-        <p class="mt-3 text-3xl font-semibold text-ink-900">{plan.price}</p>
-        <p class="mt-1 text-sm text-ink-500">{plan.note}</p>
+        {
+          plan.plan ? (
+            <PriceTag plan={plan.plan} from={plan.plan === 'physicalCombo'} class="mt-3" />
+          ) : (
+            <p class="mt-3 text-3xl font-semibold text-ink-900">{plan.price}</p>
+          )
+        }
+        <p class="mt-2 text-sm text-ink-500">{plan.note}</p>
 
         <ul class="mt-5 flex-1 space-y-2.5 text-sm">
           {plan.features.map((feature) => (

@@ -6,7 +6,7 @@ import { notFound, ownedMemorial } from '../../../../lib/guards';
 import { getDb } from '../../../../lib/db';
 import { guestbookEntries, memorials, photos as photosTable } from '../../../../lib/db/schema';
 import { listPhotos, photoUrl } from '../../../../lib/memorials';
-import { limitsFor, formatVnd, PRICES, THEMES } from '../../../../lib/plans';
+import { limitsFor, formatVnd, amountToCharge, THEMES } from '../../../../lib/plans';
 import { formatDate } from '../../../../lib/format';
 import { upcomingMilestone } from '../../../../lib/memorial-dates';
 import { listRemindersOf, setRemindersEnabled } from '../../../../lib/reminders';
@@ -282,7 +282,7 @@ const themeName = THEMES.find((theme) => theme.id === memorial.theme)?.name ?? m
                 chân trang, chưa có email nhắc ngày giỗ.
               </p>
               <a href={`/tai-khoan/be/${memorial.id}/nang-cap`} class="btn-primary mt-4 w-full">
-                Nâng cấp — {formatVnd(PRICES.premium)}
+                Nâng cấp — {formatVnd(amountToCharge('premium'))}
               </a>
             </>
           )

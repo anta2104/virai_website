@@ -3,7 +3,7 @@ import { getDb } from './db';
 import { memorials, orders, type Memorial, type Order } from './db/schema';
 import { newId } from './ids';
 import { newPaymentCode } from './payment-code';
-import { PRICES } from './plans';
+import { amountToCharge } from './plans';
 import { ensureRemindersFor } from './reminders';
 import { env } from './env';
 
@@ -18,8 +18,13 @@ export interface ShippingInfo {
   note?: string;
 }
 
+/**
+ * Số tiền tính vào đơn, lấy tại thời điểm tạo đơn nên đã bao gồm ưu đãi đang
+ * chạy. Giá được chốt cứng vào `orders.amount`: khách tạo đơn trong đợt giảm
+ * giá thì giữ giá đó kể cả khi chuyển khoản sau khi ưu đãi kết thúc.
+ */
 export function amountFor(type: OrderType): number {
-  return type === 'physical_combo' ? PRICES.physicalCombo : PRICES.premium;
+  return amountToCharge(type === 'physical_combo' ? 'physicalCombo' : 'premium');
 }
 
 /**
