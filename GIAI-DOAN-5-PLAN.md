@@ -1,5 +1,37 @@
 # Giai Đoạn 5: Gia Cố Nền Tảng + Tính Năng Tăng Trưởng
 
+> ## Trạng thái (cập nhật 13/08/2026)
+>
+> **Toàn bộ phần code của A1–A5 và B1–B4 đã xong**, nằm trên nhánh `giai-doan-5`,
+> chưa merge vào `main`. Chưa deploy, chưa chạy migration nào lên production.
+>
+> | Mục | Trạng thái |
+> |---|---|
+> | A1 quên mật khẩu | ✅ xong, migration `0002` |
+> | A2 waitUntil | ✅ đã kiểm chứng không cần sửa, chỉ thêm cảnh báo lúc chạy |
+> | A3 email giao dịch | ✅ xong |
+> | A4 ba lỗi | ✅ xong, có test cho lịch âm |
+> | A5 đồng bộ tài liệu | ✅ xong |
+> | B1 vườn tưởng niệm | ✅ xong, migration `0004` |
+> | B2 sổ ký ức sống | ✅ xong, migration `0003` |
+> | B3 Google OAuth | ✅ code xong, migration `0005`; cần OAuth Client của chủ dự án |
+> | B4 SEO | ✅ xong |
+> | **A0 ảnh chia sẻ 503** | ⬜ chờ quyết định: nâng Workers Paid hay bỏ thẻ thương hiệu |
+> | **A0b giám sát ngoài** | ⬜ chờ chủ dự án dựng |
+> | **A0c cửa kiểm tra deploy** | 🟡 tạm thời giải quyết bằng cách làm trên nhánh riêng |
+>
+> **Bốn migration mới, tất cả đều chỉ thêm vào, không cái nào dựng lại bảng:**
+>
+> ```sql
+> -- 0002: CREATE TABLE password_reset_tokens
+> -- 0003: ALTER TABLE memorials ADD mode text DEFAULT 'memorial' NOT NULL
+> -- 0004: ALTER TABLE memorials ADD show_in_garden integer DEFAULT 0 NOT NULL
+> -- 0005: ALTER TABLE users ADD google_id text  +  CREATE UNIQUE INDEX
+> ```
+>
+> **Thứ tự lên production:** chạy `npm run db:migrate` (migration additive nên bản
+> code cũ đang chạy vẫn bình thường) → rồi mới merge nhánh vào `main` để deploy.
+
 > Tài liệu đặc tả triển khai cho Virai Memorial (nền tảng tưởng niệm thú cưng). MVP đã hoàn thành ~95% (xem `PET-MEMORIAL-PLAN.md` cho kiến trúc gốc). Tài liệu này mô tả đợt cập nhật tiếp theo: **Phần A (gia cố, làm trước)** và **Phần B (tính năng tăng trưởng, làm sau)**.
 >
 > **Nguyên tắc chung:** làm tuần tự A1 → A5 rồi B1 → B4, mỗi mục hoàn thành và chạy thử được rồi mới sang mục kế. Không refactor ngoài phạm vi. Giữ nguyên ngôn ngữ thiết kế UI hiện có và tiếng Việt cho mọi UI/email.
