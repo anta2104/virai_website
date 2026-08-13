@@ -41,6 +41,15 @@ if (Astro.request.method === 'POST') {
     return Astro.redirect(`${Astro.url.pathname}?reminders=${enabled ? 'on' : 'off'}`);
   }
 
+  if (intent === 'garden') {
+    const show = String(form.get('show') ?? '') === '1';
+    await db
+      .update(memorials)
+      .set({ showInGarden: show ? 1 : 0, updatedAt: now })
+      .where(eq(memorials.id, memorial.id));
+    return Astro.redirect(`${Astro.url.pathname}?vuon=${show ? 'on' : 'off'}`);
+  }
+
   if (intent === 'delete') {
     const confirmName = String(form.get('confirmName') ?? '').trim();
     if (confirmName !== memorial.petName) {
@@ -67,6 +76,12 @@ if (params.get('unpublished')) notice = 'Trang đã chuyển về dạng nháp, 
 if (params.get('reminders') === 'on') notice = 'Đã bật email nhắc ngày tưởng niệm.';
 if (params.get('reminders') === 'off') notice = 'Đã tắt email nhắc ngày tưởng niệm.';
 if (params.get('paid')) notice = 'Đã nhận thanh toán — trang của bé đã lên Premium. Cảm ơn bạn!';
+if (params.get('vuon') === 'on') {
+  notice = `${memorial.petName} đã xuất hiện ở Vườn tưởng niệm chung. Bạn tắt lại bất cứ lúc nào.`;
+}
+if (params.get('vuon') === 'off') {
+  notice = `Đã gỡ ${memorial.petName} khỏi Vườn tưởng niệm. Trang vẫn dùng bình thường qua link và mã QR.`;
+}
 if (params.get('chuyen-che-do') === 'xong') {
   notice = `Đã chuyển trang của ${memorial.petName} sang trang tưởng niệm. Các mốc theo âm lịch đã được tính sẵn.`;
 }
@@ -249,6 +264,36 @@ const themeName = THEMES.find((theme) => theme.id === memorial.theme)?.name ?? m
           ))
         }
       </ul>
+
+      <!-- Vườn tưởng niệm chung -->
+      {
+        !living && (
+          <div class="mt-10 rounded-2xl border border-cream-300 p-5">
+            <div class="flex flex-wrap items-start justify-between gap-4">
+              <div class="min-w-0">
+                <p class="font-medium text-ink-900">Vườn tưởng niệm chung</p>
+                <p class="mt-1.5 text-sm text-ink-500">
+                  {memorial.showInGarden
+                    ? `${memorial.petName} đang hiện ở trang /vuon-tuong-niem để người lạ ghé thăm và thắp nến.`
+                    : 'Trang của bé đang riêng tư — chỉ ai có link hoặc quét mã QR mới xem được. Bật lên nếu bạn muốn chia sẻ bé với mọi người.'}
+                </p>
+                {!memorial.isPublished && (
+                  <p class="mt-2 text-sm text-ink-500">
+                    Trang còn ở dạng nháp nên chưa hiện trong vườn dù có bật.
+                  </p>
+                )}
+              </div>
+              <form method="POST" class="shrink-0">
+                <input type="hidden" name="intent" value="garden" />
+                <input type="hidden" name="show" value={memorial.showInGarden ? '0' : '1'} />
+                <button type="submit" class="btn-secondary">
+                  {memorial.showInGarden ? 'Gỡ khỏi vườn' : 'Hiện trong vườn'}
+                </button>
+              </form>
+            </div>
+          </div>
+        )
+      }
 
       <!-- Chuyển sổ ký ức sang trang tưởng niệm -->
       {

@@ -1,0 +1,145 @@
+---
+import SiteLayout from '../layouts/SiteLayout.astro';
+import Icon from '../components/Icon.astro';
+import { GARDEN_PAGE_SIZE, countGardenMemorials, listGardenPage } from '../lib/garden';
+import { lifeSummary } from '../lib/memorial-dates';
+import { site } from '../lib/site';
+import { env } from '../lib/env';
+
+const requested = Number(Astro.url.searchParams.get('trang') ?? '1');
+const page = Number.isFinite(requested) && requested > 1 ? Math.floor(requested) : 1;
+
+const [total, entries] = await Promise.all([
+  countGardenMemorials(env.DB),
+  listGardenPage(env.DB, page),
+]);
+
+const lastPage = Math.max(1, Math.ceil(total / GARDEN_PAGE_SIZE));
+
+// Xin trang vượt quá số trang có thật thì về trang cuối, không hiện lưới trống
+if (page > lastPage && total > 0) {
+  return Astro.redirect(`/vuon-tuong-niem${lastPage > 1 ? `?trang=${lastPage}` : ''}`);
+}
+
+const description =
+  'Những người bạn nhỏ được gia đình chọn chia sẻ với mọi người. Ghé thăm, thắp một ngọn nến, hoặc lập trang cho bé của bạn.';
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'CollectionPage',
+  name: 'Vườn tưởng niệm',
+  description,
+  inLanguage: 'vi',
+  url: new URL('/vuon-tuong-niem', site.url).href,
+  isPartOf: { '@type': 'WebSite', name: site.name, url: site.url },
+};
+---
+
+<SiteLayout title="Vườn tưởng niệm" description={description} jsonLd={jsonLd}>
+  <section class="px-4 py-16 sm:px-6 lg:py-24">
+    <div class="mx-auto w-full max-w-5xl">
+      <div class="max-w-2xl">
+        <p class="eyebrow">Vườn tưởng niệm</p>
+        <h1 class="mt-3 font-serif text-4xl font-semibold sm:text-5xl">
+          Những người bạn nhỏ được nhớ đến
+        </h1>
+        <p class="mt-4 text-lg text-ink-500">
+          Đây là những bé mà gia đình chọn chia sẻ với mọi người. Các trang khác vẫn riêng tư — chỉ
+          hiện ở đây khi chủ nuôi tự bật.
+        </p>
+      </div>
+
+      {
+        total === 0 ? (
+          <div class="card mt-12 p-8 text-center">
+            <p class="font-serif text-xl">Vườn còn trống.</p>
+            <p class="mt-3 text-ink-500">
+              Chưa có gia đình nào chọn chia sẻ trang của bé ở đây. Bạn có thể là người đầu tiên.
+            </p>
+            <a href="/dang-ky" class="btn-primary mt-6 inline-flex">Lập trang cho bé của bạn</a>
+          </div>
+        ) : (
+          <>
+            <ul class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {entries.map(({ memorial, coverUrl }) => {
+                const summary = lifeSummary(memorial.birthDate, memorial.deathDate, memorial.mode);
+                return (
+                  <li>
+                    <a
+                      href={`/be/${memorial.slug}`}
+                      class="card group block h-full overflow-hidden transition hover:shadow-lg"
+                    >
+                      <div class="aspect-[4/3] w-full overflow-hidden bg-cream-200">
+                        {coverUrl ? (
+                          <img
+                            src={coverUrl}
+                            alt={`Ảnh của ${memorial.petName}`}
+                            loading="lazy"
+                            class="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                          />
+                        ) : (
+                          <div class="flex h-full w-full items-center justify-center text-cream-400">
+                            <Icon name="lotus" size={40} />
+                          </div>
+                        )}
+                      </div>
+                      <div class="p-5">
+                        <p class="font-serif text-xl font-semibold text-ink-900">
+                          {memorial.petName}
+                        </p>
+                        {summary.dateLine && (
+                          <p class="mt-1 text-sm text-ink-500">{summary.dateLine}</p>
+                        )}
+                        <p class="mt-3 flex items-center gap-1.5 text-sm text-clay-600">
+                          <Icon name="lotus" size={15} />
+                          {memorial.candleCount.toLocaleString('vi-VN')} ngọn nến
+                        </p>
+                      </div>
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+
+            {lastPage > 1 && (
+              <nav class="mt-12 flex items-center justify-between gap-4" aria-label="Phân trang">
+                {page > 1 ? (
+                  <a
+                    class="btn-secondary"
+                    href={`/vuon-tuong-niem${page - 1 > 1 ? `?trang=${page - 1}` : ''}`}
+                    rel="prev"
+                  >
+                    Trang trước
+                  </a>
+                ) : (
+                  <span />
+                )}
+
+                <p class="text-sm text-ink-500">
+                  Trang {page} / {lastPage}
+                </p>
+
+                {page < lastPage ? (
+                  <a class="btn-secondary" href={`/vuon-tuong-niem?trang=${page + 1}`} rel="next">
+                    Trang sau
+                  </a>
+                ) : (
+                  <span />
+                )}
+              </nav>
+            )}
+
+            <div class="mt-16 border-t border-cream-300 pt-10 text-center">
+              <p class="font-serif text-2xl">Bé của bạn cũng xứng đáng được nhớ đến.</p>
+              <p class="mx-auto mt-3 max-w-xl text-ink-500">
+                Lập trang miễn phí trong vài phút. Bạn tự quyết định trang đó riêng tư hay hiện ở
+                vườn này.
+              </p>
+              <a href="/dang-ky" class="btn-primary mt-6 inline-flex">Lập trang cho bé của bạn</a>
+            </div>
+          </>
+        )
+      }
+    </div>
+  </section>
+</SiteLayout>

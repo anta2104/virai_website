@@ -96,6 +96,14 @@ export const memorials = sqliteTable(
      * Mặc định 'memorial' để 27 trang đang có giữ nguyên hành vi cũ.
      */
     mode: text('mode').notNull().default('memorial'),
+    /**
+     * Chủ nuôi tự bật để bé xuất hiện ở Vườn tưởng niệm chung.
+     *
+     * Mặc định TẮT, và phải giữ như vậy: trang chủ đã hứa với người dùng rằng
+     * trang của họ "không nằm trong danh sách công khai nào". Chỉ những trang
+     * chủ nuôi chủ động bật mới được vào vườn và vào sitemap.
+     */
+    showInGarden: integer('show_in_garden').notNull().default(0),
   },
   (t) => [
     uniqueIndex('memorials_slug_unique').on(t.slug),

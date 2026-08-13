@@ -1,0 +1,1 @@
+ALTER TABLE `memorials` ADD `show_in_garden` integer DEFAULT 0 NOT NULL;

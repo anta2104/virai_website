@@ -1,7 +1,18 @@
 User-agent: *
 Allow: /
+
+# Khu riêng tư và các trang không có gì để tìm kiếm
 Disallow: /tai-khoan
 Disallow: /admin
 Disallow: /api
+Disallow: /dang-nhap
+Disallow: /dang-ky
+Disallow: /dang-xuat
+Disallow: /quen-mat-khau
+Disallow: /dat-lai-mat-khau
 
+# Trang tĩnh
 Sitemap: https://virai.com.vn/sitemap-index.xml
+# Các bé được chủ nuôi tự bật hiện ở Vườn tưởng niệm. Những trang kỷ niệm khác
+# cố ý không liệt kê ở đâu cả — đúng như đã hứa trong Chính sách bảo mật.
+Sitemap: https://virai.com.vn/sitemap-vuon.xml

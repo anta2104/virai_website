@@ -29,6 +29,13 @@
       "when": 1786632939868,
       "tag": "0003_memorial_mode",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1786634312035,
+      "tag": "0004_show_in_garden",
+      "breakpoints": true
     }
   ]
 }
