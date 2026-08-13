@@ -20,7 +20,9 @@ const slug = Astro.params.slug!;
 const memorial = await getMemorialBySlug(env.DB, slug);
 
 if (!memorial) {
-  return new Response('Không tìm thấy trang kỷ niệm này', { status: 404 });
+  // Dùng trang 404 có giao diện: người quét mã QR trên thẻ mà gặp chữ trơ
+  // thì tưởng hỏng hẳn, còn trang này chỉ họ đường đi tiếp.
+  return Astro.rewrite('/404');
 }
 
 const isOwner = Astro.locals.user?.id === memorial.userId;
@@ -29,7 +31,7 @@ if (!memorial.isPublished) {
   if (isOwner) {
     return Astro.redirect(`/tai-khoan/be/${memorial.id}/xem-truoc`);
   }
-  return new Response('Trang kỷ niệm này chưa được xuất bản', { status: 404 });
+  return Astro.rewrite('/404');
 }
 
 const db = getDb(env.DB);

@@ -1,0 +1,30 @@
+---
+import SiteLayout from '../layouts/SiteLayout.astro';
+
+/**
+ * Trang 404 dùng chung.
+ *
+ * Cố ý không đọc D1 hay R2 — cùng lý do với `500.astro`: trang báo lỗi mà cần
+ * database thì lúc database hỏng nó cũng sập theo.
+ */
+---
+
+<SiteLayout title="Không tìm thấy trang" noindex>
+  <section class="px-4 py-20 sm:px-6 lg:py-28">
+    <div class="mx-auto w-full max-w-lg text-center">
+      <p class="eyebrow">Lỗi 404</p>
+      <h1 class="mt-3 font-serif text-4xl font-semibold sm:text-5xl">Không tìm thấy trang này</h1>
+      <p class="mt-5 text-ink-500">
+        Đường dẫn có thể đã gõ sai, hoặc trang kỷ niệm này đã được chủ nuôi chuyển về dạng riêng tư.
+      </p>
+      <p class="mt-3 text-ink-500">
+        Nếu bạn vừa quét một mã QR trên thẻ và gặp trang này, bạn thử báo lại giúp gia đình nhé.
+      </p>
+
+      <div class="mt-9 flex flex-wrap items-center justify-center gap-3">
+        <a href="/" class="btn-primary">Về trang chủ</a>
+        <a href="/vuon-tuong-niem" class="btn-secondary">Ghé Vườn tưởng niệm</a>
+      </div>
+    </div>
+  </section>
+</SiteLayout>

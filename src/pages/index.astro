@@ -100,6 +100,13 @@ const jsonLd = {
       inLanguage: 'vi',
     },
     {
+      '@type': 'Organization',
+      name: site.company,
+      url: site.companyUrl,
+      email: site.supportEmail,
+      logo: new URL('/logo.svg', site.url).href,
+    },
+    {
       '@type': 'FAQPage',
       mainEntity: faqs.map((faq) => ({
         '@type': 'Question',
