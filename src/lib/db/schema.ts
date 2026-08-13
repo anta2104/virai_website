@@ -34,6 +34,27 @@ export const sessions = sqliteTable(
   (t) => [index('sessions_user_idx').on(t.userId)],
 );
 
+/**
+ * Token đặt lại mật khẩu.
+ *
+ * `id` là SHA-256 (hex) của token gửi trong email, không phải token thô: ai đọc
+ * được database cũng không dựng lại được đường link trong hộp thư của người dùng.
+ */
+export const passwordResetTokens = sqliteTable(
+  'password_reset_tokens',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    expiresAt: integer('expires_at').notNull(),
+    /** Null khi chưa dùng; đặt một lần rồi thôi để token không dùng lại được */
+    usedAt: integer('used_at'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('password_reset_tokens_user_idx').on(t.userId)],
+);
+
 export const memorials = sqliteTable(
   'memorials',
   {
@@ -181,6 +202,7 @@ export const aiUsage = sqliteTable(
 
 export type User = typeof users.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type Memorial = typeof memorials.$inferSelect;
 export type Photo = typeof photos.$inferSelect;
 export type GuestbookEntry = typeof guestbookEntries.$inferSelect;

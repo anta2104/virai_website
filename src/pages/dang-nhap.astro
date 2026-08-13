@@ -20,6 +20,9 @@ if (Astro.locals.user) {
 let error: string | null = null;
 let email = '';
 
+/** Vừa đặt lại mật khẩu xong thì chào một câu cho người ta biết là đã ăn. */
+const justReset = Astro.url.searchParams.get('dat-lai') === 'xong';
+
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
   email = String(form.get('email') ?? '').trim();
@@ -44,6 +47,11 @@ if (Astro.request.method === 'POST') {
         <p class="eyebrow">Chào bạn quay lại</p>
         <h1 class="mt-3 font-serif text-3xl font-semibold">Đăng nhập</h1>
 
+        {justReset && !error && (
+          <p class="alert-success mt-6">
+            Đã đổi mật khẩu xong. Bạn đăng nhập lại bằng mật khẩu mới nhé.
+          </p>
+        )}
         {error && <p class="alert-error mt-6">{error}</p>}
 
         <form method="POST" class="mt-6 space-y-4">
@@ -53,7 +61,10 @@ if (Astro.request.method === 'POST') {
             <input class="input" id="email" name="email" type="email" required value={email} autocomplete="email" />
           </div>
           <div>
-            <label class="label" for="password">Mật khẩu</label>
+            <div class="flex items-baseline justify-between gap-3">
+              <label class="label" for="password">Mật khẩu</label>
+              <a class="link-quiet text-sm" href="/quen-mat-khau">Quên mật khẩu?</a>
+            </div>
             <input
               class="input"
               id="password"

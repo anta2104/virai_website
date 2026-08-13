@@ -160,6 +160,45 @@ export function reminderEmail(input: ReminderEmailInput): EmailMessage {
   return { to: '', subject, html, text };
 }
 
+/** Email chứa link đặt lại mật khẩu. */
+export function passwordResetEmail(input: {
+  userName: string;
+  resetUrl: string;
+  /** Link sống bao nhiêu phút, để nói rõ trong thư */
+  minutesValid: number;
+}): EmailMessage {
+  const body = `
+    <p style="margin:0 0 14px;">Chào ${escapeHtml(input.userName)},</p>
+    <p style="margin:0 0 14px;">Có người vừa yêu cầu đặt lại mật khẩu cho tài khoản này. Nếu là bạn, bấm nút bên dưới để chọn mật khẩu mới.</p>
+    <p style="margin:0 0 14px;">Link chỉ dùng được <strong>một lần</strong> và hết hạn sau ${input.minutesValid} phút.</p>
+    <p style="margin:0 0 14px;">Nếu không phải bạn yêu cầu thì cứ bỏ qua thư này — mật khẩu hiện tại vẫn giữ nguyên, không có gì thay đổi.</p>
+  `;
+
+  return {
+    to: '',
+    subject: `Đặt lại mật khẩu ${site.name}`,
+    html: layout({
+      heading: 'Đặt lại mật khẩu',
+      body,
+      ctaLabel: 'Chọn mật khẩu mới',
+      ctaHref: input.resetUrl,
+      footerNote: 'Nút không bấm được? Dán đường dẫn này vào trình duyệt:<br>' + escapeHtml(input.resetUrl),
+    }),
+    text: [
+      `Chào ${input.userName},`,
+      '',
+      'Có người vừa yêu cầu đặt lại mật khẩu cho tài khoản này. Nếu là bạn, mở link sau để chọn mật khẩu mới:',
+      '',
+      input.resetUrl,
+      '',
+      `Link chỉ dùng được một lần và hết hạn sau ${input.minutesValid} phút.`,
+      'Nếu không phải bạn yêu cầu thì cứ bỏ qua thư này — mật khẩu hiện tại vẫn giữ nguyên.',
+      '',
+      `${site.name} — vận hành bởi ${site.company}.`,
+    ].join('\n'),
+  };
+}
+
 /** Email thông báo có lời lưu bút mới chờ duyệt. */
 export function newGuestbookEmail(input: {
   ownerName: string;

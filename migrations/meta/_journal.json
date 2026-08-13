@@ -15,6 +15,13 @@
       "when": 1786441200785,
       "tag": "0001_ai_usage",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1786617769262,
+      "tag": "0002_password_reset_tokens",
+      "breakpoints": true
     }
   ]
 }
