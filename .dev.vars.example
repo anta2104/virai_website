@@ -1,5 +1,9 @@
 # Copy sang .dev.vars để chạy local: cp .dev.vars.example .dev.vars
 # Production: đặt bằng `wrangler secret put <TÊN>`
+#
+# Đây là toàn bộ secret mà code đọc. Hai thứ KHÔNG nằm ở đây:
+#  - PUBLIC_SITE_URL: là biến thường, khai trong `vars` của wrangler.jsonc
+#  - DB / BUCKET / AI / ASSETS: là binding, cũng khai trong wrangler.jsonc
 
 # Chuỗi ngẫu nhiên dài để ký session cookie (tạo bằng: openssl rand -hex 32)
 SESSION_SECRET=doi-thanh-chuoi-ngau-nhien-that-dai

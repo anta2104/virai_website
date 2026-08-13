@@ -25,7 +25,7 @@ flowchart LR
     Worker --> WorkersAI[Workers AI - viết tiểu sử]
     Cron[Cron Trigger hằng ngày] --> Worker
     Worker --> Email[Resend - email nhắc tưởng niệm]
-    Bank[Chuyển khoản VietQR] --> Webhook[Webhook PayOS] --> Worker
+    Bank[Chuyển khoản VietQR] --> Webhook[Webhook SePay] --> Worker
 ```
 
 ### Các lựa chọn công nghệ
@@ -36,13 +36,13 @@ flowchart LR
 | CSS | Tailwind CSS 4 | Đã có sẵn trong repo |
 | Database | Cloudflare D1 (SQLite) + Drizzle ORM | Binding trong `wrangler.jsonc` |
 | Lưu ảnh | Cloudflare R2 | Upload qua API route, nén/resize phía client trước khi upload |
-| Auth | Email + mật khẩu tự xây | Session cookie lưu D1, hash mật khẩu bằng Web Crypto PBKDF2. Google OAuth để sau |
+| Auth | Email + mật khẩu tự xây | Session cookie lưu D1 (ký HMAC), hash mật khẩu bằng Web Crypto PBKDF2. Có luồng quên mật khẩu qua email. Google OAuth để sau |
 | AI viết tiểu sử | Cloudflare Workers AI | Free tier đủ dùng, binding `AI` trong wrangler |
-| QR code | Thư viện `qrcode`, sinh server-side | Mỗi trang có slug dạng `virai.com.vn/be/[slug]` |
+| QR code | Thư viện `uqr`, sinh server-side ra SVG | Mỗi trang có slug dạng `virai.com.vn/be/[slug]` |
 | OG image | Sinh ảnh card chia sẻ tự động (ví dụ `satori`/`workers-og` hoặc canvas) | Ảnh bé + tên + ngày sinh/ngày mất |
-| Âm lịch | Thư viện chuyển đổi âm-dương lịch (ví dụ `lunar-date-vn` hoặc tương đương) | Hiển thị ngày âm, tính 49 ngày, ngày giỗ |
+| Âm lịch | Tự viết trong `src/lib/lunar.ts` (thuật toán Hồ Ngọc Đức), không phụ thuộc thư viện | Hiển thị ngày âm, tính 49 ngày, 100 ngày, ngày giỗ |
 | Email | Resend (free 3.000 email/tháng) | Cron Trigger của Worker chạy mỗi ngày |
-| Thanh toán | **PayOS** (VietQR + webhook) | Đã chốt PayOS: gói miễn phí không giới hạn cho cá nhân/HKD (từ 01/2026), có API tạo link thanh toán + SDK Node + webhook. Không dùng Stripe. Có xác nhận tay dự phòng |
+| Thanh toán | **SePay** (VietQR + webhook biến động số dư) | Đang chạy thật. Mã VietQR tự sinh trong Worker (`QR_PROVIDER=local`) hoặc để SePay sinh (`QR_PROVIDER=sepay`). SePay gọi webhook khi có tiền vào, không cần SDK. Không dùng Stripe. Có xác nhận tay dự phòng |
 
 ### Schema database (D1)
 
@@ -59,16 +59,20 @@ Các bảng chính:
 ## 3. Mô hình thu tiền
 
 - **Free**: 1 trang kỷ niệm, tối đa 10 ảnh, 1 theme cơ bản, có dòng "Tạo bởi..." ở footer, sổ lưu bút giới hạn.
-- **Premium — 249.000đ/bé, trả 1 lần, trọn đời**: không giới hạn ảnh + video, tất cả theme, email nhắc ngày tưởng niệm (kể cả âm lịch), ẩn logo, tải file QR chất lượng cao để tự in.
-- **Combo Vật Lý — từ 499.000đ**: Premium + thẻ kim loại/gỗ khắc QR ship tận nơi (đặt qua form đơn hàng, chủ dự án xử lý in ấn thủ công với xưởng — chưa cần tích hợp API vận chuyển).
+- **Premium — 119.000đ/bé, trả 1 lần, trọn đời** (giá đề xuất ban đầu 249k, đã hạ): không giới hạn ảnh + video, tất cả theme, email nhắc ngày tưởng niệm (kể cả âm lịch), ẩn logo, tải file QR chất lượng cao để tự in.
+- **Combo Vật Lý — từ 299.000đ** (giá đề xuất ban đầu 499k, đã hạ): Premium + thẻ kim loại/gỗ khắc QR ship tận nơi (đặt qua form đơn hàng, chủ dự án xử lý in ấn thủ công với xưởng — chưa cần tích hợp API vận chuyển).
 
 ### Luồng thanh toán (phù hợp Việt Nam)
 
-1. Khách bấm nâng cấp → tạo link/mã thanh toán qua **API PayOS** (VietQR) kèm mã đơn duy nhất (payment_code).
-2. **Tự động xác nhận** qua webhook PayOS: webhook đối chiếu payment_code + số tiền → đơn tự chuyển "Đã thanh toán", memorial lên Premium ngay.
+1. Khách bấm nâng cấp → sinh mã **VietQR** kèm mã đơn duy nhất (`payment_code`) đặt trong nội dung chuyển khoản.
+2. **Tự động xác nhận** qua webhook biến động số dư của **SePay**: webhook dò `payment_code` trong nội dung chuyển khoản, đối chiếu số tiền → đơn tự chuyển "Đã thanh toán", memorial lên Premium ngay và khách nhận email báo.
 3. **Dự phòng**: trang admin cho phép xác nhận thanh toán tay nếu webhook lỗi/thiếu.
 
-> Đã chốt dùng **PayOS** (payos.vn): gói miễn phí không giới hạn giao dịch cho cá nhân/hộ kinh doanh, có SDK Node chính thức. Lưu ý: gói miễn phí không giới hạn chạy qua hạ tầng KienlongBank, có thể cần mở tài khoản nhận tiền tại KienlongBank (mở online miễn phí). Thiết kế webhook viết tách lớp để sau này đổi nhà cung cấp không tốn công.
+> Đang dùng **SePay** (sepay.vn), không phải PayOS. SePay đọc biến động số dư của tài khoản ngân hàng rồi gọi webhook, nên không cần tạo link thanh toán qua API — mã VietQR tự sinh được ngay trong Worker.
+>
+> Xác thực webhook bằng header `Authorization: Apikey <PAYMENT_WEBHOOK_SECRET>`, so sánh timing-safe.
+>
+> **Tiền tố mã đơn không tự do chọn**: ngân hàng chỉ đẩy thông báo cho SePay với giao dịch có nội dung chứa tiền tố đã đăng ký (mặc định `SEVQR`). Dùng tiền tố khác thì ngân hàng lặng lẽ bỏ qua, webhook không bao giờ chạy dù mọi cấu hình đều đúng. Đổi qua `PAYMENT_CODE_PREFIX`.
 
 ## 4. Các trang chính
 
@@ -82,7 +86,7 @@ Các bảng chính:
 | `/be/[slug]/og.png` | Endpoint sinh OG image (ảnh bé + tên + ngày sinh/ngày mất) |
 | `/bang-gia` | Bảng giá + luồng thanh toán VietQR |
 | `/admin` | Quản lý user, xác nhận thanh toán tay, duyệt lưu bút, quản lý đơn thẻ QR vật lý |
-| `/api/webhook/payment` | Webhook nhận thông báo thanh toán từ PayOS |
+| `/api/webhook/payment` | Webhook nhận thông báo biến động số dư từ SePay |
 
 ## 5. Giai đoạn triển khai (thứ tự code)
 
@@ -100,7 +104,7 @@ Các bảng chính:
 
 ### Giai đoạn 3 — Doanh thu
 9. Sổ lưu bút có duyệt + thắp nến ảo + thả hoa + bộ đếm lượt ghé thăm.
-10. Bảng giá, luồng thanh toán PayOS (VietQR) + webhook + xác nhận tay; khóa/mở tính năng theo gói.
+10. Bảng giá, luồng thanh toán SePay (VietQR) + webhook + xác nhận tay; khóa/mở tính năng theo gói.
 11. Form đặt combo thẻ QR vật lý (thu thập địa chỉ ship) + quản lý trạng thái đơn.
 
 ### Giai đoạn 4 — Giữ chân + vận hành
@@ -124,9 +128,9 @@ Các bảng chính:
 
 ## 7. Việc chủ dự án cần làm ngoài code
 
-- [ ] Tạo tài khoản **PayOS** (payos.vn, miễn phí, cần CCCD) và liên kết tài khoản ngân hàng nhận tiền; lấy Client ID / API Key / Checksum Key. Cân nhắc mở tài khoản KienlongBank online để hưởng gói miễn phí không giới hạn.
+- [x] Tạo tài khoản **SePay** (sepay.vn) và liên kết tài khoản ngân hàng nhận tiền; đặt URL webhook `https://virai.com.vn/api/webhook/payment`, kiểu xác thực API Key. Đăng ký tiền tố nội dung chuyển khoản với ngân hàng (mặc định `SEVQR`).
 - [ ] Tạo tài khoản **Resend** + xác thực domain `virai.com.vn` để gửi email.
-- [ ] Quyết định giá cuối cùng cho các gói (hiện đề xuất 249k Premium / 499k Combo).
+- [x] Quyết định giá cuối cùng cho các gói. Giá đang chạy trong `src/lib/plans.ts`: Premium 119k, Combo thẻ QR 299k, kèm ưu đãi giảm 50% cho Premium.
 - [ ] Tìm xưởng in/khắc thẻ QR kim loại hoặc gỗ (Shopee/xưởng nhỏ) cho combo vật lý.
 - [ ] Chuẩn bị 2-3 bộ ảnh + câu chuyện demo để tạo trang mẫu trên landing page.
 - [ ] (Sau này) Liên hệ dịch vụ hỏa táng thú cưng, phòng khám thú y để hợp tác hoa hồng giới thiệu.
@@ -137,10 +141,16 @@ Các bảng chính:
 # .dev.vars (local) / wrangler secrets (production)
 SESSION_SECRET=          # ký session cookie (sinh bằng: openssl rand -base64 32)
 RESEND_API_KEY=          # gửi email
-PAYOS_CLIENT_ID=         # lấy từ dashboard PayOS
-PAYOS_API_KEY=           # lấy từ dashboard PayOS
-PAYOS_CHECKSUM_KEY=      # xác thực webhook PayOS
+PAYMENT_WEBHOOK_SECRET=  # SePay gửi kèm: Authorization: Apikey <giá trị này>
+CRON_SECRET=             # để cron gọi được /api/cron/reminders
+BANK_ACCOUNT_NUMBER=     # tài khoản nhận tiền, hiện trên mã VietQR
+BANK_CODE=               # mã ngân hàng chuẩn VietQR (BIN), ví dụ Vietcombank 970436
+BANK_ACCOUNT_NAME=       # tên chủ tài khoản, không dấu
+QR_PROVIDER=             # local (tự sinh trong Worker, mặc định) hoặc sepay
+PAYMENT_CODE_PREFIX=     # tiền tố mã đơn, phải khớp tiền tố ngân hàng nhận diện (mặc định SEVQR)
 ADMIN_EMAIL=             # email tài khoản admin đầu tiên
 ```
+
+Danh sách đầy đủ và luôn cập nhật nằm ở `.dev.vars.example`.
 
 Bindings trong `wrangler.jsonc`: `DB` (D1), `BUCKET` (R2), `AI` (Workers AI), cron trigger `0 1 * * *` (8h sáng VN).
