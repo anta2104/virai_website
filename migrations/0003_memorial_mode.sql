@@ -1,0 +1,1 @@
+ALTER TABLE `memorials` ADD `mode` text DEFAULT 'memorial' NOT NULL;

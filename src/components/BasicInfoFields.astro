@@ -1,17 +1,52 @@
 ---
 import LunarDateField from './LunarDateField.astro';
 import { GENDER_OPTIONS, SPECIES_OPTIONS, type BasicInfo } from '../lib/memorial-form';
+import { MODE_OPTIONS, isLiving } from '../lib/memorial-mode';
 import { todayInVietnam } from '../lib/format';
 
 interface Props {
   values: BasicInfo;
+  /**
+   * Cho đổi chế độ hay không. Lúc tạo mới thì cho; lúc sửa trang đã có thì
+   * không — chuyển chế độ là việc nhạy cảm, đi qua nút riêng có xác nhận.
+   */
+  allowModeChange?: boolean;
 }
 
-const { values } = Astro.props;
+const { values, allowModeChange = false } = Astro.props;
 const today = todayInVietnam();
+const living = isLiving(values.mode);
 ---
 
-<div class="space-y-5">
+<div class="space-y-5" data-basic-info>
+  {
+    allowModeChange ? (
+      <fieldset>
+        <legend class="label">Trang này dành cho</legend>
+        <div class="grid gap-3 sm:grid-cols-2">
+          {MODE_OPTIONS.map((option) => (
+            <label class="cursor-pointer">
+              <input
+                type="radio"
+                name="mode"
+                value={option.value}
+                checked={values.mode === option.value}
+                class="peer sr-only"
+                data-mode-input
+              />
+              <span class="block h-full rounded-2xl border border-cream-300 p-4 transition peer-checked:border-clay-400 peer-checked:bg-clay-50">
+                <span class="block font-medium text-ink-900">{option.label}</span>
+                <span class="mt-1 block text-sm text-ink-500">{option.hint}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+    ) : (
+      <input type="hidden" name="mode" value={values.mode} />
+    )
+  }
+
   <div>
     <label class="label" for="petName">Tên bé</label>
     <input
@@ -77,12 +112,39 @@ const today = todayInVietnam();
 
   <div class="grid gap-5 sm:grid-cols-2">
     <LunarDateField name="birthDate" label="Ngày sinh" value={values.birthDate} max={today} />
-    <LunarDateField
-      name="deathDate"
-      label="Ngày bé rời đi"
-      value={values.deathDate}
-      max={today}
-      hint="Dùng để tính ngày 49 và ngày giỗ."
-    />
+    <div data-death-date class:list={[living && 'hidden']}>
+      <LunarDateField
+        name="deathDate"
+        label="Ngày bé rời đi"
+        value={values.deathDate}
+        max={today}
+        hint="Dùng để tính ngày 49 và ngày giỗ."
+      />
+    </div>
   </div>
 </div>
+
+{
+  allowModeChange && (
+    <script>
+      // Chọn "bé vẫn đang bên tôi" thì giấu ô ngày mất và xoá luôn giá trị đã gõ.
+      // Không có JS thì ô vẫn hiện, và phía server tự bỏ qua ngày mất ở chế độ
+      // living — nên form vẫn dùng được.
+      const root = document.querySelector<HTMLElement>('[data-basic-info]');
+      const deathField = root?.querySelector<HTMLElement>('[data-death-date]');
+      const input = deathField?.querySelector<HTMLInputElement>('input[name="deathDate"]');
+
+      function sync() {
+        const mode = root?.querySelector<HTMLInputElement>('[data-mode-input]:checked')?.value;
+        const living = mode === 'living';
+        deathField?.classList.toggle('hidden', living);
+        if (living && input) input.value = '';
+      }
+
+      root?.querySelectorAll('[data-mode-input]').forEach((el) => {
+        el.addEventListener('change', sync);
+      });
+      sync();
+    </script>
+  )
+}

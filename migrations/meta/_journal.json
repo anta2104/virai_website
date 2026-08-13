@@ -22,6 +22,13 @@
       "when": 1786617769262,
       "tag": "0002_password_reset_tokens",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1786632939868,
+      "tag": "0003_memorial_mode",
+      "breakpoints": true
     }
   ]
 }

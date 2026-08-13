@@ -90,6 +90,12 @@ export const memorials = sqliteTable(
     updatedAt: integer('updated_at')
       .notNull()
       .default(sql`(unixepoch())`),
+    /**
+     * 'memorial' = bé đã về cầu vồng | 'living' = sổ ký ức cho bé đang sống.
+     *
+     * Mặc định 'memorial' để 27 trang đang có giữ nguyên hành vi cũ.
+     */
+    mode: text('mode').notNull().default('memorial'),
   },
   (t) => [
     uniqueIndex('memorials_slug_unique').on(t.slug),

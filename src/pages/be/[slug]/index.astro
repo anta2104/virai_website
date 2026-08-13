@@ -9,6 +9,7 @@ import { limitsFor } from '../../../lib/plans';
 import { newId } from '../../../lib/ids';
 import { todayInVietnam, truncate } from '../../../lib/format';
 import { tributeCookieName } from '../../../lib/tributes';
+import { isLiving } from '../../../lib/memorial-mode';
 import { lifeSummary } from '../../../lib/memorial-dates';
 import { site } from '../../../lib/site';
 import { and } from 'drizzle-orm';
@@ -143,10 +144,17 @@ const todayVn = todayInVietnam();
 const litCandle = Astro.cookies.get(tributeCookieName('candle', memorial.id))?.value === todayVn;
 const gaveFlower = Astro.cookies.get(tributeCookieName('flower', memorial.id))?.value === todayVn;
 
-const summary = lifeSummary(memorial.birthDate, memorial.deathDate);
+const summary = lifeSummary(memorial.birthDate, memorial.deathDate, memorial.mode);
+
+// Bé còn sống thì không gọi là "trang kỷ niệm" — cả ở tiêu đề tab, kết quả tìm
+// kiếm lẫn thẻ chia sẻ Facebook/Zalo.
+const pageKind = isLiving(memorial.mode) ? 'sổ ký ức' : 'trang kỷ niệm';
+const pageTitle = `${memorial.petName} — ${pageKind}`;
 const description = memorial.bio
   ? truncate(memorial.bio, 180)
-  : `Trang kỷ niệm ${memorial.petName}${summary.dateLine ? ` (${summary.dateLine})` : ''}.`;
+  : isLiving(memorial.mode)
+    ? `Sổ ký ức của ${memorial.petName}${summary.dateLine ? ` (${summary.dateLine})` : ''} — ảnh, câu chuyện và lời nhắn của mọi người.`
+    : `Trang kỷ niệm ${memorial.petName}${summary.dateLine ? ` (${summary.dateLine})` : ''}.`;
 
 // Thêm dấu thời gian để Facebook/Zalo tải lại ảnh khi chủ trang đổi ảnh bìa
 const ogImage = `/be/${memorial.slug}/og.png?v=${memorial.updatedAt}`;
@@ -154,7 +162,7 @@ const ogImage = `/be/${memorial.slug}/og.png?v=${memorial.updatedAt}`;
 const jsonLd = {
   '@context': 'https://schema.org',
   '@type': 'WebPage',
-  name: `${memorial.petName} — trang kỷ niệm`,
+  name: pageTitle,
   description,
   inLanguage: 'vi',
   isPartOf: { '@type': 'WebSite', name: site.name, url: site.url },
@@ -162,7 +170,7 @@ const jsonLd = {
 ---
 
 <BaseLayout
-  title={`${memorial.petName} — trang kỷ niệm`}
+  title={pageTitle}
   description={description}
   ogImage={ogImage}
   ogType="profile"

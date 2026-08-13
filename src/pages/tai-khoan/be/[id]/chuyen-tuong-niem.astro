@@ -1,0 +1,128 @@
+---
+import { eq } from 'drizzle-orm';
+import AppLayout from '../../../../layouts/AppLayout.astro';
+import LunarDateField from '../../../../components/LunarDateField.astro';
+import { notFound, ownedMemorial } from '../../../../lib/guards';
+import { getDb } from '../../../../lib/db';
+import { memorials } from '../../../../lib/db/schema';
+import { lunarFieldsFor } from '../../../../lib/memorials';
+import { isLiving } from '../../../../lib/memorial-mode';
+import { ensureRemindersFor } from '../../../../lib/reminders';
+import { parseIsoDate, jdFromDate } from '../../../../lib/lunar';
+import { todayInVietnam } from '../../../../lib/format';
+import { env } from '../../../../lib/env';
+
+const memorial = await ownedMemorial(Astro.locals, Astro.params.id);
+if (!memorial) return notFound();
+
+// Trang đã là tưởng niệm rồi thì không có gì để chuyển
+if (!isLiving(memorial.mode)) {
+  return Astro.redirect(`/tai-khoan/be/${memorial.id}`);
+}
+
+const today = todayInVietnam();
+let error: string | null = null;
+let deathDate = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  deathDate = String(form.get('deathDate') ?? '').trim();
+  const confirmName = String(form.get('confirmName') ?? '').trim();
+
+  const parsed = parseIsoDate(deathDate);
+  const todayParts = parseIsoDate(today)!;
+
+  if (!deathDate || !parsed) {
+    error = 'Bạn cho biết ngày bé rời đi nhé.';
+  } else if (
+    jdFromDate(parsed.day, parsed.month, parsed.year) >
+    jdFromDate(todayParts.day, todayParts.month, todayParts.year)
+  ) {
+    error = 'Ngày bé rời đi không thể ở tương lai.';
+  } else if (
+    memorial.birthDate &&
+    (() => {
+      const birth = parseIsoDate(memorial.birthDate)!;
+      return (
+        jdFromDate(parsed.day, parsed.month, parsed.year) <
+        jdFromDate(birth.day, birth.month, birth.year)
+      );
+    })()
+  ) {
+    error = 'Ngày bé rời đi phải sau ngày sinh.';
+  } else if (confirmName !== memorial.petName) {
+    error = `Tên chưa khớp nên chưa đổi gì cả. Bạn gõ đúng "${memorial.petName}" nhé.`;
+  }
+
+  if (!error) {
+    const updated = {
+      ...memorial,
+      mode: 'memorial' as const,
+      deathDate,
+      ...lunarFieldsFor(memorial.birthDate, deathDate),
+    };
+
+    await getDb(env.DB)
+      .update(memorials)
+      .set({
+        mode: 'memorial',
+        deathDate,
+        ...lunarFieldsFor(memorial.birthDate, deathDate),
+        updatedAt: Math.floor(Date.now() / 1000),
+      })
+      .where(eq(memorials.id, memorial.id));
+
+    // Tạo lịch nhắc 49 ngày / 100 ngày / giỗ hằng năm theo ngày âm vừa nhập
+    await ensureRemindersFor(env.DB, updated);
+
+    return Astro.redirect(`/tai-khoan/be/${memorial.id}?chuyen-che-do=xong`);
+  }
+}
+---
+
+<AppLayout
+  title={`Chuyển trang của ${memorial.petName}`}
+  backHref={`/tai-khoan/be/${memorial.id}`}
+  backLabel="Về trang quản lý"
+>
+  <div class="card p-6 sm:p-8">
+    <h2 class="font-serif text-2xl font-semibold">Chuyển sang trang tưởng niệm</h2>
+    <p class="mt-3 text-ink-500">
+      Chúng tôi rất tiếc. Nếu {memorial.petName} đã rời đi, trang này sẽ chuyển thành trang tưởng
+      niệm.
+    </p>
+
+    <div class="alert-info mt-6">
+      <p class="font-medium">Toàn bộ ảnh, câu chuyện và lời lưu bút được giữ nguyên.</p>
+      <p class="mt-2 text-sm">
+        Sau khi chuyển, trang sẽ hiện các mốc 49 ngày, 100 ngày và ngày giỗ theo âm lịch; nút "gửi
+        yêu thương" đổi thành thắp nến. Bạn sẽ nhận email nhắc trước mỗi mốc.
+      </p>
+      <p class="mt-2 text-sm">Việc này không tự quay lại được — bạn cần báo chúng tôi nếu bấm nhầm.</p>
+    </div>
+
+    {error && <p class="alert-error mt-6">{error}</p>}
+
+    <form method="POST" class="mt-6 space-y-5">
+      <LunarDateField
+        name="deathDate"
+        label={`Ngày ${memorial.petName} rời đi`}
+        value={deathDate}
+        max={today}
+        hint="Dùng để tính ngày 49, 100 ngày và ngày giỗ theo âm lịch."
+      />
+
+      <div>
+        <label class="label" for="confirmName">
+          Gõ lại tên bé để xác nhận: <strong>{memorial.petName}</strong>
+        </label>
+        <input class="input" id="confirmName" name="confirmName" required autocomplete="off" />
+      </div>
+
+      <div class="flex flex-wrap items-center justify-between gap-4 pt-2">
+        <a href={`/tai-khoan/be/${memorial.id}`} class="btn-ghost">Để sau</a>
+        <button type="submit" class="btn-primary">Chuyển sang trang tưởng niệm</button>
+      </div>
+    </form>
+  </div>
+</AppLayout>

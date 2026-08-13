@@ -9,6 +9,7 @@ import { listPhotos, photoUrl } from '../../../../lib/memorials';
 import { limitsFor, formatVnd, amountToCharge, THEMES } from '../../../../lib/plans';
 import { formatDate } from '../../../../lib/format';
 import { upcomingMilestone } from '../../../../lib/memorial-dates';
+import { isLiving } from '../../../../lib/memorial-mode';
 import { listRemindersOf, setRemindersEnabled } from '../../../../lib/reminders';
 import { memorialUrl } from '../../../../lib/site';
 import { env } from '../../../../lib/env';
@@ -66,6 +67,11 @@ if (params.get('unpublished')) notice = 'Trang đã chuyển về dạng nháp, 
 if (params.get('reminders') === 'on') notice = 'Đã bật email nhắc ngày tưởng niệm.';
 if (params.get('reminders') === 'off') notice = 'Đã tắt email nhắc ngày tưởng niệm.';
 if (params.get('paid')) notice = 'Đã nhận thanh toán — trang của bé đã lên Premium. Cảm ơn bạn!';
+if (params.get('chuyen-che-do') === 'xong') {
+  notice = `Đã chuyển trang của ${memorial.petName} sang trang tưởng niệm. Các mốc theo âm lịch đã được tính sẵn.`;
+}
+
+const living = isLiving(memorial.mode);
 
 const photos = await listPhotos(env.DB, memorial.id);
 const limits = limitsFor(memorial.isPremium);
@@ -243,6 +249,25 @@ const themeName = THEMES.find((theme) => theme.id === memorial.theme)?.name ?? m
           ))
         }
       </ul>
+
+      <!-- Chuyển sổ ký ức sang trang tưởng niệm -->
+      {
+        living && (
+          <div class="mt-10 rounded-2xl border border-cream-300 bg-cream-100/60 p-5">
+            <p class="font-medium text-ink-900">Nếu {memorial.petName} đã rời đi</p>
+            <p class="mt-1.5 text-sm text-ink-500">
+              Chuyển trang này thành trang tưởng niệm. Toàn bộ ảnh, câu chuyện và lời lưu bút giữ
+              nguyên; trang sẽ có thêm mốc 49 ngày, 100 ngày và ngày giỗ theo âm lịch.
+            </p>
+            <a
+              href={`/tai-khoan/be/${memorial.id}/chuyen-tuong-niem`}
+              class="btn-secondary mt-4 inline-flex"
+            >
+              Chuyển sang trang tưởng niệm
+            </a>
+          </div>
+        )
+      }
 
       <!-- Xoá trang -->
       <details class="mt-10 border-t border-cream-300 pt-6">
