@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
-import { getDb, type DB } from './db';
+import { getDb, withDbRetry, type DB } from './db';
 import { guestbookEntries, memorials, photos, type Memorial, type Photo } from './db/schema';
 import { lunarLabel } from './lunar';
 
@@ -16,7 +16,9 @@ export function coverUrlOf(memorial: Memorial, photoList: Photo[]): string | nul
 
 export async function getMemorialBySlug(d1: D1Database, slug: string): Promise<Memorial | null> {
   const db = getDb(d1);
-  const rows = await db.select().from(memorials).where(eq(memorials.slug, slug)).limit(1);
+  const rows = await withDbRetry('getMemorialBySlug', () =>
+    db.select().from(memorials).where(eq(memorials.slug, slug)).limit(1),
+  );
   return rows[0] ?? null;
 }
 
@@ -43,20 +45,20 @@ export async function getOwnedMemorial(
 
 export async function listMemorialsOfUser(d1: D1Database, userId: string): Promise<Memorial[]> {
   const db = getDb(d1);
-  return db
-    .select()
-    .from(memorials)
-    .where(eq(memorials.userId, userId))
-    .orderBy(desc(memorials.createdAt));
+  return withDbRetry('listMemorialsOfUser', () =>
+    db.select().from(memorials).where(eq(memorials.userId, userId)).orderBy(desc(memorials.createdAt)),
+  );
 }
 
 export async function listPhotos(d1: D1Database, memorialId: string): Promise<Photo[]> {
   const db = getDb(d1);
-  return db
-    .select()
-    .from(photos)
-    .where(eq(photos.memorialId, memorialId))
-    .orderBy(asc(photos.sortOrder), asc(photos.createdAt));
+  return withDbRetry('listPhotos', () =>
+    db
+      .select()
+      .from(photos)
+      .where(eq(photos.memorialId, memorialId))
+      .orderBy(asc(photos.sortOrder), asc(photos.createdAt)),
+  );
 }
 
 export async function countPhotos(d1: D1Database, memorialId: string): Promise<number> {

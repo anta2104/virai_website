@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import type { AstroCookies } from 'astro';
-import { getDb, type DB } from './db';
+import { getDb, withDbRetry, type DB } from './db';
 import { sessions, users, type User } from './db/schema';
 import { newId, randomToken } from './ids';
 
@@ -119,12 +119,14 @@ export async function resolveSession(
   const sessionId = await unsign(secret, cookieValue);
   if (!sessionId) return null;
 
-  const rows = await db
-    .select({ session: sessions, user: users })
-    .from(sessions)
-    .innerJoin(users, eq(users.id, sessions.userId))
-    .where(eq(sessions.id, sessionId))
-    .limit(1);
+  const rows = await withDbRetry('resolveSession', () =>
+    db
+      .select({ session: sessions, user: users })
+      .from(sessions)
+      .innerJoin(users, eq(users.id, sessions.userId))
+      .where(eq(sessions.id, sessionId))
+      .limit(1),
+  );
 
   const row = rows[0];
   if (!row) return null;
@@ -199,7 +201,9 @@ export async function loginUser(
 ): Promise<AuthResult> {
   const db = getDb(d1);
   const email = input.email.trim().toLowerCase();
-  const rows = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  const rows = await withDbRetry('loginUser', () =>
+    db.select().from(users).where(eq(users.email, email)).limit(1),
+  );
   const user = rows[0];
   // Vẫn chạy một lần hash giả để thời gian phản hồi không tiết lộ email có tồn tại
   const stored = user?.passwordHash ?? 'pbkdf2$100000$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';

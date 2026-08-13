@@ -1,5 +1,5 @@
 import { defineMiddleware } from 'astro:middleware';
-import { getDb } from './lib/db';
+import { describeDbError, getDb } from './lib/db';
 import { SESSION_COOKIE, resolveSession } from './lib/auth';
 import { env } from './lib/env';
 
@@ -17,7 +17,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
       try {
         context.locals.user = await resolveSession(getDb(env.DB), cookie, env.SESSION_SECRET);
       } catch (error) {
-        console.error('Không đọc được session:', error);
+        // Đọc cả `cause` để thấy thông báo thật của D1, không chỉ câu truy vấn
+        console.error('[middleware] Không đọc được session:', describeDbError(error));
       }
     }
   }
@@ -33,5 +34,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return new Response('Không tìm thấy trang', { status: 404 });
   }
 
-  return next();
+  // Ghi lại nguyên nhân thật của mọi lỗi chưa xử lý rồi ném lại để Astro hiện
+  // trang 500. Không đọc `cause` thì lúc D1 hỏng log chỉ có câu truy vấn.
+  try {
+    return await next();
+  } catch (error) {
+    console.error(`[middleware] Lỗi chưa xử lý tại ${pathname}:`, describeDbError(error));
+    throw error;
+  }
 });

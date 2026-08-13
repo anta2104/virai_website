@@ -14,5 +14,7 @@ export function getDb(d1: D1Database): DB {
   return db;
 }
 
+export { describeDbError, withDbRetry } from './retry';
+
 export * as tables from './schema';
 export { schema };

@@ -1,5 +1,5 @@
 import { and, desc, eq } from 'drizzle-orm';
-import { getDb } from './db';
+import { getDb, withDbRetry } from './db';
 import { memorials, orders, type Memorial, type Order } from './db/schema';
 import { newId } from './ids';
 import { newPaymentCode } from './payment-code';
@@ -106,11 +106,9 @@ export async function listOrdersOfUser(userId: string): Promise<Order[]> {
 
 /** Tìm đơn theo nội dung chuyển khoản — dùng cho webhook và xác nhận tay. */
 export async function findOrderByPaymentCode(code: string): Promise<Order | null> {
-  const rows = await getDb(env.DB)
-    .select()
-    .from(orders)
-    .where(eq(orders.paymentCode, code.toUpperCase()))
-    .limit(1);
+  const rows = await withDbRetry('findOrderByPaymentCode', () =>
+    getDb(env.DB).select().from(orders).where(eq(orders.paymentCode, code.toUpperCase())).limit(1),
+  );
   return rows[0] ?? null;
 }
 

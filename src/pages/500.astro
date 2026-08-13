@@ -1,0 +1,56 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Icon from '../components/Icon.astro';
+import { site } from '../lib/site';
+
+/**
+ * Trang hiện khi máy chủ gặp lỗi không lường trước.
+ *
+ * QUAN TRỌNG: trang này không được đọc D1, R2 hay bất kỳ binding nào. Sự cố hay
+ * gặp nhất chính là D1 hỏng — nếu trang lỗi cũng cần D1 thì nó cũng sập theo và
+ * khách lại thấy màn hình trắng.
+ */
+const { error } = Astro.props as { error?: unknown };
+if (error) {
+  console.error('[500] Lỗi chưa xử lý:', error instanceof Error ? `${error.message}` : String(error));
+}
+---
+
+<BaseLayout title={`Hệ thống đang gặp sự cố · ${site.name}`} noindex>
+  <div class="flex min-h-screen flex-col">
+    <main class="flex flex-1 items-center px-4 py-20 sm:px-6">
+      <div class="container-narrow text-center">
+        <span class="inline-flex text-clay-400">
+          <Icon name="lotus" size={40} weight={1.25} />
+        </span>
+
+        <p class="eyebrow mt-6">Sự cố tạm thời</p>
+        <h1 class="mt-3 font-serif text-3xl font-semibold sm:text-4xl">
+          Hệ thống đang gặp sự cố
+        </h1>
+
+        <p class="measure mx-auto mt-5 text-ink-500">
+          Đây là lỗi từ phía chúng tôi, không phải do bạn làm sai điều gì. Trang kỷ niệm và toàn bộ
+          ảnh của bạn vẫn an toàn. Bạn thử tải lại sau một hai phút nhé.
+        </p>
+
+        <div class="mt-9 flex flex-wrap items-center justify-center gap-3">
+          <button type="button" class="btn-primary" data-reload>Tải lại trang</button>
+          <a href="/" class="btn-secondary">Về trang chủ</a>
+        </div>
+
+        <p class="mt-10 border-t border-cream-300 pt-6 text-sm text-ink-500">
+          Nếu lỗi vẫn còn sau vài phút, nhắn giúp chúng tôi ở
+          <a class="link-quiet" href={`mailto:${site.supportEmail}`}>{site.supportEmail}</a> — kèm
+          đường dẫn bạn đang mở thì chúng tôi tìm nguyên nhân nhanh hơn.
+        </p>
+      </div>
+    </main>
+  </div>
+</BaseLayout>
+
+<script>
+  document.querySelector<HTMLButtonElement>('[data-reload]')?.addEventListener('click', () => {
+    window.location.reload();
+  });
+</script>
