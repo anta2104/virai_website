@@ -221,6 +221,12 @@ export function lunarToSolar(
     }
   }
   const monthStart = getNewMoonDay(k + off, timeZone);
+
+  // Tháng âm dài 29 hoặc 30 ngày. Nếu không kiểm, ngày 30 của một tháng thiếu
+  // sẽ lặng lẽ tràn sang mùng 1 tháng sau — sai hẳn một tháng.
+  const monthLength = getNewMoonDay(k + off + 1, timeZone) - monthStart;
+  if (lunarDay < 1 || lunarDay > monthLength) return null;
+
   const [day, month, year] = jdToDate(monthStart + lunarDay - 1);
   return { day, month, year };
 }
@@ -308,15 +314,25 @@ export function nextAnniversary(
   const fromJd = jdFromDate(from.day, from.month, from.year);
 
   // Thử từ năm âm hiện tại trở đi; cần vài vòng vì tháng nhuận có thể làm lệch.
+  //
+  // Hai quy ước cúng giỗ được áp dụng ở đây:
+  //  - Mất vào tháng nhuận thì các năm sau giỗ vào tháng thường cùng số
+  //    (nên luôn truyền leap = 0).
+  //  - Mất ngày 30 mà năm đó tháng ấy chỉ có 29 ngày thì giỗ ngày 29.
   const fromLunar = solarToLunar(from.day, from.month, from.year);
   for (let y = fromLunar.year; y <= fromLunar.year + 4; y++) {
-    const solar = lunarToSolar(deathLunar.day, deathLunar.month, y, 0);
+    let day = deathLunar.day;
+    let solar = lunarToSolar(day, deathLunar.month, y, 0);
+    if (!solar && day === 30) {
+      day = 29;
+      solar = lunarToSolar(day, deathLunar.month, y, 0);
+    }
     if (!solar) continue;
     const jd = jdFromDate(solar.day, solar.month, solar.year);
     if (jd >= fromJd) {
       return {
         date: toIsoDate(solar),
-        lunar: { day: deathLunar.day, month: deathLunar.month, year: y, leap: 0 },
+        lunar: { day, month: deathLunar.month, year: y, leap: 0 },
         yearsSince: y - deathLunar.year,
       };
     }

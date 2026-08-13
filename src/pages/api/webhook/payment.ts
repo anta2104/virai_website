@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { findOrderByPaymentCode, markOrderPaid } from '../../../lib/orders';
-import { jsonResponse } from '../../../lib/guards';
+import { jsonResponse, timingSafeEqual } from '../../../lib/guards';
 import { env } from '../../../lib/env';
 import { paymentCodePattern } from '../../../lib/payment-code';
 
@@ -13,16 +13,6 @@ import { paymentCodePattern } from '../../../lib/payment-code';
  * Tên field trong payload có thể khác nhau giữa các nhà cung cấp nên hàm đọc
  * theo nhiều tên gọi. Mã đơn được dò bằng regex trong nội dung chuyển khoản.
  */
-
-function timingSafeEqual(a: string, b: string): boolean {
-  const encoder = new TextEncoder();
-  const left = encoder.encode(a);
-  const right = encoder.encode(b);
-  if (left.length !== right.length) return false;
-  let diff = 0;
-  for (let i = 0; i < left.length; i++) diff |= left[i]! ^ right[i]!;
-  return diff === 0;
-}
 
 function isAuthorized(request: Request, secret: string): boolean {
   const header = request.headers.get('authorization') ?? '';

@@ -36,6 +36,22 @@ export function notFound(message = 'Không tìm thấy trang kỷ niệm'): Resp
   });
 }
 
+/**
+ * So sánh hai chuỗi bí mật trong thời gian không phụ thuộc nội dung.
+ *
+ * `===` thoát ra ngay ở ký tự khác đầu tiên, nên thời gian trả lời hé lộ được
+ * bao nhiêu ký tự đầu là đúng. Dùng cho mọi chỗ đối chiếu secret/token.
+ */
+export function timingSafeEqual(a: string, b: string): boolean {
+  const encoder = new TextEncoder();
+  const left = encoder.encode(a);
+  const right = encoder.encode(b);
+  if (left.length !== right.length) return false;
+  let diff = 0;
+  for (let i = 0; i < left.length; i++) diff |= left[i]! ^ right[i]!;
+  return diff === 0;
+}
+
 export function jsonResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,

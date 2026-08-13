@@ -57,9 +57,12 @@ const remaining = limit === null ? null : Math.max(0, limit - used);
 
     try {
       const bitmap = await createImageBitmap(file);
-      const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
-      const width = Math.round(bitmap.width * scale);
-      const height = Math.round(bitmap.height * scale);
+      // Đọc kích thước gốc trước khi close(): sau khi close, bitmap.width/height về 0
+      const sourceWidth = bitmap.width;
+      const sourceHeight = bitmap.height;
+      const scale = Math.min(1, MAX_SIDE / Math.max(sourceWidth, sourceHeight));
+      const width = Math.round(sourceWidth * scale);
+      const height = Math.round(sourceHeight * scale);
 
       const canvas = document.createElement('canvas');
       canvas.width = width;
@@ -73,7 +76,7 @@ const remaining = limit === null ? null : Math.max(0, limit - used);
         canvas.toBlob(resolve, 'image/jpeg', JPEG_QUALITY),
       );
       if (!blob || blob.size >= file.size) {
-        return { blob: file, width: bitmap.width, height: bitmap.height, name: file.name };
+        return { blob: file, width: sourceWidth, height: sourceHeight, name: file.name };
       }
       return { blob, width, height, name: file.name.replace(/\.[^.]+$/, '') + '.jpg' };
     } catch {
