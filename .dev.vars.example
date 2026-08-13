@@ -32,3 +32,11 @@ QR_PROVIDER=local
 # Tiền tố mã đơn trong nội dung chuyển khoản — phải khớp tiền tố mà ngân hàng/
 # SePay nhận diện, nếu không ngân hàng sẽ không đẩy thông báo. Mặc định SEVQR.
 PAYMENT_CODE_PREFIX=SEVQR
+
+# Google OAuth — nút "Tiếp tục với Google". Bỏ trống thì nút tự ẩn, không lỗi.
+# Tạo OAuth Client (loại Web application) tại console.cloud.google.com,
+# thêm Authorized redirect URI:
+#   https://virai.com.vn/api/auth/google/callback
+#   http://localhost:4321/api/auth/google/callback   (cho lúc dev)
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=

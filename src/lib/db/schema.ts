@@ -17,8 +17,22 @@ export const users = sqliteTable(
     /** 'user' | 'admin' */
     role: text('role').notNull().default('user'),
     createdAt: createdAt(),
+    /**
+     * `sub` của tài khoản Google đã liên kết, null nếu chưa liên kết.
+     *
+     * `password_hash` cố ý **vẫn là NOT NULL**. Cho phép NULL thì drizzle-kit
+     * sinh migration xoá và dựng lại bảng `users` — trên database đang phục vụ
+     * người dùng thật, với sessions/memorials/orders đều tham chiếu tới nó.
+     * Tài khoản chỉ dùng Google lưu giá trị đánh dấu `google-only`; verifyPassword
+     * chỉ chấp nhận chuỗi đúng định dạng `pbkdf2$...` nên nó không đăng nhập
+     * bằng mật khẩu được.
+     */
+    googleId: text('google_id'),
   },
-  (t) => [uniqueIndex('users_email_unique').on(t.email)],
+  (t) => [
+    uniqueIndex('users_email_unique').on(t.email),
+    uniqueIndex('users_google_id_unique').on(t.googleId),
+  ],
 );
 
 export const sessions = sqliteTable(
