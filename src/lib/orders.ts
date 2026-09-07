@@ -56,14 +56,26 @@ export async function getOrCreateOrder(input: {
     .limit(1);
 
   if (existing[0]) {
+    let order = existing[0];
+
+    // Giá niêm yết đã giảm sau khi đơn được tạo thì hạ đơn xuống giá mới —
+    // luôn lấy mức thấp hơn cho khách. Chiều ngược lại giữ nguyên: đơn tạo
+    // trong đợt ưu đãi vẫn giữ giá ưu đãi. Webhook chấp nhận số tiền nhận
+    // lớn hơn hoặc bằng đơn, nên ai lỡ chuyển theo giá cũ vẫn được ghi nhận.
+    const currentAmount = amountFor(input.type);
+    if (currentAmount < order.amount) {
+      await db.update(orders).set({ amount: currentAmount }).where(eq(orders.id, order.id));
+      order = { ...order, amount: currentAmount };
+    }
+
     if (input.shippingInfo) {
       await db
         .update(orders)
         .set({ shippingInfo: JSON.stringify(input.shippingInfo) })
-        .where(eq(orders.id, existing[0].id));
-      return { ...existing[0], shippingInfo: JSON.stringify(input.shippingInfo) };
+        .where(eq(orders.id, order.id));
+      return { ...order, shippingInfo: JSON.stringify(input.shippingInfo) };
     }
-    return existing[0];
+    return order;
   }
 
   const order: Order = {

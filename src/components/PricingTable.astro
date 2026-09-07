@@ -10,53 +10,86 @@ interface Props {
 
 const { ctaHref = '/dang-ky' } = Astro.props;
 
-const plans = [
+interface Feature {
+  text: string;
+  /** Dòng nhỏ giải thích vì sao quyền lợi này đáng tiền */
+  note?: string;
+}
+
+const plans: Array<{
+  name: string;
+  plan: PriceKey | null;
+  price: string;
+  note: string;
+  highlight: boolean;
+  features: Feature[];
+  limits: string[];
+  cta: string;
+}> = [
   {
     name: 'Miễn phí',
-    plan: null as PriceKey | null,
+    plan: null,
     price: '0đ',
     note: 'Dùng mãi mãi',
     highlight: false,
     features: [
-      '1 trang kỷ niệm',
-      'Tối đa 10 ảnh',
-      'Theme “Ấm áp”',
-      'AI viết giúp tiểu sử (3 lần/ngày)',
-      'Mã QR chia sẻ',
-      'Sổ lưu bút (hiển thị 20 lời gần nhất)',
+      { text: '1 trang kỷ niệm' },
+      { text: 'Tối đa 10 ảnh' },
+      { text: 'Theme “Ấm áp”' },
+      { text: 'AI viết giúp tiểu sử (3 lần/ngày)' },
+      { text: 'Mã QR chia sẻ' },
+      { text: 'Sổ lưu bút (hiển thị 20 lời gần nhất)' },
     ],
     limits: ['Có dòng “Tạo bởi Virai Memorial” ở cuối trang', 'Không có email nhắc ngày tưởng niệm'],
     cta: 'Tạo trang miễn phí',
   },
   {
     name: 'Premium',
-    plan: 'premium' as PriceKey | null,
+    plan: 'premium',
     price: '',
-    note: 'Trả một lần cho mỗi bé, dùng trọn đời',
+    note: 'Trả một lần cho mỗi bé — không phí tháng, không phí năm',
     highlight: true,
     features: [
-      'Tối đa 200 ảnh cho mỗi bé',
-      'Tất cả theme (Ấm áp, Thanh tịnh, Đêm sao)',
-      'Email nhắc 49 ngày & giỗ hằng năm theo âm lịch',
-      'Sổ lưu bút không giới hạn',
-      'Ẩn dòng thương hiệu ở cuối trang',
-      'Tải file QR chất lượng cao để tự in',
-      'AI viết giúp 30 lần/ngày',
+      {
+        text: 'Email nhắc cúng 49 ngày, 100 ngày và giỗ hằng năm',
+        note: 'Tự tính theo âm lịch, nhắc trước 3 ngày — thứ dễ quên nhất vì âm lịch lệch mỗi năm',
+      },
+      {
+        text: 'Tối đa 200 ảnh cho mỗi bé',
+        note: 'Gấp 20 lần gói miễn phí — đủ cho cả một đời kỷ niệm',
+      },
+      {
+        text: 'Đủ 3 giao diện: Ấm áp, Thanh tịnh, Đêm sao',
+      },
+      {
+        text: 'Sổ lưu bút không giới hạn',
+        note: 'Gói miễn phí chỉ hiện 20 lời gần nhất',
+      },
+      {
+        text: 'Không còn dòng thương hiệu ở cuối trang',
+        note: 'Trang hoàn toàn là của gia đình bạn',
+      },
+      {
+        text: 'Tải mã QR sắc nét để tự in hoặc khắc',
+      },
+      {
+        text: 'AI viết giúp 30 lần/ngày',
+      },
     ],
     limits: [],
     cta: 'Nâng cấp Premium',
   },
   {
     name: 'Combo thẻ QR',
-    plan: 'physicalCombo' as PriceKey | null,
+    plan: 'physicalCombo',
     price: '',
     note: 'Premium + thẻ khắc QR gửi tận nhà',
     highlight: false,
     features: [
-      'Toàn bộ quyền lợi Premium',
-      'Thẻ kim loại hoặc gỗ khắc mã QR của bé',
-      'Khắc tên và ngày tháng lên thẻ',
-      'Giao hàng toàn quốc',
+      { text: 'Toàn bộ quyền lợi Premium' },
+      { text: 'Thẻ kim loại hoặc gỗ khắc mã QR của bé' },
+      { text: 'Khắc tên và ngày tháng lên thẻ' },
+      { text: 'Giao hàng toàn quốc' },
     ],
     limits: [],
     cta: 'Đặt combo',
@@ -92,7 +125,14 @@ const plans = [
               <span class="mt-1 shrink-0 text-clay-500">
                 <Icon name="check" size={15} weight={2} />
               </span>
-              <span set:html={feature} />
+              <span>
+                {feature.text}
+                {feature.note && (
+                  <span class="mt-0.5 block text-xs leading-relaxed text-ink-500">
+                    {feature.note}
+                  </span>
+                )}
+              </span>
             </li>
           ))}
           {plan.limits.map((limit) => (
