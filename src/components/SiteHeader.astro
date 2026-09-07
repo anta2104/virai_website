@@ -11,18 +11,39 @@ const path = Astro.url.pathname;
 const links = [
   { href: '/', label: 'Trang chủ' },
   { href: '/cach-hoat-dong', label: 'Cách hoạt động' },
+  { href: '/vuon-tuong-niem', label: 'Vườn tưởng niệm' },
   { href: '/bang-gia', label: 'Bảng giá' },
 ];
+
+const isActive = (href: string) => (href === '/' ? path === '/' : path.startsWith(href));
 ---
 
 <header class="sticky top-0 z-40 border-b border-cream-300/80 bg-cream-50/90 backdrop-blur">
-  <div class="container-page flex items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
-    <a href="/" class="flex items-center gap-2.5">
-      <span
-        class="flex h-9 w-9 items-center justify-center rounded-full bg-clay-500 font-serif text-lg text-white"
-        aria-hidden="true">V</span
+  <div class="container-page flex items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
+    <a href="/" class="flex min-w-0 items-center gap-2.5">
+      <!-- Trái tim ôm dấu chân — cùng hình với favicon, nhận diện xuyên suốt -->
+      <svg
+        class="h-9 w-9 shrink-0"
+        viewBox="0 0 64 64"
+        aria-hidden="true"
       >
-      <span class="font-serif text-lg leading-tight font-semibold text-ink-900">{site.name}</span>
+        <path
+          d="M32 51c-1.1 0-2.1-.4-2.9-1.1C22.5 44.2 15 38.1 15 30.2 15 24.6 19.3 20 24.7 20c2.9 0 5.6 1.4 7.3 3.6 1.7-2.2 4.4-3.6 7.3-3.6 5.4 0 9.7 4.6 9.7 10.2 0 7.9-7.5 14-14.1 19.7-.8.7-1.8 1.1-2.9 1.1z"
+          fill="var(--color-clay-500)"
+        />
+        <g fill="var(--color-cream-50)">
+          <ellipse cx="26.4" cy="30.4" rx="2.1" ry="2.7" />
+          <ellipse cx="31.3" cy="28.6" rx="2.1" ry="2.9" />
+          <ellipse cx="36.3" cy="29.3" rx="2.1" ry="2.8" />
+          <ellipse cx="40.3" cy="32.6" rx="2" ry="2.5" />
+          <path
+            d="M33 34.3c3.6 0 6.6 2.6 6.6 5.2 0 2.1-1.9 3.1-4 3.1-1.1 0-2-.3-2.6-.3-.7 0-1.6.3-2.7.3-2.1 0-4-1-4-3.1 0-2.6 3-5.2 6.7-5.2z"
+          />
+        </g>
+      </svg>
+      <span class="truncate font-serif text-lg leading-tight font-semibold text-ink-900">
+        {site.name}
+      </span>
     </a>
 
     <nav class="hidden items-center gap-1 md:flex" aria-label="Điều hướng chính">
@@ -30,9 +51,12 @@ const links = [
         links.map((link) => (
           <a
             href={link.href}
+            aria-current={isActive(link.href) ? 'page' : undefined}
             class:list={[
               'rounded-full px-3.5 py-2 text-sm transition',
-              path === link.href ? 'bg-cream-200 text-ink-900' : 'text-ink-500 hover:text-ink-900',
+              isActive(link.href)
+                ? 'bg-cream-200 text-ink-900'
+                : 'text-ink-500 hover:text-ink-900',
             ]}
           >
             {link.label}
@@ -56,7 +80,7 @@ const links = [
           </>
         ) : (
           <>
-            <a href="/dang-nhap" class="btn-ghost btn-sm">
+            <a href="/dang-nhap" class="btn-ghost btn-sm hidden sm:inline-flex">
               Đăng nhập
             </a>
             <a href="/dang-ky" class="btn-primary btn-sm">
@@ -65,6 +89,113 @@ const links = [
           </>
         )
       }
+
+      <!-- Nút mở menu — chỉ hiện trên màn hình hẹp, nơi nav ngang bị ẩn -->
+      <button
+        type="button"
+        class="group flex h-9 w-9 items-center justify-center rounded-full text-ink-700 transition hover:bg-cream-200 md:hidden"
+        aria-expanded="false"
+        aria-controls="menu-di-dong"
+        aria-label="Mở menu"
+        data-menu-toggle
+      >
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          aria-hidden="true"
+        >
+          <!-- Icon đổi theo aria-expanded của nút, không cần JS đụng vào SVG -->
+          <g class="group-aria-expanded:hidden"><path d="M3 6h14M3 10h14M3 14h14" /></g>
+          <g class="hidden group-aria-expanded:inline"><path d="m5 5 10 10M15 5 5 15" /></g>
+        </svg>
+      </button>
     </div>
   </div>
+
+  <!-- Menu di động: xổ xuống ngay dưới thanh, đóng khi bấm ra ngoài hoặc Esc -->
+  <div id="menu-di-dong" class="border-t border-cream-300/80 md:hidden" hidden>
+    <nav class="container-page px-4 py-3 sm:px-6" aria-label="Điều hướng chính (di động)">
+      <ul>
+        {
+          links.map((link) => (
+            <li>
+              <a
+                href={link.href}
+                aria-current={isActive(link.href) ? 'page' : undefined}
+                class:list={[
+                  'block rounded-xl px-3.5 py-3 text-[0.9375rem] transition',
+                  isActive(link.href)
+                    ? 'bg-cream-200 font-medium text-ink-900'
+                    : 'text-ink-700 hover:bg-cream-100',
+                ]}
+              >
+                {link.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+
+      <div class="mt-2 border-t border-cream-300/80 pt-3 pb-1">
+        {
+          user ? (
+            <div class="flex flex-wrap gap-2">
+              <a href="/tai-khoan" class="btn-secondary btn-sm">
+                Trang của tôi
+              </a>
+              {user.role === 'admin' && (
+                <a href="/admin" class="btn-ghost btn-sm">
+                  Quản trị
+                </a>
+              )}
+            </div>
+          ) : (
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <a href="/dang-ky" class="btn-primary btn-sm">
+                Tạo trang miễn phí
+              </a>
+              <a href="/dang-nhap" class="text-sm font-medium text-clay-700">
+                Đăng nhập
+              </a>
+            </div>
+          )
+        }
+      </div>
+    </nav>
+  </div>
 </header>
+
+<script>
+  // Mỗi trang chỉ có một header nên query thẳng từ document là đủ.
+  const toggle = document.querySelector<HTMLButtonElement>('[data-menu-toggle]');
+  const panel = document.getElementById('menu-di-dong');
+
+  if (toggle && panel) {
+    const root = toggle.closest('header');
+    const isOpen = () => toggle.getAttribute('aria-expanded') === 'true';
+
+    const setOpen = (open: boolean) => {
+      if (open) panel.removeAttribute('hidden');
+      else panel.setAttribute('hidden', '');
+      toggle.setAttribute('aria-expanded', String(open));
+      toggle.setAttribute('aria-label', open ? 'Đóng menu' : 'Mở menu');
+    };
+
+    toggle.addEventListener('click', () => setOpen(!isOpen()));
+
+    // Bấm ra ngoài header hoặc nhấn Esc thì đóng lại
+    document.addEventListener('click', (event) => {
+      if (isOpen() && event.target instanceof Node && root && !root.contains(event.target)) {
+        setOpen(false);
+      }
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && isOpen()) setOpen(false);
+    });
+  }
+</script>
