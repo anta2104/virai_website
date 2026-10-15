@@ -10,6 +10,7 @@ import { waitUntil } from '../../../lib/env';
 import { formatDateTime } from '../../../lib/format';
 import { profileUrl } from '../../../lib/tiktok/handle';
 import { bestSlots, compactNumber, percent, WEEKDAY_LABEL } from '../../../lib/tiktok/metrics';
+import { computeInsights } from '../../../lib/tiktok/insights';
 import { TREND_LABEL } from '../../../lib/tiktok/analyze';
 import {
   advanceAnalysis,
@@ -35,10 +36,32 @@ if (!done && !failed) {
   // Đẩy một bước ở nền; các bước sau do script poll của trang kéo tiếp
   waitUntil(Astro.locals, advanceAnalysis(analysis.id).then(() => undefined));
 }
+
 const metrics = done ? metricsOf(analysis) : null;
 const result = done ? resultOf(analysis) : null;
 const creator = done && analysis.creatorId ? await getCreator(analysis.creatorId) : null;
-const videos = done && analysis.creatorId ? await listCreatorVideos(analysis.creatorId) : [];
+const allVideos = done && analysis.creatorId ? await listCreatorVideos(analysis.creatorId) : [];
+// 30 video mới nhất là tập đã dùng để tính chỉ số; insight tính lại lúc render để
+// phân tích cũ cũng có phần mới
+const videos = allVideos.slice(0, 30);
+const insights =
+  done && metrics
+    ? computeInsights(
+        videos,
+        creator
+          ? {
+              displayName: creator.displayName,
+              avatarUrl: creator.avatarUrl,
+              bio: creator.bio,
+              followers: creator.followers,
+              following: creator.following,
+              likesTotal: creator.likesTotal,
+              videoCount: creator.videoCount,
+            }
+          : null,
+        Math.floor(Date.now() / 1000),
+      )
+    : null;
 
 const topIds = metrics?.topVideos.map((v) => v.tiktokId) ?? [];
 const whyById = new Map(result?.topVideos.map((t) => [t.tiktokId, t.why]) ?? []);
@@ -46,13 +69,8 @@ const bestHours = metrics ? bestSlots(metrics.byHour) : [];
 const bestDays = metrics ? bestSlots(metrics.byWeekday) : [];
 const bestHour = bestHours[0] ?? null;
 const bestDay = bestDays[0] ?? null;
-
-// Nhóm nội dung đang kéo kênh: nhóm đầu tiên được AI đánh giá "hiệu quả hơn"
 const winningTheme =
   result?.themes.find((t) => /hiệu quả hơn|tốt hơn|cao hơn/i.test(t.performance)) ?? result?.themes[0] ?? null;
-const topVideo = metrics?.topVideos[0] ?? null;
-
-// Hashtag mặc định cho ý tưởng khi AI không trả: 4 hashtag có view trung vị cao nhất của kênh
 const fallbackTags = metrics
   ? [...metrics.hashtags].sort((a, b) => b.medianViews - a.medianViews).slice(0, 4).map((h) => h.name)
   : [];
@@ -62,34 +80,32 @@ const studioHref = (hook?: string) =>
 
 const fmtDate = (t: number | null) =>
   t
-    ? new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(t * 1000))
+    ? new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(t * 1000))
     : '';
-
+const x = (n: number) => `${n.toFixed(1).replace('.', ',')} lần`;
+const pct = (v: number) => `${v >= 0 ? '+' : ''}${Math.round(v * 100)}%`;
 const scoreTone = (score: number) => (score >= 70 ? 'text-sage-700' : score >= 40 ? 'text-candle' : 'text-red-700');
 const scoreLabel = (score: number) => (score >= 70 ? 'Kênh khoẻ' : score >= 40 ? 'Cần cải thiện' : 'Đang yếu');
+const caption = (c: string | null, n = 70) => {
+  const text = (c ?? '').replace(/#\S+/g, '').trim();
+  return text ? (text.length > n ? `${text.slice(0, n)}…` : text) : '(không có caption)';
+};
 
 const sections = [
-  { id: 'nen-lam-gi', label: 'Nên làm gì' },
-  { id: 'y-tuong', label: 'Ý tưởng video' },
-  { id: 'tong-quan', label: 'Số liệu' },
-  { id: 'gio-dang', label: 'Giờ đăng' },
-  { id: 'noi-dung', label: 'Nội dung' },
+  { id: 'tom-tat', label: 'Tóm tắt' },
+  { id: 'manh-yeu', label: 'Mạnh, yếu' },
+  { id: 'nguoi-xem', label: 'Người xem' },
+  { id: 'cong-thuc', label: 'Công thức' },
+  { id: 'lich-dang', label: 'Lịch 2 tuần' },
+  { id: 'y-tuong', label: 'Ý tưởng' },
   { id: 'hashtag', label: 'Hashtag' },
-  { id: 'video', label: 'Video' },
+  { id: 'so-lieu', label: 'Số liệu' },
 ];
-
-const METRIC_HELP = [
-  ['View trung vị', 'Con số ở giữa khi xếp view 30 video từ thấp đến cao. Ít bị một video viral kéo lệch hơn trung bình.'],
-  ['Tỉ lệ tương tác', 'Tổng like, bình luận, chia sẻ, lưu chia cho view. Trên 5% là tốt với kênh nhỏ.'],
-  ['Tỉ lệ lưu', 'Người xem bấm lưu để xem lại. TikTok coi đây là tín hiệu nội dung có giá trị và đẩy mạnh hơn.'],
-  ['Tỉ lệ chia sẻ', 'Người xem gửi cho người khác. Tín hiệu lan truyền mạnh nhất.'],
-  ['Video nổi bật', 'Video có view vượt 2 lần trung vị. Công thức của chúng là thứ nên lặp lại.'],
-] as const;
 ---
 
 <SiteLayout title={`Phân tích @${analysis.handle}`} noindex>
   <section class="px-4 py-10 sm:px-6 lg:py-14">
-    <div class="mx-auto w-full max-w-5xl">
+    <div class="mx-auto w-full max-w-4xl text-[15px] leading-relaxed text-ink-700 sm:text-base">
       <a href="/tiktok" class="inline-flex items-center gap-2 text-sm text-ink-500 transition hover:text-clay-700">
         <Icon name="arrow-left" size={16} />
         Phân tích kênh khác
@@ -100,44 +116,38 @@ const METRIC_HELP = [
           <div class="mt-6 rounded-2xl border border-candle/60 bg-amber-50 px-5 py-4 text-sm text-ink-900">
             <p class="font-semibold">Đây là số liệu giả, không phải của kênh @{analysis.handle}.</p>
             <p class="mt-1 text-ink-700">
-              Hệ thống chưa được nối với nguồn dữ liệu TikTok thật nên sinh số ngẫu nhiên để bạn xem thử giao
-              diện và cách AI nhận xét.
-              {Astro.locals.user?.role === 'admin' ? (
+              Hệ thống chưa được nối với nguồn dữ liệu TikTok thật nên sinh số ngẫu nhiên để bạn xem thử giao diện.
+              {Astro.locals.user?.role === 'admin' && (
                 <>
-                  {' '}Bạn là quản trị viên: vào <a href="/admin/cai-dat" class="link-quiet font-medium">Cài đặt</a> dán
-                  token nhà cung cấp dữ liệu là có số thật.
+                  {' '}Bạn là quản trị viên: vào <a href="/admin/cai-dat" class="link-quiet font-medium">Cài đặt</a> dán token nhà cung cấp dữ liệu.
                 </>
-              ) : (
-                ' Khi quản trị viên bật nguồn dữ liệu thật, cảnh báo này sẽ tự biến mất.'
               )}
             </p>
           </div>
         )
       }
 
-      <!-- Đầu trang: kênh + điểm + hành động chính -->
-      <div class="mt-6 flex flex-wrap items-start justify-between gap-6">
-        <div class="flex items-center gap-4">
-          {/* Không dùng avatar từ CDN TikTok: link hết hạn nhanh và chặn tải từ site khác */}
-          <span class="flex h-16 w-16 items-center justify-center rounded-full bg-clay-100 text-2xl font-bold text-clay-700">@</span>
-          <div>
-            <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">
-              <a href={profileUrl(analysis.handle)} target="_blank" rel="noopener" class="hover:text-clay-700">@{analysis.handle}</a>
-            </h1>
-            <p class="mt-0.5 text-sm text-ink-500">
-              {creator?.displayName && <span class="text-ink-700">{creator.displayName} · </span>}
-              {creator && <span>{compactNumber(creator.followers)} follower · </span>}
-              {metrics && <span>{metrics.videoCount} video gần nhất</span>}
-            </p>
-            <p class="mt-0.5 text-xs text-ink-500">Cập nhật {formatDateTime(analysis.finishedAt ?? analysis.createdAt)}</p>
-          </div>
+      <!-- Đầu trang -->
+      <div class="mt-6 flex flex-wrap items-start justify-between gap-5">
+        <div>
+          <h1 class="text-3xl font-bold tracking-tight text-ink-900 sm:text-4xl">
+            <a href={profileUrl(analysis.handle)} target="_blank" rel="noopener" class="hover:text-clay-700">@{analysis.handle}</a>
+          </h1>
+          <p class="mt-1 text-ink-700">
+            {creator?.displayName && <span class="font-medium text-ink-900">{creator.displayName}</span>}
+            {creator && <span> · {compactNumber(creator.followers)} follower</span>}
+            {creator && creator.videoCount > 0 && <span> · {creator.videoCount} video trên kênh</span>}
+          </p>
+          <p class="mt-1 text-sm text-ink-500">
+            Phân tích {metrics?.videoCount ?? 30} video gần nhất · cập nhật {formatDateTime(analysis.finishedAt ?? analysis.createdAt)}
+          </p>
         </div>
         {
           done && (
             <div class="flex flex-wrap items-center gap-3">
               {result && (
-                <div class="flex items-center gap-3 rounded-full border border-cream-200 bg-white py-1.5 pr-4 pl-2">
-                  <span class:list={['text-2xl font-bold tabular-nums', scoreTone(result.healthScore)]}>{result.healthScore}</span>
+                <div class="flex items-center gap-3 rounded-2xl border border-cream-200 bg-white px-4 py-2">
+                  <span class:list={['text-3xl font-bold tabular-nums', scoreTone(result.healthScore)]}>{result.healthScore}</span>
                   <span class="text-xs leading-tight text-ink-500">
                     điểm sức khoẻ
                     <br />
@@ -147,7 +157,7 @@ const METRIC_HELP = [
               )}
               <a href={studioHref()} class="btn-primary">
                 <Icon name="image" size={17} />
-                Tạo ảnh với người mẫu ảo
+                Tạo ảnh sản phẩm
               </a>
             </div>
           )
@@ -159,7 +169,7 @@ const METRIC_HELP = [
           <div class="card mt-8 p-8 text-center" data-poll={analysis.id}>
             <span class="inline-flex h-10 w-10 animate-spin items-center justify-center rounded-full border-2 border-cream-300 border-t-clay-500" aria-hidden="true" />
             <p class="mt-4 font-medium text-ink-900" data-poll-label>{STATUS_LABEL[analysis.status] ?? analysis.status}</p>
-            <p class="mt-1 text-sm text-ink-500">Trang tự cập nhật khi xong. Thường mất 10–60 giây.</p>
+            <p class="mt-1 text-sm text-ink-500">Trang tự cập nhật khi xong. Kênh lớn có thể mất 1–3 phút.</p>
           </div>
         )
       }
@@ -174,163 +184,278 @@ const METRIC_HELP = [
       }
 
       {
-        done && metrics && (
+        done && metrics && insights && (
           <>
-            <!-- Mục lục dính trên cùng -->
             <nav class="sticky top-[57px] z-30 -mx-4 mt-8 overflow-x-auto border-y border-cream-200 bg-cream-50/95 px-4 backdrop-blur sm:mx-0 sm:rounded-full sm:border sm:px-2" aria-label="Các phần của báo cáo">
               <ul class="flex gap-1 py-1.5 text-sm whitespace-nowrap">
                 {sections.map((s) => (
                   <li>
-                    <a href={`#${s.id}`} class="block rounded-full px-3.5 py-1.5 text-ink-700 transition hover:bg-cream-200 hover:text-ink-900">
-                      {s.label}
-                    </a>
+                    <a href={`#${s.id}`} class="block rounded-full px-3.5 py-1.5 text-ink-700 transition hover:bg-cream-200 hover:text-ink-900">{s.label}</a>
                   </li>
                 ))}
               </ul>
             </nav>
 
-            <!-- 1. Nên làm gì ngay -->
-            <section id="nen-lam-gi" class="scroll-mt-28 pt-10">
-              <p class="eyebrow">Nên làm gì ngay</p>
-              <h2 class="mt-2 text-2xl font-bold">Ba điều rút ra từ 30 video gần nhất</h2>
-
-              <div class="mt-6 grid gap-4 md:grid-cols-3">
-                <div class="card p-5">
-                  <div class="flex items-center gap-2 text-clay-600">
-                    <Icon name="clock" size={18} />
-                    <p class="text-xs font-semibold tracking-wide uppercase">Đăng lúc</p>
-                  </div>
-                  {bestHour && bestDay ? (
-                    <>
-                      <p class="mt-3 text-2xl font-bold text-ink-900">
-                        {WEEKDAY_LABEL[bestDay.slot]}, {bestHour.slot}h
-                      </p>
-                      {/* Luôn dùng số đã tính, không dùng câu của AI: AI từng nói "thứ bảy" trong khi số liệu chỉ ra thứ ba */}
-                      <p class="mt-2 text-sm text-ink-500">
-                        Video đăng khung {bestHour.slot}h đạt trung vị {compactNumber(bestHour.medianViews)} view ({bestHour.count} video);{' '}
-                        {WEEKDAY_LABEL[bestDay.slot].toLowerCase()} đạt {compactNumber(bestDay.medianViews)} view ({bestDay.count} video).
-                      </p>
-                    </>
-                  ) : (
-                    <p class="mt-3 text-sm text-ink-500">Chưa đủ dữ liệu ngày đăng để gợi ý.</p>
-                  )}
-                </div>
-
-                <div class="card p-5">
-                  <div class="flex items-center gap-2 text-clay-600">
-                    <Icon name="eye" size={18} />
-                    <p class="text-xs font-semibold tracking-wide uppercase">Nội dung đang kéo kênh</p>
-                  </div>
-                  {winningTheme ? (
-                    <>
-                      <p class="mt-3 text-2xl font-bold text-ink-900">{winningTheme.name}</p>
-                      <p class="mt-2 text-sm text-ink-500">
-                        {winningTheme.share}
-                        {winningTheme.performance && `, ${winningTheme.performance.toLowerCase()}`}.
-                        {topVideo && ` Video đỉnh: ${compactNumber(topVideo.views)} view, gấp ${topVideo.multiple.toFixed(1).replace('.', ',')} lần trung vị.`}
-                      </p>
-                    </>
-                  ) : topVideo ? (
-                    <>
-                      <p class="mt-3 line-clamp-2 text-lg font-bold text-ink-900">{topVideo.caption?.slice(0, 90) || 'Video nổi bật nhất'}</p>
-                      <p class="mt-2 text-sm text-ink-500">
-                        {compactNumber(topVideo.views)} view, gấp {topVideo.multiple.toFixed(1).replace('.', ',')} lần trung vị.
-                      </p>
-                    </>
-                  ) : (
-                    <p class="mt-3 text-sm text-ink-500">Kênh đang đều, chưa có video bứt lên.</p>
-                  )}
-                </div>
-
-                <div class="card p-5">
-                  <div class="flex items-center gap-2 text-clay-600">
-                    <Icon name="check" size={18} />
-                    <p class="text-xs font-semibold tracking-wide uppercase">Việc đầu tiên</p>
-                  </div>
-                  {result ? (
-                    <>
-                      <p class="mt-3 text-lg font-bold text-ink-900">{result.checklist[0] ?? result.postingAdvice}</p>
-                      <p class="mt-2 flex flex-wrap items-center gap-2 text-sm text-ink-500">
-                        <span
-                          class:list={[
-                            'badge',
-                            result.trend.direction === 'len' && 'bg-sage-100 text-sage-700',
-                            result.trend.direction === 'xuong' && 'bg-red-50 text-red-700',
-                            result.trend.direction === 'di_ngang' && 'bg-cream-200 text-ink-700',
-                          ]}
-                        >
-                          {TREND_LABEL[result.trend.direction]}
+            {/* 1. Tóm tắt */}
+            <section id="tom-tat" class="scroll-mt-28 pt-10">
+              <h2 class="text-2xl font-bold text-ink-900">Tóm tắt</h2>
+              <div class="card mt-4 p-6 sm:p-7">
+                {result ? (
+                  <>
+                    <p class="text-lg leading-relaxed text-ink-900">{result.summary}</p>
+                    <p class="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                      <span
+                        class:list={[
+                          'badge',
+                          result.trend.direction === 'len' && 'bg-sage-100 text-sage-700',
+                          result.trend.direction === 'xuong' && 'bg-red-50 text-red-700',
+                          result.trend.direction === 'di_ngang' && 'bg-cream-200 text-ink-700',
+                        ]}
+                      >
+                        {TREND_LABEL[result.trend.direction]}
+                      </span>
+                      <span class="text-ink-700">{result.trend.reason}</span>
+                      {insights.halves && (
+                        <span class="text-ink-500">
+                          · nửa mới so nửa cũ: <strong class="text-ink-900">{pct(insights.halves.change)}</strong> view trung vị
                         </span>
-                        <span>{result.trend.reason}</span>
-                      </p>
-                    </>
-                  ) : (
-                    <p class="mt-3 text-sm text-ink-500">Phần AI chưa có cho lần này. Số liệu bên dưới vẫn đầy đủ.</p>
-                  )}
-                </div>
-              </div>
+                      )}
+                    </p>
+                  </>
+                ) : (
+                  <p class="alert-info">Phần nhận xét của AI chưa có cho lần này. Số liệu và insight tính bằng code bên dưới vẫn đầy đủ.</p>
+                )}
 
-              {result && (
-                <div class="card mt-4 p-6">
-                  <p class="eyebrow">AI nhận xét</p>
-                  <p class="mt-3 text-[1.0625rem] leading-relaxed text-ink-900">{result.summary}</p>
-                  {result.checklist.length > 1 && (
-                    <>
-                      <p class="mt-5 text-sm font-semibold text-ink-900">Việc cần làm trong 2 tuần tới</p>
-                      <ul class="mt-2 grid gap-2 sm:grid-cols-2">
-                        {result.checklist.map((item) => (
-                          <li class="flex gap-2 text-sm text-ink-700">
-                            <span class="mt-0.5 text-sage-500">
-                              <Icon name="check" size={16} weight={2} />
-                            </span>
-                            {item}
-                          </li>
-                        ))}
-                      </ul>
-                    </>
-                  )}
-                </div>
-              )}
+                <dl class="mt-6 grid gap-4 border-t border-cream-200 pt-6 sm:grid-cols-3">
+                  <div>
+                    <dt class="text-xs font-semibold tracking-wide text-clay-700 uppercase">Đăng lúc</dt>
+                    <dd class="mt-1 text-xl font-bold text-ink-900">{bestHour && bestDay ? `${WEEKDAY_LABEL[bestDay.slot]}, ${bestHour.slot}h` : 'Chưa đủ dữ liệu'}</dd>
+                    {bestHour && bestDay && (
+                      <dd class="mt-1 text-sm text-ink-500">
+                        khung {bestHour.slot}h trung vị {compactNumber(bestHour.medianViews)} view ({bestHour.count} video)
+                      </dd>
+                    )}
+                  </div>
+                  <div>
+                    <dt class="text-xs font-semibold tracking-wide text-clay-700 uppercase">Nội dung đang kéo kênh</dt>
+                    <dd class="mt-1 text-xl font-bold text-ink-900">
+                      {insights.patterns[0] ? `“${insights.patterns[0].template}…”` : (winningTheme?.name ?? caption(metrics.topVideos[0]?.caption ?? null, 40))}
+                    </dd>
+                    <dd class="mt-1 text-sm text-ink-500">
+                      {insights.patterns[0]
+                        ? `${insights.patterns[0].count} video, trung vị ${compactNumber(insights.patterns[0].medianViews)} view, gấp ${x(insights.patterns[0].multiple)} kênh`
+                        : winningTheme
+                          ? `${winningTheme.share}, ${winningTheme.performance.toLowerCase()}`
+                          : 'chưa có video bứt lên'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt class="text-xs font-semibold tracking-wide text-clay-700 uppercase">Tầm với</dt>
+                    <dd class="mt-1 text-xl font-bold text-ink-900">
+                      {insights.viewsPerFollower !== null ? `${insights.viewsPerFollower.toFixed(1).replace('.', ',')}× follower` : '—'}
+                    </dd>
+                    <dd class="mt-1 text-sm text-ink-500">
+                      {insights.viewsPerFollower === null
+                        ? 'không có số follower'
+                        : insights.viewsPerFollower >= 1
+                          ? 'video đang vươn ra ngoài tệp theo dõi'
+                          : 'view chủ yếu từ người đã theo dõi'}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
             </section>
 
-            <!-- 2. Ý tưởng video -->
+            {/* 2. Mạnh, yếu */}
+            {result && ((result.strengths?.length ?? 0) > 0 || (result.weaknesses?.length ?? 0) > 0) && (
+              <section id="manh-yeu" class="scroll-mt-28 pt-12">
+                <h2 class="text-2xl font-bold text-ink-900">Đang làm tốt gì, đang hụt ở đâu</h2>
+                <div class="mt-4 grid gap-4 md:grid-cols-2">
+                  <div class="card p-6">
+                    <p class="flex items-center gap-2 font-semibold text-sage-700">
+                      <Icon name="check" size={18} weight={2} /> Điểm mạnh
+                    </p>
+                    <ul class="mt-4 space-y-4">
+                      {(result.strengths ?? []).map((s) => (
+                        <li>
+                          <p class="font-medium text-ink-900">{s.claim}</p>
+                          <p class="mt-0.5 text-sm text-ink-500">{s.evidence}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div class="card p-6">
+                    <p class="flex items-center gap-2 font-semibold text-red-700">
+                      <Icon name="clock" size={18} /> Điểm yếu
+                    </p>
+                    <ul class="mt-4 space-y-4">
+                      {(result.weaknesses ?? []).map((w) => (
+                        <li>
+                          <p class="font-medium text-ink-900">{w.claim}</p>
+                          <p class="mt-0.5 text-sm text-ink-500">{w.evidence}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* 3. Người xem */}
+            {result?.audience && (
+              <section id="nguoi-xem" class="scroll-mt-28 pt-12">
+                <h2 class="text-2xl font-bold text-ink-900">Người xem của bạn là ai</h2>
+                <p class="mt-1 text-sm text-ink-500">
+                  TikTok không cung cấp số đo nhân khẩu học cho người ngoài. Phần này AI suy luận từ caption, hashtag, bio và giờ xem; coi là giả thuyết để kiểm chứng.
+                </p>
+                <div class="card mt-4 p-6 sm:p-7">
+                  <p class="text-lg leading-relaxed text-ink-900">{result.audience.who}</p>
+                  <dl class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <div><dt class="text-xs font-semibold tracking-wide text-ink-500 uppercase">Tuổi</dt><dd class="mt-1 font-medium text-ink-900">{result.audience.age}</dd></div>
+                    <div><dt class="text-xs font-semibold tracking-wide text-ink-500 uppercase">Giới tính</dt><dd class="mt-1 font-medium text-ink-900">{result.audience.gender}</dd></div>
+                    <div><dt class="text-xs font-semibold tracking-wide text-ink-500 uppercase">Nơi ở</dt><dd class="mt-1 font-medium text-ink-900">{result.audience.location}</dd></div>
+                    <div><dt class="text-xs font-semibold tracking-wide text-ink-500 uppercase">Hay xem lúc</dt><dd class="mt-1 font-medium text-ink-900">{result.audience.whenOnline}</dd></div>
+                  </dl>
+                  {result.audience.interests.length > 0 && (
+                    <p class="mt-5 flex flex-wrap gap-1.5">
+                      {result.audience.interests.map((i) => (
+                        <span class="badge bg-cream-100 text-ink-700">{i}</span>
+                      ))}
+                    </p>
+                  )}
+                  <p class="mt-4 text-sm text-ink-500">Dựa vào: {result.audience.basis}</p>
+                </div>
+              </section>
+            )}
+
+            {/* 4. Công thức */}
+            <section id="cong-thuc" class="scroll-mt-28 pt-12">
+              <h2 class="text-2xl font-bold text-ink-900">Công thức nào đang ăn khách</h2>
+              <p class="mt-1 text-sm text-ink-500">Tính thẳng từ 30 video: gom theo cách mở đầu caption, độ dài, định dạng.</p>
+              <div class="card mt-4 overflow-hidden">
+                {insights.patterns.length > 0 ? (
+                  <table class="w-full text-sm">
+                    <thead class="bg-cream-100 text-left text-xs text-ink-500 uppercase">
+                      <tr>
+                        <th class="px-5 py-2.5 font-medium">Cách mở đầu</th>
+                        <th class="px-3 py-2.5 text-right font-medium">Video</th>
+                        <th class="px-3 py-2.5 text-right font-medium">View trung vị</th>
+                        <th class="px-5 py-2.5 text-right font-medium">So với kênh</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-cream-200">
+                      {insights.patterns.map((p) => (
+                        <tr>
+                          <td class="px-5 py-3">
+                            <p class="font-medium text-ink-900">“{p.template}…”</p>
+                            <p class="text-xs text-ink-500">ví dụ: {caption(p.example, 80)}</p>
+                          </td>
+                          <td class="px-3 py-3 text-right tabular-nums">{p.count}</td>
+                          <td class="px-3 py-3 text-right tabular-nums">{compactNumber(p.medianViews)}</td>
+                          <td class:list={['px-5 py-3 text-right font-semibold tabular-nums', p.multiple >= 1.5 ? 'text-sage-700' : p.multiple < 0.7 ? 'text-red-700' : 'text-ink-900']}>
+                            {x(p.multiple)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p class="px-5 py-4 text-sm text-ink-500">Kênh chưa lặp lại cách mở đầu nào, mỗi caption một kiểu. Một loạt video cùng công thức mở đầu là cách nhanh nhất để biết công thức nào chạy.</p>
+                )}
+                <ul class="divide-y divide-cream-200 border-t border-cream-200">
+                  {insights.durations.length > 1 && (
+                    <li class="px-5 py-3">
+                      <span class="font-medium text-ink-900">Độ dài:</span>{' '}
+                      {insights.durations.map((d) => `${d.label} (${d.count} video) trung vị ${compactNumber(d.medianViews)}`).join(' · ')}
+                    </li>
+                  )}
+                  {insights.format.slideshowCount > 0 && insights.format.videoCount > 0 && (
+                    <li class="px-5 py-3">
+                      <span class="font-medium text-ink-900">Ảnh so với video:</span> {insights.format.slideshowCount} bài ảnh trung vị {compactNumber(insights.format.slideshowMedian)} view,
+                      {' '}{insights.format.videoCount} video trung vị {compactNumber(insights.format.videoMedian)} view.
+                    </li>
+                  )}
+                  {insights.mostSaved && (
+                    <li class="px-5 py-3">
+                      <span class="font-medium text-ink-900">Được lưu nhiều nhất</span> ({pct(insights.mostSaved.rate)} người xem bấm lưu):{' '}
+                      <a href={insights.mostSaved.url} target="_blank" rel="noopener" class="link-quiet">{caption(insights.mostSaved.caption)}</a>
+                    </li>
+                  )}
+                  {insights.mostShared && (
+                    <li class="px-5 py-3">
+                      <span class="font-medium text-ink-900">Được chia sẻ nhiều nhất</span> ({pct(insights.mostShared.rate)}):{' '}
+                      <a href={insights.mostShared.url} target="_blank" rel="noopener" class="link-quiet">{caption(insights.mostShared.caption)}</a>
+                    </li>
+                  )}
+                  {insights.rhythm.avgGapDays !== null && (
+                    <li class="px-5 py-3">
+                      <span class="font-medium text-ink-900">Nhịp đăng:</span> trung bình {insights.rhythm.avgGapDays.toFixed(1).replace('.', ',')} ngày một video, nghỉ lâu nhất {Math.round(insights.rhythm.maxGapDays ?? 0)} ngày, video mới nhất cách đây {Math.round(insights.rhythm.daysSinceLast ?? 0)} ngày.
+                    </li>
+                  )}
+                </ul>
+              </div>
+            </section>
+
+            {/* 5. Lịch 2 tuần */}
+            {result && (result.plan?.length ?? 0) > 0 && (
+              <section id="lich-dang" class="scroll-mt-28 pt-12">
+                <h2 class="text-2xl font-bold text-ink-900">Lịch đăng 2 tuần tới</h2>
+                <p class="mt-1 text-sm text-ink-500">Xếp vào các khung giờ và thứ đã chứng minh tốt. Bấm "Chép lịch" để dán vào ghi chú.</p>
+                <div class="card mt-4 p-6">
+                  <ol class="divide-y divide-cream-200">
+                    {(result.plan ?? []).map((p, i) => {
+                      const idea = p.ideaIndex ? result.nextIdeas[p.ideaIndex - 1] : undefined;
+                      return (
+                        <li class="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-3 first:pt-0 last:pb-0">
+                          <span class="w-36 shrink-0 font-semibold text-ink-900">{p.day}{p.hour ? `, ${p.hour}` : ''}</span>
+                          <span class="min-w-0 flex-1">
+                            <span class="text-ink-900">{p.title}</span>
+                            {idea && <span class="block text-sm text-ink-500">hook: “{idea.hook}”</span>}
+                          </span>
+                          <span class="text-xs text-ink-500">#{i + 1}</span>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                  <button
+                    type="button"
+                    class="btn-secondary btn-sm mt-5"
+                    data-copy={(result.plan ?? []).map((p) => `${p.day}${p.hour ? ` ${p.hour}` : ''}: ${p.title}`).join('\n')}
+                  >
+                    Chép lịch
+                  </button>
+                </div>
+              </section>
+            )}
+
+            {/* 6. Ý tưởng */}
             {result && result.nextIdeas.length > 0 && (
               <section id="y-tuong" class="scroll-mt-28 pt-12">
-                <p class="eyebrow">Ý tưởng video tiếp theo</p>
-                <h2 class="mt-2 text-2xl font-bold">{result.nextIdeas.length} video nên quay tuần này</h2>
-                <p class="measure mt-2 text-sm text-ink-500">
-                  Mỗi ý tưởng có câu mở đầu để nói trong 2 giây đầu, định dạng gợi ý và hashtag lấy từ chính kênh.
-                  Bấm "Chép hook" rồi dán vào ghi chú quay.
-                </p>
-                <ol class="mt-6 grid gap-4 lg:grid-cols-2">
+                <h2 class="text-2xl font-bold text-ink-900">{result.nextIdeas.length} ý tưởng video, có sẵn câu mở đầu</h2>
+                <ol class="mt-4 space-y-3">
                   {result.nextIdeas.map((n, i) => {
                     const tags = n.hashtags && n.hashtags.length > 0 ? n.hashtags : fallbackTags;
                     return (
-                      <li class="card flex flex-col p-5">
+                      <li class="card p-5 sm:p-6">
                         <div class="flex items-start gap-3">
                           <span class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-ink-900 text-xs font-bold text-white">{i + 1}</span>
                           <div class="min-w-0 flex-1">
                             <p class="text-lg leading-snug font-bold text-ink-900">“{n.hook}”</p>
-                            {n.format && <p class="mt-1 text-xs font-medium text-clay-700">{n.format}</p>}
+                            {n.format && <p class="mt-1 text-sm font-medium text-clay-700">{n.format}</p>}
+                            {n.idea && <p class="mt-2 text-ink-700">{n.idea}</p>}
+                            {n.why && <p class="mt-1 text-sm text-ink-500">Vì sao: {n.why}</p>}
+                            {tags.length > 0 && (
+                              <p class="mt-3 flex flex-wrap gap-1.5">
+                                {tags.map((tag) => (
+                                  <span class="badge bg-cream-100 text-ink-700">#{tag}</span>
+                                ))}
+                              </p>
+                            )}
+                            <div class="mt-4 flex flex-wrap gap-2">
+                              <button type="button" class="btn-secondary btn-sm" data-copy={`${n.hook}${tags.length ? `\n\n${tags.map((t) => `#${t}`).join(' ')}` : ''}`}>Chép hook</button>
+                              <a href={studioHref(n.hook)} class="btn-ghost btn-sm"><Icon name="image" size={14} /> Tạo ảnh cho ý này</a>
+                            </div>
                           </div>
-                        </div>
-                        {n.idea && <p class="mt-3 text-sm text-ink-700">{n.idea}</p>}
-                        {n.why && <p class="mt-2 text-sm text-ink-500">Vì sao: {n.why}</p>}
-                        {tags.length > 0 && (
-                          <p class="mt-3 flex flex-wrap gap-1.5">
-                            {tags.map((tag) => (
-                              <span class="badge bg-cream-100 text-ink-700">#{tag}</span>
-                            ))}
-                          </p>
-                        )}
-                        <div class="mt-4 flex flex-wrap gap-2 border-t border-cream-200 pt-4">
-                          <button type="button" class="btn-secondary btn-sm" data-copy={`${n.hook}${tags.length ? `\n\n${tags.map((t) => `#${t}`).join(' ')}` : ''}`}>
-                            Chép hook
-                          </button>
-                          <a href={studioHref(n.hook)} class="btn-ghost btn-sm">
-                            <Icon name="image" size={14} />
-                            Tạo ảnh cho ý này
-                          </a>
                         </div>
                       </li>
                     );
@@ -339,166 +464,106 @@ const METRIC_HELP = [
               </section>
             )}
 
-            <!-- 3. Số liệu -->
-            <section id="tong-quan" class="scroll-mt-28 pt-12">
-              <p class="eyebrow">Số liệu</p>
-              <h2 class="mt-2 text-2xl font-bold">Kênh đang ở đâu</h2>
-              <div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-                {creator && <StatTile label="Follower" value={compactNumber(creator.followers)} hint={`${compactNumber(creator.likesTotal)} like toàn kênh`} />}
-                <StatTile label="View trung vị" value={compactNumber(metrics.views.median)} hint={`trung bình ${compactNumber(metrics.views.mean)}`} />
-                <StatTile label="Tỉ lệ tương tác" value={percent(metrics.engagementRate)} hint={metrics.engagementRate >= 0.05 ? 'tốt, trên 5%' : 'dưới 5%, cần cải thiện'} />
-                <StatTile label="Tỉ lệ lưu" value={percent(metrics.saveRate, 2)} hint="lưu / view" />
-                <StatTile label="Tỉ lệ chia sẻ" value={percent(metrics.shareRate, 2)} hint="share / view" />
-                <StatTile label="Tần suất đăng" value={`${metrics.postsPerWeek.toFixed(1).replace('.', ',')}/tuần`} hint={metrics.avgDurationS ? `TB ${Math.round(metrics.avgDurationS)} giây/video` : undefined} />
-              </div>
-
-              <details class="mt-3 text-sm text-ink-500">
-                <summary class="cursor-pointer select-none hover:text-ink-900">Các chỉ số này nghĩa là gì?</summary>
-                <dl class="mt-3 grid gap-2 sm:grid-cols-2">
-                  {METRIC_HELP.map(([term, help]) => (
-                    <div class="rounded-xl bg-cream-100 px-4 py-3">
-                      <dt class="font-medium text-ink-900">{term}</dt>
-                      <dd class="mt-0.5">{help}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </details>
-
-              <div class="card mt-6 p-6">
-                <h3 class="text-lg font-bold">View theo ngày đăng</h3>
-                <p class="mt-1 text-sm text-ink-500">
-                  Từ {fmtDate(metrics.from)} đến {fmtDate(metrics.to)}. Điểm to là video nổi bật.
-                </p>
-                <div class="mt-4">
-                  <ViewsChart series={metrics.series} highlightIds={topIds} />
-                </div>
-              </div>
-            </section>
-
-            <!-- 4. Giờ đăng -->
-            <section id="gio-dang" class="scroll-mt-28 pt-12">
-              <p class="eyebrow">Giờ đăng</p>
-              <h2 class="mt-2 text-2xl font-bold">Khi nào video của kênh này được xem nhiều nhất</h2>
-              <div class="card mt-6 p-6">
-                {bestHours.length > 0 && (
-                  <div class="flex flex-wrap gap-6">
-                    <div>
-                      <p class="text-xs font-semibold tracking-wide text-ink-500 uppercase">Khung giờ tốt (giờ Việt Nam)</p>
-                      <div class="mt-2 flex flex-wrap gap-2">
-                        {bestHours.map((s, i) => (
-                          <span class:list={['rounded-xl px-3 py-2 text-sm', i === 0 ? 'bg-ink-900 text-white' : 'bg-cream-100 text-ink-900']}>
-                            <strong class="text-base">{s.slot}h</strong>
-                            <span class:list={['ml-1.5 text-xs', i === 0 ? 'text-white/70' : 'text-ink-500']}>
-                              {s.count} video · trung vị {compactNumber(s.medianViews)}
-                            </span>
-                          </span>
+            {/* 7. Hashtag */}
+            <section id="hashtag" class="scroll-mt-28 pt-12">
+              <h2 class="text-2xl font-bold text-ink-900">Hashtag: nên thêm gì, nên bớt gì</h2>
+              <div class="card mt-4 p-6">
+                <div class="grid gap-6 sm:grid-cols-2">
+                  <div>
+                    <p class="font-semibold text-sage-700">Nên dùng thêm</p>
+                    <p class="text-xs text-ink-500">dùng ít nhưng view cao</p>
+                    {insights.tagOpportunities.length > 0 ? (
+                      <ul class="mt-3 space-y-1.5 text-sm">
+                        {insights.tagOpportunities.map((t) => (
+                          <li><span class="font-medium text-ink-900">#{t.name}</span> <span class="text-ink-500">· {t.count} video · trung vị {compactNumber(t.medianViews)} ({x(t.multiple)})</span></li>
                         ))}
-                      </div>
-                    </div>
-                    {bestDays.length > 0 && (
-                      <div>
-                        <p class="text-xs font-semibold tracking-wide text-ink-500 uppercase">Thứ tốt</p>
-                        <div class="mt-2 flex flex-wrap gap-2">
-                          {bestDays.map((s, i) => (
-                            <span class:list={['rounded-xl px-3 py-2 text-sm', i === 0 ? 'bg-ink-900 text-white' : 'bg-cream-100 text-ink-900']}>
-                              <strong class="text-base">{WEEKDAY_LABEL[s.slot]}</strong>
-                              <span class:list={['ml-1.5 text-xs', i === 0 ? 'text-white/70' : 'text-ink-500']}>
-                                {s.count} video · trung vị {compactNumber(s.medianViews)}
-                              </span>
-                            </span>
-                          ))}
-                        </div>
-                      </div>
+                      </ul>
+                    ) : (
+                      <p class="mt-3 text-sm text-ink-500">Chưa thấy hashtag nào vượt trội mà dùng ít.</p>
                     )}
                   </div>
-                )}
-                {result?.postingAdvice && <p class="mt-5 text-sm text-ink-700">{result.postingAdvice}</p>}
-                <details class="mt-5 text-sm text-ink-500">
-                  <summary class="cursor-pointer select-none hover:text-ink-900">Xem bản đồ đầy đủ theo giờ và thứ</summary>
-                  <div class="mt-4">
-                    <SlotHeatmap byHour={metrics.byHour} byWeekday={metrics.byWeekday} />
+                  <div>
+                    <p class="font-semibold text-red-700">Đang là tiếng ồn</p>
+                    <p class="text-xs text-ink-500">dùng nhiều mà view thấp</p>
+                    {insights.tagNoise.length > 0 ? (
+                      <ul class="mt-3 space-y-1.5 text-sm">
+                        {insights.tagNoise.map((t) => (
+                          <li><span class="font-medium text-ink-900">#{t.name}</span> <span class="text-ink-500">· {t.count} video · trung vị {compactNumber(t.medianViews)} ({x(t.multiple)})</span></li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p class="mt-3 text-sm text-ink-500">Không có hashtag nào kéo view xuống rõ rệt.</p>
+                    )}
                   </div>
+                </div>
+                {result?.hashtagAdvice && <p class="mt-5 border-t border-cream-200 pt-4 text-ink-700">{result.hashtagAdvice}</p>}
+                <details class="mt-4 text-sm text-ink-500">
+                  <summary class="cursor-pointer select-none hover:text-ink-900">Xem tất cả hashtag và nhạc</summary>
+                  <div class="mt-4"><TagBars tags={metrics.hashtags} /></div>
+                  {metrics.music.length > 0 && (
+                    <div class="mt-5">
+                      <p class="mb-2 font-medium text-ink-700">Nhạc dùng nhiều</p>
+                      <TagBars tags={metrics.music.slice(0, 5)} prefix="" />
+                    </div>
+                  )}
                 </details>
               </div>
             </section>
 
-            <!-- 5. Nội dung -->
-            <section id="noi-dung" class="scroll-mt-28 pt-12">
-              <p class="eyebrow">Nội dung</p>
-              <h2 class="mt-2 text-2xl font-bold">Video nào nổi và vì sao</h2>
-              <div class="mt-6 grid gap-6 lg:grid-cols-[1.3fr_0.7fr] lg:items-start">
-                <div class="card p-6">
-                  <h3 class="text-lg font-bold">Video nổi bật</h3>
-                  {metrics.topVideos.length === 0 ? (
-                    <p class="mt-2 text-sm text-ink-500">Chưa có video nào vượt 2 lần trung vị. Kênh đang đều, chưa có cú bứt.</p>
-                  ) : (
-                    <ul class="mt-4 divide-y divide-cream-200">
-                      {metrics.topVideos.map((v) => (
-                        <li class="py-4 first:pt-0 last:pb-0">
-                          <div class="flex flex-wrap items-start justify-between gap-3">
-                            <a href={v.url} target="_blank" rel="noopener" class="min-w-0 flex-1 font-medium text-ink-900 hover:text-clay-700">
-                              {v.caption?.slice(0, 140) || '(không có caption)'}
-                            </a>
-                            <span class="badge bg-clay-50 text-clay-700">gấp {v.multiple.toFixed(1).replace('.', ',')} lần</span>
-                          </div>
-                          <p class="mt-1 text-xs text-ink-500 tabular-nums">
-                            {fmtDate(v.postedAt)} · {compactNumber(v.views)} view · {compactNumber(v.likes)} like · {compactNumber(v.comments)} bình luận ·{' '}
-                            {compactNumber(v.shares)} share · {compactNumber(v.saves)} lưu
-                          </p>
-                          {whyById.get(v.tiktokId) && <p class="mt-2 text-sm text-ink-700">{whyById.get(v.tiktokId)}</p>}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-                {result && result.themes.length > 0 && (
-                  <div class="card p-6">
-                    <h3 class="text-lg font-bold">Nhóm nội dung</h3>
-                    <ul class="mt-4 space-y-3">
-                      {result.themes.map((t) => (
-                        <li class="rule pt-3 first:border-0 first:pt-0">
-                          <p class="font-medium text-ink-900">{t.name}</p>
-                          <p class="text-sm text-ink-500">
-                            {t.share}
-                            {t.performance && ` · ${t.performance}`}
-                          </p>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+            {/* 8. Số liệu */}
+            <section id="so-lieu" class="scroll-mt-28 pt-12">
+              <h2 class="text-2xl font-bold text-ink-900">Số liệu</h2>
+              <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                {creator && <StatTile label="Follower" value={compactNumber(creator.followers)} hint={`${compactNumber(creator.likesTotal)} like toàn kênh`} />}
+                <StatTile label="View trung vị" value={compactNumber(metrics.views.median)} hint={`trung bình ${compactNumber(metrics.views.mean)}`} />
+                <StatTile label="Tương tác" value={percent(metrics.engagementRate)} hint={metrics.engagementRate >= 0.05 ? 'tốt, trên 5%' : 'dưới 5%'} />
+                <StatTile label="Tỉ lệ lưu" value={percent(metrics.saveRate, 2)} hint="lưu / view" />
+                <StatTile label="Tỉ lệ chia sẻ" value={percent(metrics.shareRate, 2)} hint="share / view" />
+                <StatTile label="Tần suất" value={`${metrics.postsPerWeek.toFixed(1).replace('.', ',')}/tuần`} hint={metrics.avgDurationS ? `TB ${Math.round(metrics.avgDurationS)} giây` : undefined} />
               </div>
-            </section>
 
-            <!-- 6. Hashtag -->
-            <section id="hashtag" class="scroll-mt-28 pt-12">
-              <p class="eyebrow">Hashtag và nhạc</p>
-              <h2 class="mt-2 text-2xl font-bold">Thẻ nào đi kèm video được xem nhiều</h2>
-              <div class="card mt-6 p-6">
-                <p class="text-sm text-ink-500">Thanh dài là dùng nhiều; số bên phải là view trung vị của video có thẻ đó. Thẻ dùng ít mà view cao đáng để dùng thêm.</p>
-                <div class="mt-4">
-                  <TagBars tags={metrics.hashtags} />
-                </div>
-                {metrics.music.length > 0 && (
-                  <div class="mt-6">
-                    <p class="mb-2 text-sm font-medium text-ink-700">Nhạc dùng nhiều</p>
-                    <TagBars tags={metrics.music.slice(0, 5)} prefix="" />
-                  </div>
-                )}
-                {result?.hashtagAdvice && <p class="mt-4 text-sm text-ink-700">{result.hashtagAdvice}</p>}
+              <div class="card mt-4 p-6">
+                <p class="font-semibold text-ink-900">View theo ngày đăng</p>
+                <p class="mt-0.5 text-sm text-ink-500">Từ {fmtDate(metrics.from)} đến {fmtDate(metrics.to)}. Chấm vàng là video vượt 2 lần trung vị.</p>
+                <div class="mt-4"><ViewsChart series={metrics.series} highlightIds={topIds} /></div>
               </div>
-            </section>
 
-            <!-- 7. Bảng video -->
-            <section id="video" class="scroll-mt-28 pt-12">
-              <p class="eyebrow">Video</p>
-              <h2 class="mt-2 text-2xl font-bold">Từng video đã kéo</h2>
-              <div class="card mt-6 overflow-hidden p-0">
-                <div class="flex flex-wrap items-center justify-between gap-2 p-5 pb-3">
-                  <p class="text-sm text-ink-500">{videos.length} video, mới nhất xếp trước.</p>
-                  <p class="text-xs text-ink-500"><span class="inline-block h-3 w-3 rounded-sm bg-clay-100 align-middle" /> video nổi bật</p>
+              <div class="card mt-4 p-6">
+                <p class="font-semibold text-ink-900">Giờ và thứ đăng</p>
+                {bestHours.length > 0 && (
+                  <p class="mt-1 text-sm text-ink-700">
+                    Khung giờ tốt: {bestHours.map((s) => `${s.slot}h (${s.count} video, trung vị ${compactNumber(s.medianViews)})`).join(' · ')}
+                    {bestDays.length > 0 && <><br />Thứ tốt: {bestDays.map((s) => `${WEEKDAY_LABEL[s.slot]} (${s.count} video, trung vị ${compactNumber(s.medianViews)})`).join(' · ')}</>}
+                  </p>
+                )}
+                {result?.postingAdvice && <p class="mt-3 text-ink-700">{result.postingAdvice}</p>}
+                <details class="mt-4 text-sm text-ink-500">
+                  <summary class="cursor-pointer select-none hover:text-ink-900">Xem bản đồ đầy đủ theo giờ và thứ</summary>
+                  <div class="mt-4"><SlotHeatmap byHour={metrics.byHour} byWeekday={metrics.byWeekday} /></div>
+                </details>
+              </div>
+
+              {metrics.topVideos.length > 0 && (
+                <div class="card mt-4 p-6">
+                  <p class="font-semibold text-ink-900">Video nổi bật và vì sao</p>
+                  <ul class="mt-3 divide-y divide-cream-200">
+                    {metrics.topVideos.map((v) => (
+                      <li class="py-3 first:pt-0 last:pb-0">
+                        <div class="flex flex-wrap items-start justify-between gap-3">
+                          <a href={v.url} target="_blank" rel="noopener" class="min-w-0 flex-1 font-medium text-ink-900 hover:text-clay-700">{caption(v.caption, 120)}</a>
+                          <span class="badge bg-clay-50 text-clay-700">gấp {x(v.multiple)}</span>
+                        </div>
+                        <p class="mt-1 text-xs text-ink-500 tabular-nums">{fmtDate(v.postedAt)} · {compactNumber(v.views)} view · {compactNumber(v.likes)} like · {compactNumber(v.comments)} bình luận · {compactNumber(v.shares)} share · {compactNumber(v.saves)} lưu</p>
+                        {whyById.get(v.tiktokId) && <p class="mt-1.5 text-sm text-ink-700">{whyById.get(v.tiktokId)}</p>}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                <div class="overflow-x-auto">
+              )}
+
+              <details class="card mt-4 p-0">
+                <summary class="cursor-pointer select-none px-6 py-4 font-semibold text-ink-900 hover:text-clay-700">Bảng {videos.length} video đã kéo</summary>
+                <div class="overflow-x-auto border-t border-cream-200">
                   <table class="w-full text-sm">
                     <thead class="bg-cream-100 text-left text-xs text-ink-500 uppercase">
                       <tr>
@@ -516,11 +581,7 @@ const METRIC_HELP = [
                       {videos.map((v) => (
                         <tr class:list={[topIds.includes(v.tiktokId) && 'bg-clay-50/70']}>
                           <td class="px-4 py-2 whitespace-nowrap text-ink-500 tabular-nums">{fmtDate(v.postedAt)}</td>
-                          <td class="max-w-[22rem] px-4 py-2">
-                            <a href={v.url} target="_blank" rel="noopener" class="line-clamp-2 text-ink-900 hover:text-clay-700">
-                              {v.caption || '(không có caption)'}
-                            </a>
-                          </td>
+                          <td class="max-w-[22rem] px-4 py-2"><a href={v.url} target="_blank" rel="noopener" class="line-clamp-2 text-ink-900 hover:text-clay-700">{v.caption || '(không có caption)'}</a></td>
                           <td class="px-4 py-2 text-right font-medium tabular-nums">{compactNumber(v.views)}</td>
                           <td class="px-4 py-2 text-right tabular-nums">{compactNumber(v.likes)}</td>
                           <td class="px-4 py-2 text-right tabular-nums">{compactNumber(v.comments)}</td>
@@ -532,7 +593,7 @@ const METRIC_HELP = [
                     </tbody>
                   </table>
                 </div>
-              </div>
+              </details>
             </section>
 
             <div class="mt-12 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-ink-900 px-6 py-6 text-white">
@@ -550,7 +611,6 @@ const METRIC_HELP = [
 </SiteLayout>
 
 <script>
-  // Khi chưa xong: hỏi trạng thái mỗi 3 giây, cập nhật nhãn, xong thì tải lại trang.
   const box = document.querySelector<HTMLElement>('[data-poll]');
   if (box) {
     const id = box.dataset.poll;
@@ -572,7 +632,6 @@ const METRIC_HELP = [
     setTimeout(tick, 3000);
   }
 
-  // Nút "Chép hook": copy vào clipboard, đổi nhãn 2 giây rồi trả lại.
   for (const button of document.querySelectorAll<HTMLButtonElement>('[data-copy]')) {
     button.addEventListener('click', async () => {
       try {

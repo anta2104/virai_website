@@ -20,6 +20,7 @@ import { newId } from '../ids';
 import { env } from '../env';
 import { todayInVietnam } from '../format';
 import { refund } from '../credits';
+import { computeInsights } from './insights';
 import { analyzeCreator, type AnalysisResult } from './analyze';
 import { computeMetrics, type CreatorMetrics } from './metrics';
 import { type CreatorProfile, type VideoData } from './provider';
@@ -330,7 +331,8 @@ export async function advanceAnalysis(id: string): Promise<CreatorAnalysis | nul
       let resultJson = current.inputHash ? await findSameInput(creator.id, current.inputHash, id) : null;
       let aiError: string | null = null;
       if (!resultJson) {
-        const outcome = await analyzeCreator(env.AI, { handle: analysis.handle, profile, metrics, videos: list });
+        const insights = computeInsights(list, profile, now());
+        const outcome = await analyzeCreator(env.AI, { handle: analysis.handle, profile, metrics, videos: list, insights });
         resultJson = outcome.result ? JSON.stringify(outcome.result) : null;
         // Phần AI hỏng thì vẫn 'done' (có số liệu), nhưng ghi lý do để soi được
         // qua endpoint status mà không cần đọc log Worker
