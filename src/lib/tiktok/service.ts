@@ -143,12 +143,18 @@ async function setStatus(id: string, status: string, extra: Partial<CreatorAnaly
 }
 
 /** Ghi hoặc cập nhật kênh, trả về bản ghi đã lưu. */
-async function upsertCreator(handle: string, profile: CreatorProfile | null): Promise<Creator> {
+/**
+ * Ghi hoặc cập nhật kênh. Kênh demo lưu `platform = 'mock'` để video giả không
+ * bao giờ lẫn vào kênh thật cùng handle (đã xảy ra 15/10/2026: bảng video của
+ * @dieulinh_hg hiện 60 video, một nửa là số giả).
+ */
+async function upsertCreator(handle: string, profile: CreatorProfile | null, providerName: string): Promise<Creator> {
   const db = getDb(env.DB);
+  const platform = providerName === 'mock' ? 'mock' : 'tiktok';
   const existing = await db
     .select()
     .from(creators)
-    .where(and(eq(creators.platform, 'tiktok'), eq(creators.handle, handle)))
+    .where(and(eq(creators.platform, platform), eq(creators.handle, handle)))
     .limit(1);
 
   const fields = {
@@ -167,7 +173,7 @@ async function upsertCreator(handle: string, profile: CreatorProfile | null): Pr
     return { ...existing[0], ...fields };
   }
 
-  const creator: Creator = { id: newId(), platform: 'tiktok', handle, createdAt: now(), ...fields };
+  const creator: Creator = { id: newId(), platform, handle, createdAt: now(), ...fields };
   await db.insert(creators).values(creator);
   return creator;
 }
@@ -264,7 +270,7 @@ export async function runAnalysis(id: string): Promise<void> {
       return;
     }
 
-    const creator = await upsertCreator(analysis.handle, profile);
+    const creator = await upsertCreator(analysis.handle, profile, provider.name);
     await upsertVideos(creator.id, list);
 
     const metrics = computeMetrics(list);

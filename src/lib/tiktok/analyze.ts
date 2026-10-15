@@ -14,7 +14,18 @@ export interface AnalysisResult {
   trend: { direction: 'len' | 'xuong' | 'di_ngang'; reason: string };
   postingAdvice: string;
   hashtagAdvice: string;
-  nextIdeas: Array<{ hook: string; idea: string }>;
+  nextIdeas: Array<{
+    hook: string;
+    idea: string;
+    /** Định dạng gợi ý, ví dụ "nói trước camera 30 giây", "vlog 60 giây" */
+    format?: string;
+    /** 3–5 hashtag nên dùng, không có # */
+    hashtags?: string[];
+    /** Vì sao tin là sẽ chạy, dẫn từ video/chỉ số nào của chính kênh */
+    why?: string;
+  }>;
+  /** Một câu chốt: nên đăng khi nào, dẫn từ số liệu giờ/thứ */
+  bestTimeAdvice?: string;
   healthScore: number;
   checklist: string[];
 }
@@ -35,12 +46,13 @@ Quy tắc bắt buộc:
 - topVideos: chọn từ danh sách "video nổi bật" đã cho, giải thích vì sao nổi (hook mở đầu, chủ đề, định dạng, thời điểm).
 - themes: nhóm nội dung theo chủ đề từ caption, 3–5 nhóm; "share" là tỉ trọng ước lượng bằng chữ (ví dụ "khoảng 1/3 video"), "performance" nói nhóm đó hiệu quả hơn hay kém hơn mức chung.
 - trend: dựa vào chuỗi view theo thời gian đã cho.
-- nextIdeas: 5 ý tưởng video tiếp theo, mỗi ý có câu hook mở đầu 1 dòng và mô tả 1–2 câu, bám vào những gì đã hiệu quả của chính kênh này.
+- nextIdeas: 5 ý tưởng video tiếp theo, mỗi ý gồm: "hook" là câu nói ra trong 2 giây đầu (1 dòng, cụ thể, không chung chung); "idea" mô tả 1–2 câu phải làm gì trong video; "format" là định dạng và độ dài (ví dụ "nói trước camera 30 giây", "vlog 45 giây", "trước/sau 20 giây"); "hashtags" 3–5 hashtag lấy từ hashtag đã hiệu quả của chính kênh (không có #); "why" một câu nói rõ ý tưởng này dựa vào video hay chỉ số nào của kênh (ví dụ "lặp lại công thức của 2 video review mỹ phẩm đạt 35K và 34K view"). Ý tưởng phải tái dụng công thức mở đầu đã chạy tốt của kênh, không được chung chung kiểu "giới thiệu về...".
+- bestTimeAdvice: một câu chốt nên đăng thứ mấy, giờ nào, dẫn đúng số trung vị đã cho.
 - healthScore: 0–100, cân nhắc tần suất đăng, tỉ lệ tương tác, tỉ lệ lưu/chia sẻ, có video nổi bật hay không.
 - checklist: 3–6 việc cụ thể nên làm trong 2 tuần tới.
 
 Chỉ trả về JSON đúng cấu trúc sau, không giải thích gì thêm, không bọc trong markdown:
-{"summary":"...","topVideos":[{"tiktokId":"...","why":"..."}],"themes":[{"name":"...","share":"...","performance":"..."}],"trend":{"direction":"len|xuong|di_ngang","reason":"..."},"postingAdvice":"...","hashtagAdvice":"...","nextIdeas":[{"hook":"...","idea":"..."}],"healthScore":0,"checklist":["..."]}`;
+{"summary":"...","topVideos":[{"tiktokId":"...","why":"..."}],"themes":[{"name":"...","share":"...","performance":"..."}],"trend":{"direction":"len|xuong|di_ngang","reason":"..."},"postingAdvice":"...","bestTimeAdvice":"...","hashtagAdvice":"...","nextIdeas":[{"hook":"...","idea":"...","format":"...","hashtags":["..."],"why":"..."}],"healthScore":0,"checklist":["..."]}`;
 
 function describeSlots(metrics: CreatorMetrics): string {
   const hours = bestSlots(metrics.byHour).map((s) => `${s.slot}h (${s.count} video, trung vị ${compactNumber(s.medianViews)} view)`);
@@ -129,7 +141,19 @@ function tidy(result: AnalysisResult): AnalysisResult {
     trend: { direction: result.trend.direction, reason: String(result.trend.reason ?? '') },
     postingAdvice: result.postingAdvice.trim(),
     hashtagAdvice: result.hashtagAdvice.trim(),
-    nextIdeas: result.nextIdeas.filter((n) => isString(n?.hook)).slice(0, 6).map((n) => ({ hook: n.hook, idea: String(n.idea ?? '') })),
+    nextIdeas: result.nextIdeas
+      .filter((n) => isString(n?.hook))
+      .slice(0, 6)
+      .map((n) => ({
+        hook: n.hook.trim().replace(/^[“"']+|[”"']+$/g, ''),
+        idea: String(n.idea ?? ''),
+        format: isString(n.format) ? n.format : undefined,
+        hashtags: Array.isArray(n.hashtags)
+          ? n.hashtags.filter(isString).map((h) => h.replace(/^#/, '').trim()).filter(Boolean).slice(0, 6)
+          : undefined,
+        why: isString(n.why) ? n.why : undefined,
+      })),
+    bestTimeAdvice: isString(result.bestTimeAdvice) ? result.bestTimeAdvice.trim() : undefined,
     healthScore: Math.max(0, Math.min(100, Math.round(result.healthScore))),
     checklist: result.checklist.filter(isString).slice(0, 8),
   };
@@ -159,9 +183,20 @@ const RESULT_SCHEMA = {
     },
     postingAdvice: { type: 'string' },
     hashtagAdvice: { type: 'string' },
+    bestTimeAdvice: { type: 'string' },
     nextIdeas: {
       type: 'array',
-      items: { type: 'object', properties: { hook: { type: 'string' }, idea: { type: 'string' } }, required: ['hook', 'idea'] },
+      items: {
+        type: 'object',
+        properties: {
+          hook: { type: 'string' },
+          idea: { type: 'string' },
+          format: { type: 'string' },
+          hashtags: { type: 'array', items: { type: 'string' } },
+          why: { type: 'string' },
+        },
+        required: ['hook', 'idea', 'format', 'hashtags', 'why'],
+      },
     },
     healthScore: { type: 'integer' },
     checklist: { type: 'array', items: { type: 'string' } },
@@ -185,7 +220,7 @@ export async function analyzeCreator(
     ai,
     SYSTEM_PROMPT,
     buildUserPrompt(input.handle, input.profile, input.metrics, input.videos),
-    { maxTokens: 3600, temperature: 0.4, validate: isAnalysisResult, schema: RESULT_SCHEMA },
+    { maxTokens: 4200, temperature: 0.4, validate: isAnalysisResult, schema: RESULT_SCHEMA },
   );
   return { result: value ? tidy(value) : null, failures };
 }

@@ -26,7 +26,7 @@ describe('splitStatements', () => {
       assert.ok(statements.length >= 1, `${file} không có câu lệnh nào`);
       assert.ok(statements.length <= breakpoints + 1, `${file} tách ra nhiều hơn số dấu ngắt`);
       for (const statement of statements) {
-        assert.match(statement, /^(CREATE|ALTER|INSERT|DROP|UPDATE|PRAGMA)/i, `${file}: câu lệnh lạ: ${statement.slice(0, 60)}`);
+        assert.match(statement, /^(CREATE|ALTER|INSERT|DROP|UPDATE|DELETE|PRAGMA)/i, `${file}: câu lệnh lạ: ${statement.slice(0, 60)}`);
         assert.ok(!statement.includes('statement-breakpoint'));
       }
     }

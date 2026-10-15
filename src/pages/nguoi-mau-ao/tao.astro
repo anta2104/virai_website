@@ -18,6 +18,8 @@ const [models, balance] = await Promise.all([listActiveModels(), balanceOf(user.
 
 const preselected = Astro.url.searchParams.get('model') ?? models[0]?.model.id ?? '';
 const source = Astro.url.searchParams.get('tu-phan-tich') ?? '';
+// Ý tưởng video mang sang từ trang phân tích, điền sẵn vào ghi chú
+const ideaNote = (Astro.url.searchParams.get('y-tuong') ?? '').slice(0, 200);
 const perImage = STUDIO_COSTS.photoshootImage;
 ---
 
@@ -177,6 +179,7 @@ const perImage = STUDIO_COSTS.photoshootImage;
             name="notes"
             class="input"
             maxlength="200"
+            value={ideaNote ? `Theo ý tưởng: ${ideaNote}`.slice(0, 200) : ''}
             placeholder="Ví dụ: người mẫu cầm sản phẩm bằng tay phải, tông ảnh ấm"
           />
         </div>
