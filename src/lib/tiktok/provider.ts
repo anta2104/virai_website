@@ -276,20 +276,28 @@ export class ApifyProvider implements TikTokProvider {
     url.searchParams.set('token', this.token);
     url.searchParams.set('timeout', '240');
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        profiles: [handle],
-        resultsPerPage: limit,
-        shouldDownloadVideos: false,
-        shouldDownloadCovers: false,
-      }),
+    const body = JSON.stringify({
+      profiles: [handle],
+      resultsPerPage: limit,
+      shouldDownloadVideos: false,
+      shouldDownloadCovers: false,
     });
 
-    if (!response.ok) {
-      const body = await response.text();
-      throw new Error(`Apify trả ${response.status}: ${body.slice(0, 300)}`);
+    // Apify thỉnh thoảng trả 502/503 thoáng qua ở cổng run-sync (đã gặp thật
+    // 15/10/2026). Thử lại tối đa 2 lần, mỗi lần chờ lâu hơn.
+    let response: Response | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 2000 * attempt));
+      response = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body });
+      if (response.ok || response.status < 500) break;
+      console.warn(`[tiktok/apify] Lần ${attempt + 1} trả ${response.status}, thử lại`);
+    }
+
+    if (!response || !response.ok) {
+      const text = response ? await response.text() : '';
+      const status = response?.status ?? 0;
+      const hint = status >= 500 ? ' Apify đang trục trặc, bạn thử lại sau một phút.' : '';
+      throw new Error(`Apify trả ${status}: ${text.slice(0, 300)}.${hint}`);
     }
 
     const data = (await response.json()) as unknown;
