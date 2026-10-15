@@ -20,14 +20,14 @@
 >
 > | Mục | Trạng thái |
 > |---|---|
-> | T1 Nhập link, kéo video, bảng + biểu đồ | ✅ xong, migration `0006`; provider `mock` đã thử, `apify` chưa thử token thật |
+> | T1 Nhập link, kéo video, bảng + biểu đồ | ✅ xong; `apify` đã chạy thật. Tính phí: 3 lượt/tháng miễn phí rồi 2 tín chỉ/lượt (migration `0008`) |
 > | T2 LLM phân tích top video, chủ đề, giờ đăng, hashtag | ✅ chạy thật trên production 15/10 (JSON schema mode, llama 3.3 70B) |
 > | T3 Theo dõi kênh hằng ngày, so sánh đối thủ (Premium) | ⬜ |
 > | T4 Media kit công khai, báo cáo chia sẻ, cảnh báo email | ⬜ |
 > | M1 Buổi chụp ảnh ảo (ảnh tĩnh) + tín chỉ | ✅ chạy thật trên production 15/10: 5 ảnh đại diện tự sinh, buổi chụp 1 ảnh ra đúng người mẫu; chữ trên nhãn sản phẩm còn méo (đúng dự kiến, chờ Q2) |
 > | M2 Video người mẫu nói chuyện (talking head) | ⬜ |
 > | M3 Video người mẫu tương tác với sản phẩm | ⬜ chờ kết quả thử nghiệm M1 |
-> | **Q1 Chọn nhà cung cấp dữ liệu TikTok** | ⬜ chờ chủ dự án: hiện có `mock` và adapter Apify (chưa kiểm chứng với token thật) |
+> | **Q1 Chọn nhà cung cấp dữ liệu TikTok** | ✅ Apify. Adapter đã chạy với token thật 15/10 (@dieulinh_hg: 1.201 follower, 30 video đủ chỉ số). Token lưu ở bảng `settings`, sửa tại `/admin/cai-dat` |
 > | **Q2 Chọn nhà cung cấp sinh ảnh giữ đúng sản phẩm** | ⬜ chờ chủ dự án: hiện dùng Workers AI (chỉ text-to-image) |
 > | **Q3 Giữ hay bỏ phần tưởng niệm thú cưng** | 🟡 15/10: trang chủ, tên site, menu, chân trang, ảnh chia sẻ, bảng giá đã chuyển sang sản phẩm mới; phần tưởng niệm dời về `/tuong-niem`, mọi trang `/be/*`, vườn, tài khoản vẫn chạy. Gỡ hẳn hay không: chờ chủ dự án |
 > | **Q4 Rà soát pháp lý nội dung AI trong quảng cáo** | ⬜ chờ chủ dự án hỏi người có chuyên môn |
@@ -47,6 +47,17 @@
 4. Hạn chế đã biết, chấp nhận ở MVP: trừ tín chỉ không có khoá giao dịch (hai request
    song song có thể cùng qua kiểm tra số dư); `waitUntil` không bảo đảm job dài chạy
    trọn, khi dùng provider thật nên chuyển sang Cloudflare Queues.
+
+## Tính phí
+
+| Việc | Giá |
+|---|---|
+| Phân tích kênh, dữ liệu demo | miễn phí, không giới hạn |
+| Phân tích kênh, dữ liệu thật | 3 lượt miễn phí mỗi tháng (giờ VN), sau đó 2 tín chỉ/lượt; bản tái dùng trong 12 giờ không tốn |
+| Ảnh người mẫu ảo | 1 tín chỉ/ảnh |
+| Tín chỉ tặng khi vào studio lần đầu | 2 |
+
+Hằng số trong `src/lib/plans.ts`. Thất bại thì hoàn tín chỉ.
 
 ## Phần T: Phân tích kênh TikTok
 
