@@ -46,7 +46,8 @@ Quy tắc bắt buộc:
 - topVideos: chọn từ danh sách "video nổi bật" đã cho, giải thích vì sao nổi (hook mở đầu, chủ đề, định dạng, thời điểm).
 - themes: nhóm nội dung theo chủ đề từ caption, 3–5 nhóm; "share" là tỉ trọng ước lượng bằng chữ (ví dụ "khoảng 1/3 video"), "performance" nói nhóm đó hiệu quả hơn hay kém hơn mức chung.
 - trend: dựa vào chuỗi view theo thời gian đã cho.
-- nextIdeas: 5 ý tưởng video tiếp theo, mỗi ý gồm: "hook" là câu nói ra trong 2 giây đầu (1 dòng, cụ thể, không chung chung); "idea" mô tả 1–2 câu phải làm gì trong video; "format" là định dạng và độ dài (ví dụ "nói trước camera 30 giây", "vlog 45 giây", "trước/sau 20 giây"); "hashtags" 3–5 hashtag lấy từ hashtag đã hiệu quả của chính kênh (không có #); "why" một câu nói rõ ý tưởng này dựa vào video hay chỉ số nào của kênh (ví dụ "lặp lại công thức của 2 video review mỹ phẩm đạt 35K và 34K view"). Ý tưởng phải tái dụng công thức mở đầu đã chạy tốt của kênh, không được chung chung kiểu "giới thiệu về...".
+- nextIdeas: 5 ý tưởng video tiếp theo, mỗi ý gồm: "hook" là câu nói ra trong 2 giây đầu (1 dòng, cụ thể, không chung chung); "idea" mô tả 1–2 câu phải làm gì trong video; "format" là định dạng và độ dài (ví dụ "nói trước camera 30 giây", "vlog 45 giây", "trước/sau 20 giây"); "hashtags" 3–5 hashtag lấy từ hashtag đã hiệu quả của chính kênh (không có #); "why" một câu nói rõ ý tưởng này dựa vào video hay chỉ số nào của kênh (ví dụ "lặp lại công thức của 2 video review mỹ phẩm đạt 35K và 34K view"). Ý tưởng phải tái dụng công thức mở đầu đã chạy tốt của kênh, không được chung chung kiểu "giới thiệu về...". Hook KHÔNG được bắt đầu bằng "Bạn đã sẵn sàng", "Bạn có biết", "Bạn muốn biết"; hãy bắt chước cách mở đầu trong caption của chính các video nổi bật (ví dụ kênh hay dùng "Sự thật không ai nói với bạn về..." thì viết hook theo mẫu đó với chủ đề mới). Trong "why" và mọi chỗ khác, gọi video bằng vài chữ đầu caption trong ngoặc kép, KHÔNG dùng dãy số id.
+- checklist: mỗi việc phải đo được và có mốc (ví dụ "Đăng 2 video vào thứ ba 22h trong 2 tuần tới"), không viết chung chung kiểu "tăng cường tương tác".
 - bestTimeAdvice: một câu chốt nên đăng thứ mấy, giờ nào, dẫn đúng số trung vị đã cho.
 - healthScore: 0–100, cân nhắc tần suất đăng, tỉ lệ tương tác, tỉ lệ lưu/chia sẻ, có video nổi bật hay không.
 - checklist: 3–6 việc cụ thể nên làm trong 2 tuần tới.
@@ -128,34 +129,47 @@ export function isAnalysisResult(value: unknown): value is AnalysisResult {
   );
 }
 
-/** Dọn kết quả: ép điểm về 0–100, bỏ phần tử rỗng, giới hạn số lượng. */
-function tidy(result: AnalysisResult): AnalysisResult {
+/** Model hay dẫn video bằng dãy id 19 số; đổi sang vài chữ đầu caption cho người đọc hiểu. */
+function humanizeIds(text: string, captionById: Map<string, string>): string {
+  return text.replace(/\b(7\d{17,18})\b/g, (id) => {
+    const caption = captionById.get(id);
+    return caption ? `“${caption.slice(0, 50)}${caption.length > 50 ? '…' : ''}”` : 'video nổi bật';
+  });
+}
+
+/** Dọn kết quả: ép điểm về 0–100, bỏ phần tử rỗng, giới hạn số lượng, đổi id video thành caption. */
+function tidy(result: AnalysisResult, videos: VideoData[]): AnalysisResult {
+  const captionById = new Map(videos.map((v) => [v.tiktokId, (v.caption ?? '').replace(/#\S+/g, '').trim()]));
+  const h = (text: unknown) => humanizeIds(String(text ?? ''), captionById);
   return {
-    summary: result.summary.trim(),
-    topVideos: result.topVideos.filter((t) => isString(t?.tiktokId) && isString(t?.why)).slice(0, 5),
+    summary: h(result.summary).trim(),
+    topVideos: result.topVideos
+      .filter((t) => isString(t?.tiktokId) && isString(t?.why))
+      .slice(0, 5)
+      .map((t) => ({ tiktokId: t.tiktokId, why: h(t.why) })),
     themes: result.themes.filter((t) => isString(t?.name)).slice(0, 6).map((t) => ({
       name: t.name,
       share: String(t.share ?? ''),
       performance: String(t.performance ?? ''),
     })),
-    trend: { direction: result.trend.direction, reason: String(result.trend.reason ?? '') },
-    postingAdvice: result.postingAdvice.trim(),
-    hashtagAdvice: result.hashtagAdvice.trim(),
+    trend: { direction: result.trend.direction, reason: h(result.trend.reason) },
+    postingAdvice: h(result.postingAdvice).trim(),
+    hashtagAdvice: h(result.hashtagAdvice).trim(),
     nextIdeas: result.nextIdeas
       .filter((n) => isString(n?.hook))
       .slice(0, 6)
       .map((n) => ({
         hook: n.hook.trim().replace(/^[“"']+|[”"']+$/g, ''),
-        idea: String(n.idea ?? ''),
+        idea: h(n.idea),
         format: isString(n.format) ? n.format : undefined,
         hashtags: Array.isArray(n.hashtags)
           ? n.hashtags.filter(isString).map((h) => h.replace(/^#/, '').trim()).filter(Boolean).slice(0, 6)
           : undefined,
-        why: isString(n.why) ? n.why : undefined,
+        why: isString(n.why) ? h(n.why) : undefined,
       })),
     bestTimeAdvice: isString(result.bestTimeAdvice) ? result.bestTimeAdvice.trim() : undefined,
     healthScore: Math.max(0, Math.min(100, Math.round(result.healthScore))),
-    checklist: result.checklist.filter(isString).slice(0, 8),
+    checklist: result.checklist.filter(isString).map(h).slice(0, 8),
   };
 }
 
@@ -222,5 +236,5 @@ export async function analyzeCreator(
     buildUserPrompt(input.handle, input.profile, input.metrics, input.videos),
     { maxTokens: 4200, temperature: 0.4, validate: isAnalysisResult, schema: RESULT_SCHEMA },
   );
-  return { result: value ? tidy(value) : null, failures };
+  return { result: value ? tidy(value, input.videos) : null, failures };
 }

@@ -78,13 +78,23 @@ describe('vietnamSlot', () => {
 });
 
 describe('bestSlots', () => {
-  it('bỏ khung chỉ có một video', () => {
+  it('ưu tiên khung có từ 3 video, bỏ khung ít mẫu dù trung vị cao', () => {
     const slots = bestSlots([
       { slot: 1, count: 1, medianViews: 99_999 },
       { slot: 2, count: 3, medianViews: 500 },
       { slot: 3, count: 2, medianViews: 900 },
+      { slot: 4, count: 4, medianViews: 700 },
     ]);
-    assert.deepEqual(slots.map((s) => s.slot), [3, 2]);
+    assert.deepEqual(slots.map((s) => s.slot), [4, 2]);
+  });
+
+  it('không khung nào đủ 3 video thì hạ chuẩn xuống 2', () => {
+    const slots = bestSlots([
+      { slot: 1, count: 1, medianViews: 99_999 },
+      { slot: 3, count: 2, medianViews: 900 },
+      { slot: 5, count: 2, medianViews: 300 },
+    ]);
+    assert.deepEqual(slots.map((s) => s.slot), [3, 5]);
   });
 });
 

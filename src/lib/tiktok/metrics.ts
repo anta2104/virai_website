@@ -190,10 +190,17 @@ export function computeMetrics(videos: VideoData[]): CreatorMetrics {
 }
 
 /** Khung giờ đăng tốt nhất: có ít nhất 2 video, xếp theo trung vị view. */
+/**
+ * Khung giờ/thứ tốt nhất theo view trung vị.
+ *
+ * Khung chỉ có 1–2 video thì trung vị là may rủi (một video viral kéo cả khung
+ * lên). Nên yêu cầu tối thiểu 3 video; không khung nào đủ 3 mới hạ xuống 2.
+ */
 export function bestSlots(stats: SlotStat[], limit = 3): SlotStat[] {
+  const minCount = stats.some((s) => s.count >= 3) ? 3 : 2;
   return stats
-    .filter((s) => s.count >= 2)
-    .sort((a, b) => b.medianViews - a.medianViews)
+    .filter((s) => s.count >= minCount)
+    .sort((a, b) => b.medianViews - a.medianViews || b.count - a.count)
     .slice(0, limit);
 }
 
