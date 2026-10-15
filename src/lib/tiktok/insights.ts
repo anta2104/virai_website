@@ -157,7 +157,9 @@ export function halvesTrend(videos: VideoData[]): HalfTrend | null {
   };
 }
 
-function standout(videos: VideoData[], pick: (v: VideoData) => number, minViews = 100): StandoutVideo | null {
+/** Video có tỉ lệ cao nhất; bỏ video quá ít view vì vài lượt lưu đã thành tỉ lệ lớn. */
+function standout(videos: VideoData[], pick: (v: VideoData) => number, channelMedian: number): StandoutVideo | null {
+  const minViews = Math.max(100, channelMedian * 0.3);
   const candidates = videos.filter((v) => v.views >= minViews);
   if (candidates.length === 0) return null;
   const best = [...candidates].sort((a, b) => ratio(pick(b), b.views) - ratio(pick(a), a.views))[0]!;
@@ -222,9 +224,9 @@ export function computeInsights(videos: VideoData[], profile: CreatorProfile | n
     patterns: openingPatterns(videos, channelMedian),
     durations: durationBuckets(videos, channelMedian),
     halves: halvesTrend(videos),
-    mostSaved: standout(videos, (v) => v.saves),
-    mostShared: standout(videos, (v) => v.shares),
-    mostCommented: standout(videos, (v) => v.comments),
+    mostSaved: standout(videos, (v) => v.saves, channelMedian),
+    mostShared: standout(videos, (v) => v.shares, channelMedian),
+    mostCommented: standout(videos, (v) => v.comments, channelMedian),
     tagOpportunities: tags.opportunities,
     tagNoise: tags.noise,
     rhythm: postingRhythm(videos, now),

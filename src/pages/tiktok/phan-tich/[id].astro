@@ -84,6 +84,7 @@ const fmtDate = (t: number | null) =>
     : '';
 const x = (n: number) => `${n.toFixed(1).replace('.', ',')} lần`;
 const pct = (v: number) => `${v >= 0 ? '+' : ''}${Math.round(v * 100)}%`;
+const rate = (v: number) => `${(v * 100).toFixed(1).replace('.', ',')}%`;
 const scoreTone = (score: number) => (score >= 70 ? 'text-sage-700' : score >= 40 ? 'text-candle' : 'text-red-700');
 const scoreLabel = (score: number) => (score >= 70 ? 'Kênh khoẻ' : score >= 40 ? 'Cần cải thiện' : 'Đang yếu');
 const caption = (c: string | null, n = 70) => {
@@ -239,14 +240,18 @@ const sections = [
                   <div>
                     <dt class="text-xs font-semibold tracking-wide text-clay-700 uppercase">Nội dung đang kéo kênh</dt>
                     <dd class="mt-1 text-xl font-bold text-ink-900">
-                      {insights.patterns[0] ? `“${insights.patterns[0].template}…”` : (winningTheme?.name ?? caption(metrics.topVideos[0]?.caption ?? null, 40))}
+                      {insights.patterns[0]
+                        ? `“${insights.patterns[0].template}…”`
+                        : winningTheme?.name ?? (metrics.topVideos[0] ? caption(metrics.topVideos[0].caption, 40) : 'Chưa có công thức lặp lại')}
                     </dd>
                     <dd class="mt-1 text-sm text-ink-500">
                       {insights.patterns[0]
                         ? `${insights.patterns[0].count} video, trung vị ${compactNumber(insights.patterns[0].medianViews)} view, gấp ${x(insights.patterns[0].multiple)} kênh`
                         : winningTheme
                           ? `${winningTheme.share}, ${winningTheme.performance.toLowerCase()}`
-                          : 'chưa có video bứt lên'}
+                          : metrics.topVideos[0]
+                            ? `video nổi nhất gấp ${x(metrics.topVideos[0].multiple)} trung vị`
+                            : 'mỗi caption một kiểu, chưa có video bứt lên'}
                     </dd>
                   </div>
                   <div>
@@ -377,13 +382,13 @@ const sections = [
                   )}
                   {insights.mostSaved && (
                     <li class="px-5 py-3">
-                      <span class="font-medium text-ink-900">Được lưu nhiều nhất</span> ({pct(insights.mostSaved.rate)} người xem bấm lưu):{' '}
+                      <span class="font-medium text-ink-900">Được lưu nhiều nhất</span> ({rate(insights.mostSaved.rate)} người xem bấm lưu):{' '}
                       <a href={insights.mostSaved.url} target="_blank" rel="noopener" class="link-quiet">{caption(insights.mostSaved.caption)}</a>
                     </li>
                   )}
                   {insights.mostShared && (
                     <li class="px-5 py-3">
-                      <span class="font-medium text-ink-900">Được chia sẻ nhiều nhất</span> ({pct(insights.mostShared.rate)}):{' '}
+                      <span class="font-medium text-ink-900">Được chia sẻ nhiều nhất</span> ({rate(insights.mostShared.rate)} chia sẻ):{' '}
                       <a href={insights.mostShared.url} target="_blank" rel="noopener" class="link-quiet">{caption(insights.mostShared.caption)}</a>
                     </li>
                   )}
