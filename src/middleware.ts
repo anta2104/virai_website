@@ -2,6 +2,7 @@ import { defineMiddleware } from 'astro:middleware';
 import { describeDbError, getDb } from './lib/db';
 import { SESSION_COOKIE, resolveSession } from './lib/auth';
 import { env } from './lib/env';
+import { ensureMigrations } from './lib/db/auto-migrate';
 
 /** Route cần đăng nhập. */
 const PROTECTED = /^\/tai-khoan(\/|$)/;
@@ -10,6 +11,11 @@ const ADMIN_ONLY = /^\/admin(\/|$)/;
 
 export const onRequest = defineMiddleware(async (context, next) => {
   context.locals.user = null;
+
+  // Bảng mới phải có trước khi bất kỳ truy vấn nào chạy (xem auto-migrate.ts)
+  if (env.DB) {
+    await ensureMigrations(env.DB);
+  }
 
   if (env.DB && env.SESSION_SECRET) {
     const cookie = context.cookies.get(SESSION_COOKIE)?.value;
