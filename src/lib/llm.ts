@@ -16,6 +16,28 @@ export interface LlmJsonOptions {
   temperature?: number;
   /** Trả về true nếu kết quả chấp nhận được; sai thì thử model kế tiếp */
   validate?: (value: unknown) => boolean;
+  /**
+   * JSON Schema cho chế độ JSON của Workers AI (response_format json_schema).
+   * Có schema thì model bị ép trả đúng cấu trúc, đỡ hỏng vì thiếu dấu ngoặc.
+   * Lần thử cuối bỏ schema đi, phòng model không hỗ trợ tham số này.
+   */
+  schema?: Record<string, unknown>;
+}
+
+export interface LlmJsonResult<T> {
+  value: T | null;
+  /** Lý do từng lần thử thất bại, để lưu lại mà soi khi không xem được log */
+  failures: string[];
+}
+
+/**
+ * Chữ Hán lẻ tẻ (vài ký tự) thì xoá đi được; dày đặc thì coi như bản hỏng.
+ */
+function stripSparseCjk(raw: string): string | null {
+  const matches = raw.match(new RegExp(CJK_PATTERN.source, 'g'));
+  if (!matches) return raw;
+  if (matches.length > 12) return null;
+  return raw.replace(new RegExp(CJK_PATTERN.source, 'g'), '');
 }
 
 /**
@@ -37,42 +59,73 @@ export function extractJson(raw: string): unknown {
  * Gọi model và parse JSON. Thử model chính hai lần rồi lùi về model nhỏ.
  * Trả null khi cả ba lần đều hỏng — chỗ gọi tự quyết định hiển thị gì.
  */
+export async function chatJsonDetailed<T>(
+  ai: Ai,
+  system: string,
+  user: string,
+  options: LlmJsonOptions = {},
+): Promise<LlmJsonResult<T>> {
+  // Lần 1-2 model chính (lần 2 không schema), lần 3 model nhỏ không schema
+  const attempts: Array<{ model: string; useSchema: boolean }> = [
+    { model: PRIMARY_MODEL, useSchema: Boolean(options.schema) },
+    { model: PRIMARY_MODEL, useSchema: false },
+    { model: FALLBACK_MODEL, useSchema: false },
+  ];
+  const messages = [
+    { role: 'system', content: system },
+    { role: 'user', content: user },
+  ];
+  const failures: string[] = [];
+
+  for (const [index, attempt] of attempts.entries()) {
+    const label = `${attempt.model.split('/').pop()}${attempt.useSchema ? '+schema' : ''}`;
+    try {
+      const params: Record<string, unknown> = {
+        messages,
+        max_tokens: options.maxTokens ?? 1800,
+        temperature: index === 0 ? (options.temperature ?? 0.4) : 0.2,
+      };
+      if (attempt.useSchema && options.schema) {
+        params.response_format = { type: 'json_schema', json_schema: options.schema };
+      }
+      const result = (await ai.run(attempt.model as never, params as never)) as {
+        response?: unknown;
+      };
+
+      // JSON mode có thể trả object sẵn thay vì chuỗi
+      let value: unknown;
+      if (result?.response && typeof result.response === 'object') {
+        value = result.response;
+      } else {
+        const raw = stripSparseCjk(String(result?.response ?? ''));
+        if (raw === null) {
+          failures.push(`${label}: lẫn nhiều chữ Hán`);
+          continue;
+        }
+        value = extractJson(raw);
+      }
+
+      if (options.validate && !options.validate(value)) {
+        failures.push(`${label}: JSON sai cấu trúc (${JSON.stringify(value).slice(0, 120)})`);
+        continue;
+      }
+      return { value: value as T, failures };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      failures.push(`${label}: ${message.slice(0, 200)}`);
+      console.error(`[llm] Lỗi với ${label}:`, message);
+    }
+  }
+  return { value: null, failures };
+}
+
 export async function chatJson<T>(
   ai: Ai,
   system: string,
   user: string,
   options: LlmJsonOptions = {},
 ): Promise<T | null> {
-  const attempts = [PRIMARY_MODEL, PRIMARY_MODEL, FALLBACK_MODEL];
-  const messages = [
-    { role: 'system', content: system },
-    { role: 'user', content: user },
-  ];
-
-  for (const [index, model] of attempts.entries()) {
-    try {
-      const result = (await ai.run(model as never, {
-        messages,
-        max_tokens: options.maxTokens ?? 1800,
-        temperature: index === 0 ? (options.temperature ?? 0.4) : 0.2,
-      } as never)) as { response?: string };
-
-      const raw = String(result?.response ?? '');
-      if (CJK_PATTERN.test(raw)) {
-        console.warn(`[llm] ${model} lẫn chữ Hán, thử lại`);
-        continue;
-      }
-      const value = extractJson(raw);
-      if (options.validate && !options.validate(value)) {
-        console.warn(`[llm] ${model} trả JSON sai cấu trúc, thử lại`);
-        continue;
-      }
-      return value as T;
-    } catch (error) {
-      console.error(`[llm] Lỗi với model ${model}:`, error);
-    }
-  }
-  return null;
+  return (await chatJsonDetailed<T>(ai, system, user, options)).value;
 }
 
 /** Gọi model trả văn bản thuần (prompt sinh ảnh, kịch bản). */

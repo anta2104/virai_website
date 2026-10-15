@@ -239,12 +239,16 @@ export async function runAnalysis(id: string): Promise<void> {
     });
 
     let resultJson = await findSameInput(creator.id, inputHash, id);
+    let aiError: string | null = null;
     if (!resultJson) {
-      const result = await analyzeCreator(env.AI, { handle: analysis.handle, profile, metrics, videos: list });
-      resultJson = result ? JSON.stringify(result) : null;
+      const outcome = await analyzeCreator(env.AI, { handle: analysis.handle, profile, metrics, videos: list });
+      resultJson = outcome.result ? JSON.stringify(outcome.result) : null;
+      // Phần AI hỏng thì vẫn 'done' (có số liệu), nhưng ghi lý do để soi được
+      // qua endpoint status mà không cần đọc log Worker
+      if (!resultJson) aiError = `AI: ${outcome.failures.join(' | ')}`.slice(0, 900);
     }
 
-    await setStatus(id, 'done', { resultJson, finishedAt: now() });
+    await setStatus(id, 'done', { resultJson, error: aiError, finishedAt: now() });
   } catch (error) {
     console.error(`[tiktok] Phân tích ${id} thất bại:`, error);
     await setStatus(id, 'failed', {

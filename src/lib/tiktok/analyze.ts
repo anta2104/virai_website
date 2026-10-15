@@ -3,7 +3,7 @@
  *
  * LLM chỉ nhận số đã tính và caption; không được tự tính hay bịa số.
  */
-import { chatJson } from '../llm';
+import { chatJsonDetailed } from '../llm';
 import { WEEKDAY_LABEL, bestSlots, compactNumber, percent, type CreatorMetrics } from './metrics';
 import type { CreatorProfile, VideoData } from './provider';
 
@@ -87,7 +87,8 @@ export function buildUserPrompt(
     metrics.series.map((p) => compactNumber(p.views)).join(', '),
     '',
     '== Caption các video (mới → cũ) ==',
-    ...videos.slice(0, 30).map((v) => `- [${v.tiktokId}] ${(v.caption ?? '(không có caption)').slice(0, 160)}`),
+    // Gọn để đầu ra JSON tiếng Việt (tốn token) còn chỗ: 24 caption, mỗi caption 110 ký tự
+    ...videos.slice(0, 24).map((v) => `- [${v.tiktokId}] ${(v.caption ?? '(không có caption)').slice(0, 110)}`),
   );
   return lines.join('\n');
 }
@@ -134,17 +135,57 @@ function tidy(result: AnalysisResult): AnalysisResult {
   };
 }
 
-/** Trả null khi Workers AI không gọi được (ví dụ chạy local thiếu binding). */
+/** JSON Schema cho chế độ JSON của Workers AI, khớp với AnalysisResult. */
+const RESULT_SCHEMA = {
+  type: 'object',
+  properties: {
+    summary: { type: 'string' },
+    topVideos: {
+      type: 'array',
+      items: { type: 'object', properties: { tiktokId: { type: 'string' }, why: { type: 'string' } }, required: ['tiktokId', 'why'] },
+    },
+    themes: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: { name: { type: 'string' }, share: { type: 'string' }, performance: { type: 'string' } },
+        required: ['name', 'share', 'performance'],
+      },
+    },
+    trend: {
+      type: 'object',
+      properties: { direction: { type: 'string', enum: ['len', 'xuong', 'di_ngang'] }, reason: { type: 'string' } },
+      required: ['direction', 'reason'],
+    },
+    postingAdvice: { type: 'string' },
+    hashtagAdvice: { type: 'string' },
+    nextIdeas: {
+      type: 'array',
+      items: { type: 'object', properties: { hook: { type: 'string' }, idea: { type: 'string' } }, required: ['hook', 'idea'] },
+    },
+    healthScore: { type: 'integer' },
+    checklist: { type: 'array', items: { type: 'string' } },
+  },
+  required: ['summary', 'topVideos', 'themes', 'trend', 'postingAdvice', 'hashtagAdvice', 'nextIdeas', 'healthScore', 'checklist'],
+};
+
+export interface AnalyzeOutcome {
+  result: AnalysisResult | null;
+  /** Lý do thất bại từng lần thử, rỗng nếu thành công */
+  failures: string[];
+}
+
+/** `result` null khi Workers AI không gọi được hoặc cả ba lần thử đều hỏng. */
 export async function analyzeCreator(
   ai: Ai | undefined,
   input: { handle: string; profile: CreatorProfile | null; metrics: CreatorMetrics; videos: VideoData[] },
-): Promise<AnalysisResult | null> {
-  if (!ai) return null;
-  const result = await chatJson<AnalysisResult>(
+): Promise<AnalyzeOutcome> {
+  if (!ai) return { result: null, failures: ['Không có binding AI (chạy local)'] };
+  const { value, failures } = await chatJsonDetailed<AnalysisResult>(
     ai,
     SYSTEM_PROMPT,
     buildUserPrompt(input.handle, input.profile, input.metrics, input.videos),
-    { maxTokens: 2200, temperature: 0.4, validate: isAnalysisResult },
+    { maxTokens: 3600, temperature: 0.4, validate: isAnalysisResult, schema: RESULT_SCHEMA },
   );
-  return result ? tidy(result) : null;
+  return { result: value ? tidy(value) : null, failures };
 }
