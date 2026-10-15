@@ -19,7 +19,7 @@ const [balance, ledger, jobs] = await Promise.all([
 <AppLayout
   title="Tín chỉ studio"
   eyebrow="Tài khoản"
-  description={`Mỗi ảnh người mẫu ảo trừ ${STUDIO_COSTS.photoshootImage} tín chỉ. Tín chỉ không hết hạn.`}
+  description={`Một lượt phân tích kênh TikTok trừ ${STUDIO_COSTS.tiktokAnalysis} tín chỉ, một ảnh người mẫu ảo trừ ${STUDIO_COSTS.photoshootImage} tín chỉ. Tín chỉ không hết hạn.`}
   wide
 >
   <a slot="actions" href="/nguoi-mau-ao/tao" class="btn-primary">Tạo buổi chụp</a>
@@ -43,7 +43,7 @@ const [balance, ledger, jobs] = await Promise.all([
                     {pack.label} · {pack.credits} tín chỉ
                   </p>
                   <p class="text-sm text-ink-500">
-                    {formatVnd(pack.price)} · {formatVnd(Math.round(pack.price / pack.credits))} mỗi ảnh
+                    {formatVnd(pack.price)} · {Math.floor(pack.credits / STUDIO_COSTS.tiktokAnalysis)} lượt phân tích hoặc {pack.credits} ảnh
                   </p>
                 </div>
                 <form method="POST" action="/api/credits/order">

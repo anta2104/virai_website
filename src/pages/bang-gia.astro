@@ -1,7 +1,7 @@
 ---
 import SiteLayout from '../layouts/SiteLayout.astro';
 import PricingTable from '../components/PricingTable.astro';
-import { ANALYSIS_FREE_PER_MONTH, CREDIT_PACKS, STUDIO_COSTS, WELCOME_CREDITS, formatVnd, priceView, isPromoActive, PROMO } from '../lib/plans';
+import { ANALYSIS_FREE_TOTAL, CREDIT_PACKS, STUDIO_COSTS, WELCOME_CREDITS, formatVnd, priceView, isPromoActive, PROMO } from '../lib/plans';
 import { site } from '../lib/site';
 
 const ctaHref = Astro.locals.user ? '/tai-khoan' : '/dang-ky';
@@ -16,7 +16,7 @@ const jsonLd = {
     ...CREDIT_PACKS.map((pack) => ({
       '@type': 'Product',
       name: `${site.name} ${pack.label} ${pack.credits} tín chỉ`,
-      description: `${pack.credits} tín chỉ studio người mẫu ảo, mỗi ảnh ${STUDIO_COSTS.photoshootImage} tín chỉ.`,
+      description: `${pack.credits} tín chỉ dùng cho phân tích kênh TikTok (${STUDIO_COSTS.tiktokAnalysis} tín chỉ/lượt) và ảnh người mẫu ảo (${STUDIO_COSTS.photoshootImage} tín chỉ/ảnh).`,
       brand: { '@type': 'Brand', name: site.name },
       offers: {
         '@type': 'Offer',
@@ -60,7 +60,7 @@ const jsonLd = {
 
 <SiteLayout
   title="Bảng giá"
-  description={`Phân tích kênh TikTok miễn phí. Tín chỉ studio người mẫu ảo từ ${formatVnd(CREDIT_PACKS[0].price)}. Trang tưởng niệm Premium ${formatVnd(premium.price)}.`}
+  description={`Lượt phân tích đầu miễn phí, sau đó ${STUDIO_COSTS.tiktokAnalysis} tín chỉ mỗi lượt. Gói tín chỉ từ ${formatVnd(CREDIT_PACKS[0].price)}, dùng cho cả phân tích và ảnh người mẫu ảo.`}
   jsonLd={jsonLd}
 >
   <section class="section">
@@ -68,17 +68,17 @@ const jsonLd = {
       <div class="text-center">
         <h1 class="font-serif text-4xl font-semibold">Bảng giá</h1>
         <p class="mx-auto mt-4 max-w-2xl text-ink-500">
-          Phân tích kênh TikTok: {ANALYSIS_FREE_PER_MONTH} lượt miễn phí mỗi tháng, sau đó {STUDIO_COSTS.tiktokAnalysis} tín chỉ mỗi lượt.
-          Studio người mẫu ảo: {STUDIO_COSTS.photoshootImage} tín chỉ mỗi ảnh. Nạp bao nhiêu dùng bấy nhiêu, không có phí thuê bao.
+          Phân tích kênh TikTok: {ANALYSIS_FREE_TOTAL} lượt đầu miễn phí, sau đó {STUDIO_COSTS.tiktokAnalysis} tín chỉ mỗi lượt.
+          Ảnh người mẫu ảo: {STUDIO_COSTS.photoshootImage} tín chỉ mỗi ảnh. Cùng một loại tín chỉ, nạp bao nhiêu dùng bấy nhiêu, không có phí thuê bao.
         </p>
       </div>
 
       <div class="mt-14">
-        <p class="eyebrow text-center">Studio người mẫu ảo</p>
+        <p class="eyebrow text-center">Phân tích TikTok và studio người mẫu ảo</p>
         <h2 class="mt-3 text-center font-serif text-2xl font-semibold">Gói tín chỉ</h2>
         <p class="mx-auto mt-3 max-w-xl text-center text-sm text-ink-500">
-          Mỗi ảnh người mẫu cầm sản phẩm trừ {STUDIO_COSTS.photoshootImage} tín chỉ. Tài khoản mới
-          được tặng {WELCOME_CREDITS} tín chỉ để thử. Ảnh lỗi thì hoàn lại tín chỉ.
+          Một lượt phân tích kênh trừ {STUDIO_COSTS.tiktokAnalysis} tín chỉ, một ảnh người mẫu trừ {STUDIO_COSTS.photoshootImage} tín chỉ.
+          Tài khoản mới được {ANALYSIS_FREE_TOTAL} lượt phân tích miễn phí và {WELCOME_CREDITS} tín chỉ để thử. Lỗi thì hoàn lại tín chỉ.
         </p>
         <div class="mt-8 grid gap-5 md:grid-cols-3">
           {
@@ -87,7 +87,7 @@ const jsonLd = {
                 <p class="eyebrow">{pack.label}</p>
                 <p class="mt-3 font-serif text-3xl font-semibold text-ink-900">{pack.credits} tín chỉ</p>
                 <p class="mt-1 text-sm text-ink-500">
-                  {formatVnd(pack.price)} · {formatVnd(Math.round(pack.price / pack.credits / 100) * 100)} mỗi ảnh
+                  {formatVnd(pack.price)} · {Math.floor(pack.credits / STUDIO_COSTS.tiktokAnalysis)} lượt phân tích hoặc {pack.credits} ảnh
                 </p>
                 <a href={creditsHref} class:list={[index === 1 ? 'btn-primary' : 'btn-secondary', 'mt-6']}>
                   Nạp gói này

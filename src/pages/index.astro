@@ -6,7 +6,7 @@ import { site } from '../lib/site';
 import ModelPortrait from '../components/studio/ModelPortrait.astro';
 import { listActiveModels } from '../lib/studio/models';
 import { ensurePortraits } from '../lib/studio/portraits';
-import { ANALYSIS_FREE_PER_MONTH, CREDIT_PACKS, STUDIO_COSTS, WELCOME_CREDITS, formatVnd } from '../lib/plans';
+import { CREDIT_PACKS, STUDIO_COSTS, WELCOME_CREDITS, formatVnd } from '../lib/plans';
 
 const user = Astro.locals.user;
 const models = await listActiveModels().catch(() => []);
@@ -51,7 +51,7 @@ const steps = [
 const faqs = [
   {
     q: 'Phân tích kênh có mất phí không?',
-    a: `Mỗi tháng bạn được ${ANALYSIS_FREE_PER_MONTH} lượt phân tích miễn phí. Sau đó mỗi lượt ${STUDIO_COSTS.tiktokAnalysis} tín chỉ, cùng loại tín chỉ với studio người mẫu ảo (mỗi ảnh ${STUDIO_COSTS.photoshootImage} tín chỉ).`,
+    a: `Lượt phân tích đầu tiên miễn phí để bạn xem thử. Từ lượt thứ hai, mỗi lượt ${STUDIO_COSTS.tiktokAnalysis} tín chỉ. Tín chỉ nạp một lần dùng cho cả phân tích lẫn ảnh người mẫu (mỗi ảnh ${STUDIO_COSTS.photoshootImage} tín chỉ), không hết hạn.`,
   },
   {
     q: 'Tôi có phân tích được kênh của người khác không?',
@@ -104,11 +104,11 @@ const jsonLd = {
           làm gì tiếp. Cần ảnh sản phẩm thì thuê một trong năm người mẫu ảo, vài phút là có.
         </p>
         <div class="mt-8 flex flex-wrap items-center gap-3">
-          <a href="/tiktok" class="btn-primary">Phân tích kênh miễn phí</a>
+          <a href="/tiktok" class="btn-primary">Phân tích kênh của bạn</a>
           <a href="/nguoi-mau-ao" class="btn-secondary">Xem người mẫu ảo</a>
         </div>
         <p class="mt-4 text-sm text-ink-500">
-          Không cần thẻ. Tài khoản mới được tặng {WELCOME_CREDITS} tín chỉ để thử studio.
+          Lượt phân tích đầu tiên miễn phí. Tài khoản mới được tặng {WELCOME_CREDITS} tín chỉ để thử studio.
         </p>
       </div>
 
@@ -249,10 +249,10 @@ const jsonLd = {
       <div class="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
         <div>
           <p class="eyebrow">Giá</p>
-          <h2 class="mt-3 font-serif text-3xl font-semibold">Phân tích miễn phí. Studio tính theo ảnh.</h2>
+          <h2 class="mt-3 font-serif text-3xl font-semibold">Lượt đầu miễn phí. Sau đó tính theo tín chỉ.</h2>
           <p class="measure mt-3 text-ink-500">
-            Không thuê bao tháng. Nạp tín chỉ bằng chuyển khoản VietQR, tín chỉ tự cộng sau khi tiền vào.
-            Ảnh lỗi hoàn lại tín chỉ.
+            Một lượt phân tích kênh {STUDIO_COSTS.tiktokAnalysis} tín chỉ, một ảnh người mẫu {STUDIO_COSTS.photoshootImage} tín chỉ.
+            Không thuê bao tháng, tín chỉ không hết hạn. Nạp bằng chuyển khoản VietQR, tự cộng khi tiền vào. Lỗi thì hoàn tín chỉ.
           </p>
           <a href="/bang-gia" class="link-quiet mt-5 inline-block text-sm font-medium">Xem bảng giá đầy đủ</a>
         </div>
@@ -261,8 +261,11 @@ const jsonLd = {
             CREDIT_PACKS.map((pack, index) => (
               <div class:list={['card p-5', index === 1 && 'border-clay-400 ring-1 ring-clay-300']}>
                 <p class="eyebrow">{pack.label}</p>
-                <p class="mt-2 font-serif text-2xl font-semibold text-ink-900">{pack.credits} ảnh</p>
+                <p class="mt-2 font-serif text-2xl font-semibold text-ink-900">{pack.credits} tín chỉ</p>
                 <p class="mt-1 text-sm text-ink-500">{formatVnd(pack.price)}</p>
+                <p class="mt-1 text-xs text-ink-500">
+                  = {Math.floor(pack.credits / STUDIO_COSTS.tiktokAnalysis)} lượt phân tích hoặc {pack.credits} ảnh
+                </p>
               </div>
             ))
           }
@@ -297,7 +300,7 @@ const jsonLd = {
     <div class="container-narrow text-center">
       <h2 class="font-serif text-3xl font-semibold">Dán link kênh của bạn vào xem thử</h2>
       <p class="mx-auto mt-3 max-w-md text-ink-500">Mất chưa tới một phút, không cần thẻ.</p>
-      <a href="/tiktok" class="btn-primary mt-7">Phân tích kênh miễn phí</a>
+      <a href="/tiktok" class="btn-primary mt-7">Phân tích kênh của bạn</a>
     </div>
   </section>
 </SiteLayout>
