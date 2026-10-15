@@ -21,7 +21,7 @@
 > | Mục | Trạng thái |
 > |---|---|
 > | T1 Nhập link, kéo video, bảng + biểu đồ | ✅ xong; `apify` đã chạy thật. Tính phí: 3 lượt/tháng miễn phí rồi 2 tín chỉ/lượt (migration `0008`) |
-> | T2 LLM phân tích top video, chủ đề, giờ đăng, hashtag | ✅ chạy thật trên production 15/10 (JSON schema mode, llama 3.3 70B) |
+> | T2 LLM phân tích top video, chủ đề, giờ đăng, hashtag | ✅ chạy thật trên production 15/10. Bản 2: insight tính bằng code (`insights.ts`: công thức mở đầu, độ dài, hashtag cơ hội/ồn, nửa mới so nửa cũ, tầm với, nhịp đăng) + AI trả chân dung người xem (suy luận), mạnh/yếu có bằng chứng, lịch 2 tuần |
 > | T3 Theo dõi kênh hằng ngày, so sánh đối thủ (Premium) | ⬜ |
 > | T4 Media kit công khai, báo cáo chia sẻ, cảnh báo email | ⬜ |
 > | M1 Buổi chụp ảnh ảo (ảnh tĩnh) + tín chỉ | ✅ chạy thật trên production 15/10: 5 ảnh đại diện tự sinh, buổi chụp 1 ảnh ra đúng người mẫu; chữ trên nhãn sản phẩm còn méo (đúng dự kiến, chờ Q2) |
@@ -107,6 +107,15 @@ Chọn **B cho MVP**, bọc sau interface `TikTokProvider` (`src/lib/tiktok/prov
 `trend` (`len|xuong|di_ngang` + lý do), `postingAdvice`, `hashtagAdvice`,
 `nextIdeas[] {hook, idea}`, `healthScore` 0–100 + `checklist[]`.
 Lọc chữ Hán như `ai.ts` đang làm. Lưu `input_hash` để không gọi lại khi dữ liệu không đổi.
+
+### Vận hành phân tích (từ 15/10)
+
+- Chạy từng bước: `advanceAnalysis` làm một bước mỗi lần endpoint status được gọi
+  (Apify chạy bất đồng bộ startJob/pollJob). Lý do: tác vụ nền của Worker bị cắt
+  sau ~30 giây, kênh lớn kẹt mãi ở `fetching`.
+- Kênh demo lưu `creators.platform = 'mock'`, không trộn với kênh thật.
+- Chưa có: phân tích bình luận (cần actor khác, tốn thêm), số đo nhân khẩu học thật
+  (TikTok không cung cấp cho người ngoài; phần "người xem" là suy luận, UI ghi rõ).
 
 ### Giai đoạn sau (T3, T4)
 
