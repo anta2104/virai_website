@@ -21,10 +21,10 @@
 > | Mục | Trạng thái |
 > |---|---|
 > | T1 Nhập link, kéo video, bảng + biểu đồ | ✅ xong, migration `0006`; provider `mock` đã thử, `apify` chưa thử token thật |
-> | T2 LLM phân tích top video, chủ đề, giờ đăng, hashtag | ✅ code xong; chất lượng JSON của llama chưa kiểm chứng (cần AI remote) |
+> | T2 LLM phân tích top video, chủ đề, giờ đăng, hashtag | ✅ chạy thật trên production 15/10 (JSON schema mode, llama 3.3 70B) |
 > | T3 Theo dõi kênh hằng ngày, so sánh đối thủ (Premium) | ⬜ |
 > | T4 Media kit công khai, báo cáo chia sẻ, cảnh báo email | ⬜ |
-> | M1 Buổi chụp ảnh ảo (ảnh tĩnh) + tín chỉ | ✅ code xong; tín chỉ + webhook đã thử giả lập; sinh ảnh Flux chưa chạy thật; chưa có ảnh đại diện 5 người mẫu |
+> | M1 Buổi chụp ảnh ảo (ảnh tĩnh) + tín chỉ | ✅ chạy thật trên production 15/10: 5 ảnh đại diện tự sinh, buổi chụp 1 ảnh ra đúng người mẫu; chữ trên nhãn sản phẩm còn méo (đúng dự kiến, chờ Q2) |
 > | M2 Video người mẫu nói chuyện (talking head) | ⬜ |
 > | M3 Video người mẫu tương tác với sản phẩm | ⬜ chờ kết quả thử nghiệm M1 |
 > | **Q1 Chọn nhà cung cấp dữ liệu TikTok** | ⬜ chờ chủ dự án: hiện có `mock` và adapter Apify (chưa kiểm chứng với token thật) |
@@ -40,9 +40,8 @@
 
 ## Việc cần làm tiếp theo (theo thứ tự)
 
-1. Chạy `npm run db:migrate:local`, `CF_REMOTE=1 npm run dev`, thử một phân tích và một
-   buổi chụp thật để kiểm chứng LLM và Flux. Sinh ảnh đại diện 5 người mẫu bằng
-   `POST /api/studio/models/<id>/portrait` (cookie admin).
+1. ~~Kiểm chứng LLM và Flux~~ Đã xong trên production 15/10. Tài khoản thử
+   `kiemthu-claude-1326@virai.com.vn` còn trong DB production, xoá ở /admin/nguoi-dung nếu muốn.
 2. Quyết định Q1–Q4 ở bảng trạng thái.
 3. Khi hài lòng: commit nhánh, `npm run db:migrate` (migration chỉ thêm), merge, deploy.
 4. Hạn chế đã biết, chấp nhận ở MVP: trừ tín chỉ không có khoá giao dịch (hai request
