@@ -58,6 +58,7 @@ export async function createAnalysis(input: {
 }): Promise<{ analysis: CreatorAnalysis; reused: boolean }> {
   const db = getDb(env.DB);
   const since = now() - REUSE_WINDOW_S;
+  const providerName = (await pickProvider()).name;
 
   const recent = await db
     .select()
@@ -66,6 +67,9 @@ export async function createAnalysis(input: {
       and(
         eq(creatorAnalyses.handle, input.handle),
         eq(creatorAnalyses.status, 'done'),
+        // Chỉ tái dùng bản cùng nguồn: vừa bật dữ liệu thật thì không được
+        // trả lại bản số giả còn trong 12 giờ
+        eq(creatorAnalyses.provider, providerName),
         // Bản thiếu phần AI (lúc Workers AI lỗi) không được tái dùng, để lần
         // gửi lại có cơ hội chạy LLM
         isNotNull(creatorAnalyses.resultJson),
@@ -86,7 +90,7 @@ export async function createAnalysis(input: {
     handle: input.handle,
     creatorId: source?.creatorId ?? null,
     status: source ? 'done' : 'queued',
-    provider: source?.provider ?? (await pickProvider()).name,
+    provider: providerName,
     inputHash: source?.inputHash ?? null,
     metricsJson: source?.metricsJson ?? null,
     resultJson: source?.resultJson ?? null,
