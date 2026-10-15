@@ -32,25 +32,35 @@ const gradientId = `mp-${slug}`;
       loading="lazy"
     />
   ) : (
-    <svg
-      viewBox="0 0 200 250"
-      preserveAspectRatio="xMidYMid slice"
-      class:list={['h-full w-full', className]}
-      role="img"
-      aria-label={`Người mẫu ảo ${name}, ảnh minh hoạ`}
-    >
-      <defs>
-        <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stop-color={colors.from} />
-          <stop offset="1" stop-color={colors.to} />
-        </linearGradient>
-      </defs>
-      <rect width="200" height="250" fill={`url(#${gradientId})`} />
-      <path d="M30 250c0-46 31-72 70-72s70 26 70 72z" fill={colors.hair} opacity="0.9" />
-      <rect x="86" y="140" width="28" height="36" rx="12" fill={colors.skin} />
-      <ellipse cx="100" cy="100" rx="46" ry="54" fill={colors.hair} />
-      <ellipse cx="100" cy="106" rx="36" ry="44" fill={colors.skin} />
-      <path d="M56 96c6-34 26-50 44-50s38 16 44 50c-10-14-26-20-44-20s-34 6-44 20z" fill={colors.hair} />
-    </svg>
+    <span class="relative block h-full w-full">
+      <svg
+        viewBox="0 0 200 250"
+        preserveAspectRatio="xMidYMid slice"
+        class:list={['h-full w-full', className]}
+        role="img"
+        aria-label={`Người mẫu ảo ${name}, ảnh chân dung đang được chuẩn bị`}
+      >
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color={colors.from} />
+            <stop offset="1" stop-color={colors.to} />
+          </linearGradient>
+        </defs>
+        <rect width="200" height="250" fill={`url(#${gradientId})`} />
+        <!-- Bóng dáng mờ, cố ý không vẽ mặt: đây là chỗ giữ cho ảnh thật -->
+        <g opacity="0.22" fill={colors.hair}>
+          <path d="M30 250c0-46 31-72 70-72s70 26 70 72z" />
+          <ellipse cx="100" cy="104" rx="40" ry="48" />
+        </g>
+        <g transform="translate(100 128)" fill="none" stroke={colors.hair} stroke-width="3" stroke-linecap="round" opacity="0.8">
+          <circle r="22" fill="rgba(255,255,255,0.55)" stroke="none" />
+          <path d="M-7-2.5a7 7 0 0 1 14 0c0 4-7 5-7 9.5" />
+          <circle cx="0" cy="12" r="1.2" fill={colors.hair} stroke="none" />
+        </g>
+      </svg>
+      <span class="absolute inset-x-3 bottom-3 rounded-full bg-white/85 px-3 py-1 text-center text-[11px] font-medium text-ink-700 backdrop-blur">
+        Ảnh chân dung đang chuẩn bị
+      </span>
+    </span>
   )
 }
