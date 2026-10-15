@@ -1,7 +1,7 @@
 ---
 import SiteLayout from '../layouts/SiteLayout.astro';
 import PricingTable from '../components/PricingTable.astro';
-import { CREDIT_PACKS, STUDIO_COSTS, WELCOME_CREDITS, formatVnd, priceView, isPromoActive, PROMO } from '../lib/plans';
+import { ANALYSIS_FREE_PER_MONTH, CREDIT_PACKS, STUDIO_COSTS, WELCOME_CREDITS, formatVnd, priceView, isPromoActive, PROMO } from '../lib/plans';
 import { site } from '../lib/site';
 
 const ctaHref = Astro.locals.user ? '/tai-khoan' : '/dang-ky';
@@ -68,8 +68,8 @@ const jsonLd = {
       <div class="text-center">
         <h1 class="font-serif text-4xl font-semibold">Bảng giá</h1>
         <p class="mx-auto mt-4 max-w-2xl text-ink-500">
-          Phân tích kênh TikTok miễn phí. Studio người mẫu ảo tính theo tín chỉ, nạp bao nhiêu dùng
-          bấy nhiêu, không có phí thuê bao.
+          Phân tích kênh TikTok: {ANALYSIS_FREE_PER_MONTH} lượt miễn phí mỗi tháng, sau đó {STUDIO_COSTS.tiktokAnalysis} tín chỉ mỗi lượt.
+          Studio người mẫu ảo: {STUDIO_COSTS.photoshootImage} tín chỉ mỗi ảnh. Nạp bao nhiêu dùng bấy nhiêu, không có phí thuê bao.
         </p>
       </div>
 

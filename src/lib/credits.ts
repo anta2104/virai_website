@@ -13,11 +13,12 @@ import { env } from './env';
  * gọi trùng, hay job hoàn tiền hai lần, đều không cộng đúp.
  */
 
-export type CreditReason = 'topup' | 'job' | 'refund' | 'bonus' | 'admin';
+export type CreditReason = 'topup' | 'job' | 'analysis' | 'refund' | 'bonus' | 'admin';
 
 export const CREDIT_REASON_LABEL: Record<string, string> = {
   topup: 'Nạp tín chỉ',
   job: 'Buổi chụp ảnh',
+  analysis: 'Phân tích TikTok',
   refund: 'Hoàn tín chỉ',
   bonus: 'Tặng',
   admin: 'Điều chỉnh',
@@ -85,14 +86,24 @@ export async function ensureWelcomeCredits(userId: string): Promise<void> {
  * người dùng cố tình bấm song song, và họ cũng chỉ lỗ về phía nhà cung cấp.
  */
 export async function chargeForJob(userId: string, jobId: string, cost: number): Promise<boolean> {
+  return charge(userId, 'job', jobId, cost);
+}
+
+/** Trừ tín chỉ cho một việc bất kỳ (job studio, phân tích TikTok). */
+export async function charge(userId: string, reason: CreditReason, refId: string, cost: number): Promise<boolean> {
   if (cost <= 0) return true;
   const balance = await balanceOf(userId);
   if (balance < cost) return false;
-  return grant(userId, -cost, 'job', jobId);
+  return grant(userId, -cost, reason, refId);
 }
 
 /** Hoàn tín chỉ của job bị lỗi. Gọi nhiều lần cũng chỉ hoàn một lần. */
 export async function refundJob(userId: string, jobId: string, cost: number): Promise<boolean> {
+  return refund(userId, jobId, cost);
+}
+
+/** Hoàn tín chỉ cho một refId; mỗi refId chỉ hoàn được một lần. */
+export async function refund(userId: string, refId: string, cost: number): Promise<boolean> {
   if (cost <= 0) return false;
-  return grant(userId, cost, 'refund', jobId);
+  return grant(userId, cost, 'refund', refId);
 }

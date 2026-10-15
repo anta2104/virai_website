@@ -6,7 +6,7 @@ import { site } from '../lib/site';
 import ModelPortrait from '../components/studio/ModelPortrait.astro';
 import { listActiveModels } from '../lib/studio/models';
 import { ensurePortraits } from '../lib/studio/portraits';
-import { CREDIT_PACKS, STUDIO_COSTS, WELCOME_CREDITS, formatVnd } from '../lib/plans';
+import { ANALYSIS_FREE_PER_MONTH, CREDIT_PACKS, STUDIO_COSTS, WELCOME_CREDITS, formatVnd } from '../lib/plans';
 
 const user = Astro.locals.user;
 const models = await listActiveModels().catch(() => []);
@@ -51,7 +51,7 @@ const steps = [
 const faqs = [
   {
     q: 'Phân tích kênh có mất phí không?',
-    a: 'Không. Bạn chỉ cần tài khoản miễn phí. Studio người mẫu ảo tính theo tín chỉ, mỗi ảnh một tín chỉ.',
+    a: `Mỗi tháng bạn được ${ANALYSIS_FREE_PER_MONTH} lượt phân tích miễn phí. Sau đó mỗi lượt ${STUDIO_COSTS.tiktokAnalysis} tín chỉ, cùng loại tín chỉ với studio người mẫu ảo (mỗi ảnh ${STUDIO_COSTS.photoshootImage} tín chỉ).`,
   },
   {
     q: 'Tôi có phân tích được kênh của người khác không?',

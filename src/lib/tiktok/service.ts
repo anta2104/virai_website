@@ -5,7 +5,7 @@
  * → done | failed. Trang kết quả poll trạng thái rồi đọc từ D1, không gọi
  * provider lần nữa.
  */
-import { and, desc, eq, gt, inArray, isNotNull, ne } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, isNotNull, ne, sql } from 'drizzle-orm';
 import { getDb } from '../db';
 import {
   creatorAnalyses,
@@ -18,6 +18,8 @@ import {
 } from '../db/schema';
 import { newId } from '../ids';
 import { env } from '../env';
+import { todayInVietnam } from '../format';
+import { refund } from '../credits';
 import { analyzeCreator, type AnalysisResult } from './analyze';
 import { computeMetrics, type CreatorMetrics } from './metrics';
 import { type CreatorProfile, type VideoData } from './provider';
@@ -46,40 +48,69 @@ async function sha256(text: string): Promise<string> {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-/**
- * Tạo phân tích mới cho người dùng, hoặc tái dùng bản đã xong trong 12 giờ.
- *
- * Bản xong của người khác thì sao chép kết quả sang bản ghi mới của người này:
- * tiết kiệm phí provider mà vẫn giữ mỗi người chỉ thấy phân tích của mình.
- */
-export async function createAnalysis(input: {
-  userId: string;
-  handle: string;
-}): Promise<{ analysis: CreatorAnalysis; reused: boolean }> {
-  const db = getDb(env.DB);
-  const since = now() - REUSE_WINDOW_S;
-  const providerName = (await pickProvider()).name;
-
-  const recent = await db
+/** Bản phân tích `done` cùng nguồn của handle này trong 12 giờ qua, nếu có. */
+export async function findReusable(handle: string, providerName: string): Promise<CreatorAnalysis | null> {
+  const rows = await getDb(env.DB)
     .select()
     .from(creatorAnalyses)
     .where(
       and(
-        eq(creatorAnalyses.handle, input.handle),
+        eq(creatorAnalyses.handle, handle),
         eq(creatorAnalyses.status, 'done'),
         // Chỉ tái dùng bản cùng nguồn: vừa bật dữ liệu thật thì không được
         // trả lại bản số giả còn trong 12 giờ
         eq(creatorAnalyses.provider, providerName),
-        // Bản thiếu phần AI (lúc Workers AI lỗi) không được tái dùng, để lần
-        // gửi lại có cơ hội chạy LLM
+        // Bản thiếu phần AI (lúc Workers AI lỗi) không được tái dùng
         isNotNull(creatorAnalyses.resultJson),
-        gt(creatorAnalyses.finishedAt, since),
+        gt(creatorAnalyses.finishedAt, now() - REUSE_WINDOW_S),
       ),
     )
     .orderBy(desc(creatorAnalyses.finishedAt))
     .limit(1);
+  return rows[0] ?? null;
+}
 
-  const source = recent[0];
+/**
+ * Số lần phân tích bằng dữ liệu thật tính vào hạn mức tháng này (giờ Việt Nam):
+ * do chính người này tạo, không phải bản sao chép, không phải demo, không thất bại.
+ */
+export async function countBillableAnalysesThisMonth(userId: string): Promise<number> {
+  const monthStart = startOfMonthVietnam();
+  const rows = await getDb(env.DB)
+    .select({ n: sql<number>`count(*)` })
+    .from(creatorAnalyses)
+    .where(
+      and(
+        eq(creatorAnalyses.userId, userId),
+        eq(creatorAnalyses.reused, 0),
+        ne(creatorAnalyses.provider, 'mock'),
+        ne(creatorAnalyses.status, 'failed'),
+        gt(creatorAnalyses.createdAt, monthStart - 1),
+      ),
+    );
+  return Number(rows[0]?.n ?? 0);
+}
+
+/** Mốc unix đầu tháng hiện tại theo giờ Việt Nam. */
+function startOfMonthVietnam(): number {
+  const [y, m] = todayInVietnam().split('-').map(Number) as [number, number, number];
+  // 00:00 ngày 1 giờ VN = 17:00 UTC ngày cuối tháng trước
+  return Math.floor(Date.UTC(y, m - 1, 1, -7) / 1000);
+}
+
+/**
+ * Tạo bản ghi phân tích. Tái dùng bản `done` cùng nguồn trong 12 giờ nếu có;
+ * của chính mình thì trả lại luôn, của người khác thì sao chép (không tốn lượt).
+ * `costCredits` do API quyết định và trừ tín chỉ trước khi gọi vào đây.
+ */
+export async function createAnalysis(input: {
+  userId: string;
+  handle: string;
+  providerName: string;
+  costCredits?: number;
+}): Promise<{ analysis: CreatorAnalysis; reused: boolean }> {
+  const db = getDb(env.DB);
+  const source = await findReusable(input.handle, input.providerName);
   if (source && source.userId === input.userId) {
     return { analysis: source, reused: true };
   }
@@ -90,13 +121,15 @@ export async function createAnalysis(input: {
     handle: input.handle,
     creatorId: source?.creatorId ?? null,
     status: source ? 'done' : 'queued',
-    provider: providerName,
+    provider: input.providerName,
     inputHash: source?.inputHash ?? null,
     metricsJson: source?.metricsJson ?? null,
     resultJson: source?.resultJson ?? null,
     error: null,
     createdAt: now(),
     finishedAt: source ? now() : null,
+    costCredits: source ? 0 : (input.costCredits ?? 0),
+    reused: source ? 1 : 0,
   };
   await db.insert(creatorAnalyses).values(analysis);
   return { analysis, reused: Boolean(source) };
@@ -227,6 +260,7 @@ export async function runAnalysis(id: string): Promise<void> {
         error: 'Không lấy được video nào. Kênh có thể riêng tư, không tồn tại, hoặc nguồn dữ liệu đang lỗi.',
         finishedAt: now(),
       });
+      await refundIfCharged(analysis);
       return;
     }
 
@@ -260,6 +294,16 @@ export async function runAnalysis(id: string): Promise<void> {
       error: error instanceof Error ? error.message.slice(0, 500) : 'Lỗi không xác định',
       finishedAt: now(),
     });
+    await refundIfCharged(analysis);
+  }
+}
+
+/** Phân tích thất bại thì trả lại tín chỉ đã trừ; gọi trùng cũng chỉ hoàn một lần. */
+async function refundIfCharged(analysis: CreatorAnalysis): Promise<void> {
+  if (analysis.costCredits > 0) {
+    await refund(analysis.userId, analysis.id, analysis.costCredits).catch((error) =>
+      console.error(`[tiktok] Không hoàn được tín chỉ cho ${analysis.id}:`, error),
+    );
   }
 }
 

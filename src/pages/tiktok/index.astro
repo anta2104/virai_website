@@ -1,7 +1,9 @@
 ---
 import SiteLayout from '../../layouts/SiteLayout.astro';
 import Icon from '../../components/Icon.astro';
-import { listAnalysesOfUser, STATUS_LABEL } from '../../lib/tiktok/service';
+import { countBillableAnalysesThisMonth, listAnalysesOfUser, STATUS_LABEL } from '../../lib/tiktok/service';
+import { balanceOf } from '../../lib/credits';
+import { ANALYSIS_FREE_PER_MONTH, STUDIO_COSTS } from '../../lib/plans';
 import { pickProvider } from '../../lib/tiktok/pick-provider';
 import { formatDateTime } from '../../lib/format';
 import { env } from '../../lib/env';
@@ -9,6 +11,9 @@ import { env } from '../../lib/env';
 const user = Astro.locals.user;
 const recent = user ? await listAnalysesOfUser(user.id, 8) : [];
 const isDemo = (await pickProvider()).name === 'mock';
+const usedThisMonth = user && !isDemo ? await countBillableAnalysesThisMonth(user.id) : 0;
+const freeLeft = Math.max(0, ANALYSIS_FREE_PER_MONTH - usedThisMonth);
+const balance = user && !isDemo ? await balanceOf(user.id) : 0;
 
 const description =
   'Dán link kênh TikTok, nhận ngay bảng chỉ số view, like, lưu, chia sẻ của 30 video gần nhất và phân tích xu hướng bằng AI.';
@@ -46,7 +51,16 @@ const features = [
                   placeholder="https://www.tiktok.com/@tenkenh"
                   required
                 />
-                <p class="hint">Chỉ phân tích được kênh công khai. Mất khoảng 10–60 giây.</p>
+                <p class="hint">
+                  Chỉ phân tích được kênh công khai. Mất khoảng 10–60 giây.
+                  {!isDemo && (
+                    <>
+                      {' '}Tháng này bạn còn <strong class="text-ink-900">{freeLeft}</strong> lượt miễn phí, sau đó{' '}
+                      {STUDIO_COSTS.tiktokAnalysis} tín chỉ mỗi lượt (đang có {balance} tín chỉ,{' '}
+                      <a href="/tai-khoan/tin-chi" class="link-quiet">nạp thêm</a>).
+                    </>
+                  )}
+                </p>
               </div>
               <div class="sm:pt-7">
                 <button type="submit" class="btn-primary w-full sm:w-auto" data-submit>
@@ -58,7 +72,7 @@ const features = [
             <div class="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p class="font-medium text-ink-900">Đăng nhập để bắt đầu phân tích</p>
-                <p class="mt-1 text-sm text-ink-500">Miễn phí. Mỗi phân tích lưu lại trong tài khoản để bạn xem lại.</p>
+                <p class="mt-1 text-sm text-ink-500">{ANALYSIS_FREE_PER_MONTH} lượt miễn phí mỗi tháng. Mỗi phân tích lưu lại trong tài khoản để bạn xem lại.</p>
               </div>
               <div class="flex gap-2">
                 <a href="/dang-nhap?next=%2Ftiktok" class="btn-primary">Đăng nhập</a>
@@ -147,8 +161,22 @@ const features = [
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ input: input.value }),
       });
-      const data = (await response.json()) as { ok: boolean; id?: string; error?: string };
-      if (!data.ok || !data.id) throw new Error(data.error ?? 'Không tạo được phân tích.');
+      const data = (await response.json()) as { ok: boolean; id?: string; error?: string; code?: string };
+      if (!data.ok || !data.id) {
+        if (data.code === 'credits') {
+          errorBox.textContent = `${data.error ?? 'Không đủ tín chỉ.'} `;
+          const link = document.createElement('a');
+          link.href = '/tai-khoan/tin-chi';
+          link.className = 'font-medium underline';
+          link.textContent = 'Nạp tín chỉ';
+          errorBox.appendChild(link);
+          errorBox.hidden = false;
+          button.disabled = false;
+          button.textContent = 'Phân tích';
+          return;
+        }
+        throw new Error(data.error ?? 'Không tạo được phân tích.');
+      }
       window.location.href = `/tiktok/phan-tich/${data.id}`;
     } catch (error) {
       errorBox.textContent = error instanceof Error ? error.message : 'Có lỗi xảy ra, bạn thử lại nhé.';

@@ -153,12 +153,17 @@ export function creditPack(id: string) {
 export const STUDIO_COSTS = {
   /** mỗi ảnh */
   photoshootImage: 1,
+  /** mỗi lần phân tích kênh TikTok bằng dữ liệu thật, sau khi hết lượt miễn phí */
+  tiktokAnalysis: 2,
   /** mỗi video nói chuyện (giai đoạn sau) */
   talkingVideo: 15,
 } as const;
 
 /** Tín chỉ tặng khi tài khoản dùng studio lần đầu — đủ để thử một ảnh. */
 export const WELCOME_CREDITS = 2;
+
+/** Số lần phân tích kênh bằng dữ liệu thật miễn phí mỗi tháng cho mỗi tài khoản. */
+export const ANALYSIS_FREE_PER_MONTH = 3;
 
 export function formatVnd(amount: number): string {
   return `${amount.toLocaleString('vi-VN')}đ`;

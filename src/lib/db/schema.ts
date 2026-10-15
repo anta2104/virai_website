@@ -319,6 +319,10 @@ export const creatorAnalyses = sqliteTable(
     error: text('error'),
     createdAt: createdAt(),
     finishedAt: integer('finished_at'),
+    /** Số tín chỉ đã trừ cho lần này (0 = lượt miễn phí hoặc demo) */
+    costCredits: integer('cost_credits').notNull().default(0),
+    /** 1 = sao chép từ bản phân tích gần đây của người khác, không tính vào hạn mức */
+    reused: integer('reused').notNull().default(0),
   },
   (t) => [
     index('creator_analyses_user_idx').on(t.userId, t.createdAt),
