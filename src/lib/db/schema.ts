@@ -323,6 +323,13 @@ export const creatorAnalyses = sqliteTable(
     costCredits: integer('cost_credits').notNull().default(0),
     /** 1 = sao chép từ bản phân tích gần đây của người khác, không tính vào hạn mức */
     reused: integer('reused').notNull().default(0),
+    /** Id lượt chạy ở nhà cung cấp (Apify run id) khi kéo dữ liệu bất đồng bộ */
+    providerJobId: text('provider_job_id'),
+    /**
+     * Mốc một tiến trình đang thực hiện bước hiện tại. Null = rảnh. Quá 90 giây
+     * coi như tiến trình đó đã chết, tiến trình khác được làm tiếp.
+     */
+    stepAt: integer('step_at'),
   },
   (t) => [
     index('creator_analyses_user_idx').on(t.userId, t.createdAt),

@@ -37,7 +37,20 @@ export interface VideoData {
   saves: number;
 }
 
+/** Kết quả một lần hỏi tiến độ lượt chạy bất đồng bộ. */
+export type JobPoll =
+  | { state: 'running' }
+  | { state: 'failed'; detail: string }
+  | { state: 'succeeded'; profile: CreatorProfile | null; videos: VideoData[] };
+
 export interface TikTokProvider {
+  /**
+   * Đường bất đồng bộ (tuỳ chọn): bắt đầu lượt kéo, trả id; hỏi tiến độ sau.
+   * Cần cho nhà cung cấp chạy lâu hơn 30 giây, vì tác vụ nền của Worker bị cắt
+   * sau khoảng đó (đã gặp thật với kênh lớn 15/10/2026).
+   */
+  startJob?(handle: string, limit: number): Promise<string>;
+  pollJob?(jobId: string, handle: string, limit: number): Promise<JobPoll>;
   readonly name: 'mock' | 'apify';
   fetchProfile(handle: string): Promise<CreatorProfile | null>;
   fetchVideos(handle: string, limit: number): Promise<VideoData[]>;
@@ -308,6 +321,72 @@ export class ApifyProvider implements TikTokProvider {
       console.warn('[tiktok/apify] Dòng đầu không đọc được số liệu, payload thô:', JSON.stringify(list[0]).slice(0, 800));
     }
     return list;
+  }
+
+  /** Bắt đầu lượt chạy actor, trả run id. [Unverified] dạng response theo tài liệu Apify v2. */
+  async startJob(handle: string, limit: number): Promise<string> {
+    const url = new URL(`https://api.apify.com/v2/acts/${APIFY_ACTOR}/runs`);
+    url.searchParams.set('token', this.token);
+    url.searchParams.set('timeout', '300');
+    const body = JSON.stringify({
+      profiles: [handle],
+      resultsPerPage: limit,
+      shouldDownloadVideos: false,
+      shouldDownloadCovers: false,
+    });
+    let response: Response | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 2000 * attempt));
+      response = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body });
+      if (response.ok || response.status < 500) break;
+    }
+    if (!response || !response.ok) {
+      const text = response ? await response.text() : '';
+      throw new Error(`Apify không nhận lượt chạy (${response?.status ?? 0}): ${text.slice(0, 300)}`);
+    }
+    const data = (await response.json()) as { data?: { id?: string } };
+    const id = data?.data?.id;
+    if (!id) throw new Error('Apify không trả run id');
+    return id;
+  }
+
+  /** Hỏi tiến độ; xong thì kéo dataset và map về dạng chuẩn. */
+  async pollJob(jobId: string, handle: string, limit: number): Promise<JobPoll> {
+    const runUrl = new URL(`https://api.apify.com/v2/actor-runs/${jobId}`);
+    runUrl.searchParams.set('token', this.token);
+    const runResponse = await fetch(runUrl);
+    if (!runResponse.ok) {
+      if (runResponse.status >= 500) return { state: 'running' }; // trục trặc thoáng qua, hỏi lại sau
+      return { state: 'failed', detail: `Apify trả ${runResponse.status} khi hỏi tiến độ` };
+    }
+    const run = (await runResponse.json()) as { data?: { status?: string; defaultDatasetId?: string } };
+    const status = String(run?.data?.status ?? '').toUpperCase();
+    if (['READY', 'RUNNING'].includes(status) || status === '') return { state: 'running' };
+    if (status !== 'SUCCEEDED') return { state: 'failed', detail: `Lượt chạy Apify kết thúc với trạng thái ${status}` };
+
+    const datasetId = run?.data?.defaultDatasetId;
+    if (!datasetId) return { state: 'failed', detail: 'Apify không trả dataset' };
+    const itemsUrl = new URL(`https://api.apify.com/v2/datasets/${datasetId}/items`);
+    itemsUrl.searchParams.set('token', this.token);
+    itemsUrl.searchParams.set('clean', 'true');
+    const itemsResponse = await fetch(itemsUrl);
+    if (!itemsResponse.ok) return { state: 'failed', detail: `Apify trả ${itemsResponse.status} khi lấy dataset` };
+    const data = (await itemsResponse.json()) as unknown;
+    const list = Array.isArray(data) ? (data.filter((x) => asRecord(x)) as Raw[]) : [];
+    if (list.length > 0 && !mapApifyItem(list[0]!, handle)?.views) {
+      console.warn('[tiktok/apify] Dòng đầu không đọc được số liệu, payload thô:', JSON.stringify(list[0]).slice(0, 800));
+    }
+    let profile: CreatorProfile | null = null;
+    for (const item of list) {
+      profile = mapApifyAuthor(item);
+      if (profile) break;
+    }
+    const videos: VideoData[] = [];
+    for (const item of list) {
+      const video = mapApifyItem(item, handle);
+      if (video) videos.push(video);
+    }
+    return { state: 'succeeded', profile, videos: videos.slice(0, limit) };
   }
 
   async fetchProfile(handle: string): Promise<CreatorProfile | null> {

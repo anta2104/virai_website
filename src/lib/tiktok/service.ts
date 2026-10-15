@@ -130,6 +130,8 @@ export async function createAnalysis(input: {
     finishedAt: source ? now() : null,
     costCredits: source ? 0 : (input.costCredits ?? 0),
     reused: source ? 1 : 0,
+    providerJobId: null,
+    stepAt: null,
   };
   await db.insert(creatorAnalyses).values(analysis);
   return { analysis, reused: Boolean(source) };
@@ -243,65 +245,154 @@ async function findSameInput(creatorId: string, inputHash: string, excludeId: st
   return rows[0]?.resultJson ?? null;
 }
 
+/** Khoá bước quá hạn này (giây) thì coi như tiến trình trước đã chết. */
+const STEP_LOCK_S = 90;
+
 /**
- * Chạy nền sau khi API đã trả về id. Mọi lỗi đều được nuốt và ghi vào bản ghi
- * để trang kết quả hiện được lý do, không để waitUntil ném lỗi âm thầm.
+ * Làm tiếp MỘT bước của phân tích rồi trả về. Gọi nhiều lần cho tới khi xong.
+ *
+ * Vì sao chia bước: Worker chỉ cho tác vụ nền chạy khoảng 30 giây sau khi trả
+ * response, kênh lớn kéo lâu hơn thế là kẹt mãi ở "fetching" (đã gặp 15/10/2026
+ * với @tiktok). Giờ trang kết quả hỏi trạng thái mỗi 3 giây, mỗi lần hỏi là
+ * máy chủ làm thêm một bước ngay trong request đó, không cần tác vụ nền.
+ *
+ * Các bước: queued → fetching (đã gửi yêu cầu kéo, chờ nhà cung cấp) →
+ * analyzing (đã có số liệu, gọi LLM) → done | failed. Mỗi bước giành khoá
+ * `step_at` bằng một câu UPDATE có điều kiện để hai request song song không
+ * cùng làm một việc.
  */
-export async function runAnalysis(id: string): Promise<void> {
+export async function advanceAnalysis(id: string): Promise<CreatorAnalysis | null> {
   const db = getDb(env.DB);
   const rows = await db.select().from(creatorAnalyses).where(eq(creatorAnalyses.id, id)).limit(1);
   const analysis = rows[0];
-  if (!analysis || analysis.status !== 'queued') return;
+  if (!analysis || analysis.status === 'done' || analysis.status === 'failed') return analysis ?? null;
+
+  const t = now();
+  const lock = await env.DB.prepare(
+    'UPDATE creator_analyses SET step_at = ?1 WHERE id = ?2 AND status = ?3 AND (step_at IS NULL OR step_at < ?4)',
+  )
+    .bind(t, id, analysis.status, t - STEP_LOCK_S)
+    .run();
+  if (!lock.meta.changes) return analysis; // tiến trình khác đang làm bước này
 
   try {
-    await setStatus(id, 'fetching');
     const provider = await pickProvider();
-    const [profile, list] = await Promise.all([
-      provider.fetchProfile(analysis.handle),
-      provider.fetchVideos(analysis.handle, VIDEO_LIMIT),
-    ]);
 
-    if (list.length === 0) {
-      await setStatus(id, 'failed', {
-        error: 'Không lấy được video nào. Kênh có thể riêng tư, không tồn tại, hoặc nguồn dữ liệu đang lỗi.',
-        finishedAt: now(),
-      });
-      await refundIfCharged(analysis);
-      return;
+    if (analysis.status === 'queued' || (analysis.status === 'fetching' && !analysis.providerJobId)) {
+      if (provider.startJob) {
+        const jobId = await provider.startJob(analysis.handle, VIDEO_LIMIT);
+        await setStatus(id, 'fetching', { providerJobId: jobId, provider: provider.name, stepAt: null });
+        return (await getAnalysis(id))!;
+      }
+      // Nhà cung cấp đồng bộ (mock): kéo luôn trong bước này
+      await setStatus(id, 'fetching', { provider: provider.name });
+      const [profile, list] = await Promise.all([
+        provider.fetchProfile(analysis.handle),
+        provider.fetchVideos(analysis.handle, VIDEO_LIMIT),
+      ]);
+      await storeFetched(analysis, provider.name, profile, list);
+      return (await getAnalysis(id))!;
     }
 
-    const creator = await upsertCreator(analysis.handle, profile, provider.name);
-    await upsertVideos(creator.id, list);
-
-    const metrics = computeMetrics(list);
-    const inputHash = await sha256(JSON.stringify({ metrics, captions: list.map((v) => v.caption) }));
-
-    await setStatus(id, 'analyzing', {
-      creatorId: creator.id,
-      provider: provider.name,
-      metricsJson: JSON.stringify(metrics),
-      inputHash,
-    });
-
-    let resultJson = await findSameInput(creator.id, inputHash, id);
-    let aiError: string | null = null;
-    if (!resultJson) {
-      const outcome = await analyzeCreator(env.AI, { handle: analysis.handle, profile, metrics, videos: list });
-      resultJson = outcome.result ? JSON.stringify(outcome.result) : null;
-      // Phần AI hỏng thì vẫn 'done' (có số liệu), nhưng ghi lý do để soi được
-      // qua endpoint status mà không cần đọc log Worker
-      if (!resultJson) aiError = `AI: ${outcome.failures.join(' | ')}`.slice(0, 900);
+    if (analysis.status === 'fetching' && analysis.providerJobId && provider.pollJob) {
+      const poll = await provider.pollJob(analysis.providerJobId, analysis.handle, VIDEO_LIMIT);
+      if (poll.state === 'running') {
+        await setStatus(id, 'fetching', { stepAt: null });
+        return (await getAnalysis(id))!;
+      }
+      if (poll.state === 'failed') {
+        await fail(analysis, poll.detail);
+        return (await getAnalysis(id))!;
+      }
+      await storeFetched(analysis, provider.name, poll.profile, poll.videos);
+      return (await getAnalysis(id))!;
     }
 
-    await setStatus(id, 'done', { resultJson, error: aiError, finishedAt: now() });
+    if (analysis.status === 'analyzing') {
+      const current = (await getAnalysis(id))!;
+      const creator = current.creatorId ? await getCreator(current.creatorId) : null;
+      const metrics = metricsOf(current);
+      if (!creator || !metrics) {
+        await fail(analysis, 'Thiếu số liệu để AI phân tích');
+        return (await getAnalysis(id))!;
+      }
+      const list = (await listCreatorVideos(creator.id)).slice(0, VIDEO_LIMIT);
+      const profile: CreatorProfile = {
+        displayName: creator.displayName,
+        avatarUrl: creator.avatarUrl,
+        bio: creator.bio,
+        followers: creator.followers,
+        following: creator.following,
+        likesTotal: creator.likesTotal,
+        videoCount: creator.videoCount,
+      };
+
+      let resultJson = current.inputHash ? await findSameInput(creator.id, current.inputHash, id) : null;
+      let aiError: string | null = null;
+      if (!resultJson) {
+        const outcome = await analyzeCreator(env.AI, { handle: analysis.handle, profile, metrics, videos: list });
+        resultJson = outcome.result ? JSON.stringify(outcome.result) : null;
+        // Phần AI hỏng thì vẫn 'done' (có số liệu), nhưng ghi lý do để soi được
+        // qua endpoint status mà không cần đọc log Worker
+        if (!resultJson) aiError = `AI: ${outcome.failures.join(' | ')}`.slice(0, 900);
+      }
+      await setStatus(id, 'done', { resultJson, error: aiError, finishedAt: now(), stepAt: null });
+      return (await getAnalysis(id))!;
+    }
+
+    // Trạng thái lạ: nhả khoá
+    await setStatus(id, analysis.status, { stepAt: null });
+    return analysis;
   } catch (error) {
-    console.error(`[tiktok] Phân tích ${id} thất bại:`, error);
-    await setStatus(id, 'failed', {
-      error: error instanceof Error ? error.message.slice(0, 500) : 'Lỗi không xác định',
-      finishedAt: now(),
-    });
-    await refundIfCharged(analysis);
+    console.error(`[tiktok] Phân tích ${id} lỗi ở bước ${analysis.status}:`, error);
+    await fail(analysis, error instanceof Error ? error.message.slice(0, 500) : 'Lỗi không xác định');
+    return (await getAnalysis(id))!;
   }
+}
+
+/** Chạy liên tiếp các bước cho tới khi xong hoặc tới khi phải chờ nhà cung cấp. */
+export async function runAnalysis(id: string): Promise<void> {
+  for (let i = 0; i < 4; i++) {
+    const before = await getAnalysis(id);
+    const after = await advanceAnalysis(id);
+    if (!after || after.status === 'done' || after.status === 'failed') return;
+    // Không đổi trạng thái nghĩa là đang chờ nhà cung cấp, để lần hỏi sau làm tiếp
+    if (before?.status === after.status && after.status === 'fetching' && after.providerJobId) return;
+  }
+}
+
+async function getAnalysis(id: string): Promise<CreatorAnalysis | null> {
+  const rows = await getDb(env.DB).select().from(creatorAnalyses).where(eq(creatorAnalyses.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
+/** Lưu kết quả kéo được, tính chỉ số, chuyển sang bước AI. */
+async function storeFetched(
+  analysis: CreatorAnalysis,
+  providerName: string,
+  profile: CreatorProfile | null,
+  list: VideoData[],
+): Promise<void> {
+  if (list.length === 0) {
+    await fail(analysis, 'Không lấy được video nào. Kênh có thể riêng tư, không tồn tại, hoặc nguồn dữ liệu đang lỗi.');
+    return;
+  }
+  const creator = await upsertCreator(analysis.handle, profile, providerName);
+  await upsertVideos(creator.id, list);
+  const metrics = computeMetrics(list);
+  const inputHash = await sha256(JSON.stringify({ metrics, captions: list.map((v) => v.caption) }));
+  await setStatus(analysis.id, 'analyzing', {
+    creatorId: creator.id,
+    provider: providerName,
+    metricsJson: JSON.stringify(metrics),
+    inputHash,
+    stepAt: null,
+  });
+}
+
+async function fail(analysis: CreatorAnalysis, message: string): Promise<void> {
+  await setStatus(analysis.id, 'failed', { error: message, finishedAt: now(), stepAt: null });
+  await refundIfCharged(analysis);
 }
 
 /** Phân tích thất bại thì trả lại tín chỉ đã trừ; gọi trùng cũng chỉ hoàn một lần. */

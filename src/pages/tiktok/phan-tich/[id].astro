@@ -6,11 +6,13 @@ import ViewsChart from '../../../components/tiktok/ViewsChart.astro';
 import SlotHeatmap from '../../../components/tiktok/SlotHeatmap.astro';
 import TagBars from '../../../components/tiktok/TagBars.astro';
 import { notFound } from '../../../lib/guards';
+import { waitUntil } from '../../../lib/env';
 import { formatDateTime } from '../../../lib/format';
 import { profileUrl } from '../../../lib/tiktok/handle';
 import { bestSlots, compactNumber, percent, WEEKDAY_LABEL } from '../../../lib/tiktok/metrics';
 import { TREND_LABEL } from '../../../lib/tiktok/analyze';
 import {
+  advanceAnalysis,
   getCreator,
   getOwnedAnalysis,
   listCreatorVideos,
@@ -29,6 +31,10 @@ if (!analysis) return notFound('Không tìm thấy phân tích');
 
 const done = analysis.status === 'done';
 const failed = analysis.status === 'failed';
+if (!done && !failed) {
+  // Đẩy một bước ở nền; các bước sau do script poll của trang kéo tiếp
+  waitUntil(Astro.locals, advanceAnalysis(analysis.id).then(() => undefined));
+}
 const metrics = done ? metricsOf(analysis) : null;
 const result = done ? resultOf(analysis) : null;
 const creator = done && analysis.creatorId ? await getCreator(analysis.creatorId) : null;
