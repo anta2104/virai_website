@@ -219,6 +219,43 @@ export function orderPaidEmail(input: {
   };
 }
 
+/** Email báo đơn nạp tín chỉ studio đã được ghi nhận. */
+export function creditsPaidEmail(input: {
+  ownerName: string;
+  amountText: string;
+  paymentCode: string;
+  credits: number;
+  balance: number;
+  studioUrl: string;
+}): EmailMessage {
+  const body = `
+    <p style="margin:0 0 14px;">Chào ${escapeHtml(input.ownerName)},</p>
+    <p style="margin:0 0 14px;">Chúng tôi đã nhận được <strong>${escapeHtml(input.amountText)}</strong> cho đơn <code>${escapeHtml(input.paymentCode)}</code> và đã cộng <strong>${input.credits} tín chỉ</strong> vào tài khoản của bạn. Số dư hiện tại: <strong>${input.balance} tín chỉ</strong>.</p>
+    <p style="margin:0 0 14px;">Mỗi ảnh người mẫu ảo trừ 1 tín chỉ. Ảnh lỗi thì tín chỉ tự hoàn lại.</p>
+  `;
+
+  return {
+    to: '',
+    subject: `Đã nhận thanh toán — cộng ${input.credits} tín chỉ studio`,
+    html: layout({
+      heading: 'Đã cộng tín chỉ',
+      body,
+      ctaLabel: 'Tạo buổi chụp ảnh',
+      ctaHref: input.studioUrl,
+      footerNote: `Mã đơn: ${escapeHtml(input.paymentCode)}. Cần hỗ trợ, bạn trả lời email này hoặc viết cho ${escapeHtml(site.supportEmail)}.`,
+    }),
+    text: [
+      `Chào ${input.ownerName},`,
+      '',
+      `Chúng tôi đã nhận được ${input.amountText} cho đơn ${input.paymentCode} và đã cộng ${input.credits} tín chỉ. Số dư hiện tại: ${input.balance} tín chỉ.`,
+      '',
+      `Tạo buổi chụp ảnh: ${input.studioUrl}`,
+      '',
+      `${site.name} — vận hành bởi ${site.company}.`,
+    ].join('\n'),
+  };
+}
+
 /** Email báo thẻ QR vật lý đã gửi đi. */
 export function orderShippedEmail(input: {
   ownerName: string;

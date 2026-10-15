@@ -1,0 +1,67 @@
+---
+/**
+ * Hai dải nhiệt: trung vị view theo giờ đăng (0–23) và theo thứ trong tuần,
+ * giờ Việt Nam. Màu tuần tự một tông (clay nhạt → đậm) theo trung vị view;
+ * ô không có video thì để trống.
+ */
+import { WEEKDAY_LABEL, compactNumber } from '../../lib/tiktok/metrics';
+import type { SlotStat } from '../../lib/tiktok/metrics';
+
+interface Props {
+  byHour: SlotStat[];
+  byWeekday: SlotStat[];
+}
+const { byHour, byWeekday } = Astro.props;
+
+const RAMP = ['var(--color-clay-100)', 'var(--color-clay-200)', 'var(--color-clay-300)', 'var(--color-clay-500)', 'var(--color-clay-700)'];
+
+function shade(value: number, max: number): string {
+  if (max <= 0 || value <= 0) return 'var(--color-cream-100)';
+  const idx = Math.min(RAMP.length - 1, Math.floor((value / max) * RAMP.length));
+  return RAMP[idx]!;
+}
+
+const hourMax = Math.max(0, ...byHour.map((s) => s.medianViews));
+const dayMax = Math.max(0, ...byWeekday.map((s) => s.medianViews));
+const tooltip = (s: SlotStat, name: string) =>
+  s.count === 0 ? `${name}: chưa có video` : `${name}: ${s.count} video, trung vị ${compactNumber(s.medianViews)} view`;
+---
+
+<div class="space-y-5">
+  <div>
+    <p class="mb-2 text-sm font-medium text-ink-700">Theo giờ đăng (giờ Việt Nam)</p>
+    <div class="grid grid-cols-12 gap-0.5 sm:grid-cols-24" role="list">
+      {
+        byHour.map((s) => (
+          <div
+            role="listitem"
+            class="flex aspect-square items-end justify-center rounded-[3px] text-[10px] text-ink-700"
+            style={`background:${shade(s.medianViews, hourMax)}`}
+            title={tooltip(s, `${s.slot}h`)}
+          >
+            <span class="pb-0.5">{s.slot}</span>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+  <div>
+    <p class="mb-2 text-sm font-medium text-ink-700">Theo thứ trong tuần</p>
+    <div class="grid grid-cols-7 gap-1" role="list">
+      {
+        byWeekday.map((s) => (
+          <div
+            role="listitem"
+            class="rounded-[4px] px-1 py-2 text-center text-xs text-ink-700"
+            style={`background:${shade(s.medianViews, dayMax)}`}
+            title={tooltip(s, WEEKDAY_LABEL[s.slot]!)}
+          >
+            <span class="block font-medium">{WEEKDAY_LABEL[s.slot]!.replace('Thứ ', 'T').replace('Chủ nhật', 'CN')}</span>
+            <span class="block text-[11px] text-ink-500">{s.count > 0 ? compactNumber(s.medianViews) : '–'}</span>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+  <p class="text-xs text-ink-500">Màu càng đậm, trung vị view của video đăng vào khung đó càng cao. Rê chuột để xem số.</p>
+</div>

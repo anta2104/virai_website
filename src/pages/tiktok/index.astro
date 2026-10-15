@@ -1,0 +1,160 @@
+---
+import SiteLayout from '../../layouts/SiteLayout.astro';
+import Icon from '../../components/Icon.astro';
+import { listAnalysesOfUser, STATUS_LABEL } from '../../lib/tiktok/service';
+import { pickProvider } from '../../lib/tiktok/provider';
+import { formatDateTime } from '../../lib/format';
+import { env } from '../../lib/env';
+
+const user = Astro.locals.user;
+const recent = user ? await listAnalysesOfUser(user.id, 8) : [];
+const isDemo = pickProvider(env).name === 'mock';
+
+const description =
+  'Dán link kênh TikTok, nhận ngay bảng chỉ số view, like, lưu, chia sẻ của 30 video gần nhất và phân tích xu hướng bằng AI.';
+
+const features = [
+  { icon: 'eye', title: 'Chỉ số thật của từng video', text: 'View, like, bình luận, chia sẻ, lưu; tỉ lệ tương tác và tỉ lệ lưu, hai tín hiệu TikTok ưu tiên đẩy.' },
+  { icon: 'clock', title: 'Giờ đăng hiệu quả', text: 'Tính từ chính dữ liệu của kênh: khung giờ và thứ nào video có view trung vị cao nhất.' },
+  { icon: 'quill', title: 'AI đọc xu hướng', text: 'Vì sao video nổi, nhóm chủ đề nào kéo kênh, kênh đang lên hay xuống, và 5 ý tưởng video tiếp theo.' },
+  { icon: 'check', title: 'Điểm sức khoẻ kênh', text: 'Một con số 0–100 kèm việc cần làm trong hai tuần tới.' },
+] as const;
+---
+
+<SiteLayout title="Phân tích kênh TikTok" description={description}>
+  <section class="px-4 py-16 sm:px-6 lg:py-24">
+    <div class="mx-auto w-full max-w-5xl">
+      <div class="max-w-2xl">
+        <p class="eyebrow">Phân tích TikTok</p>
+        <h1 class="mt-3 font-serif text-4xl font-semibold sm:text-5xl">Dán link kênh, biết ngay video nào đang kéo bạn lên</h1>
+        <p class="mt-4 text-lg text-ink-500">{description}</p>
+      </div>
+
+      <div class="card mt-10 p-6 sm:p-8">
+        {
+          user ? (
+            <form id="form-phan-tich" class="flex flex-col gap-3 sm:flex-row" novalidate>
+              <div class="flex-1">
+                <label for="input" class="label">Link kênh hoặc @tên kênh</label>
+                <input
+                  id="input"
+                  name="input"
+                  class="input"
+                  type="text"
+                  inputmode="url"
+                  autocomplete="off"
+                  placeholder="https://www.tiktok.com/@tenkenh"
+                  required
+                />
+                <p class="hint">Chỉ phân tích được kênh công khai. Mất khoảng 10–60 giây.</p>
+              </div>
+              <div class="sm:pt-7">
+                <button type="submit" class="btn-primary w-full sm:w-auto" data-submit>
+                  Phân tích
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div class="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p class="font-medium text-ink-900">Đăng nhập để bắt đầu phân tích</p>
+                <p class="mt-1 text-sm text-ink-500">Miễn phí. Mỗi phân tích lưu lại trong tài khoản để bạn xem lại.</p>
+              </div>
+              <div class="flex gap-2">
+                <a href="/dang-nhap?next=%2Ftiktok" class="btn-primary">Đăng nhập</a>
+                <a href="/dang-ky?next=%2Ftiktok" class="btn-secondary">Tạo tài khoản</a>
+              </div>
+            </div>
+          )
+        }
+        <p class="alert-error mt-4" id="loi" hidden></p>
+        {
+          isDemo && (
+            <p class="alert-info mt-4">
+              <strong>Dữ liệu demo.</strong> Hệ thống đang chạy với nguồn dữ liệu giả để thử giao diện; số liệu không phải
+              của kênh thật. Khi cấu hình nhà cung cấp dữ liệu, nhãn này sẽ tự mất.
+            </p>
+          )
+        }
+      </div>
+
+      <div class="mt-14 grid gap-6 sm:grid-cols-2">
+        {
+          features.map((f) => (
+            <div class="flex gap-4">
+              <span class="mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-clay-50 text-clay-600">
+                <Icon name={f.icon} size={20} />
+              </span>
+              <div>
+                <h2 class="font-serif text-lg font-semibold">{f.title}</h2>
+                <p class="mt-1 text-sm text-ink-500">{f.text}</p>
+              </div>
+            </div>
+          ))
+        }
+      </div>
+
+      {
+        user && recent.length > 0 && (
+          <div class="mt-14">
+            <h2 class="font-serif text-2xl font-semibold">Phân tích gần đây của bạn</h2>
+            <ul class="mt-4 divide-y divide-cream-300 rounded-2xl border border-cream-300 bg-white/70">
+              {recent.map((a) => (
+                <li>
+                  <a href={`/tiktok/phan-tich/${a.id}`} class="flex items-center justify-between gap-4 px-5 py-3.5 transition hover:bg-cream-100">
+                    <div class="min-w-0">
+                      <p class="truncate font-medium text-ink-900">@{a.handle}</p>
+                      <p class="text-xs text-ink-500">{formatDateTime(a.createdAt)}</p>
+                    </div>
+                    <span
+                      class:list={[
+                        'badge shrink-0',
+                        a.status === 'done' && 'bg-sage-100 text-sage-700',
+                        a.status === 'failed' && 'bg-red-50 text-red-700',
+                        !['done', 'failed'].includes(a.status) && 'bg-cream-200 text-ink-500',
+                      ]}
+                    >
+                      {STATUS_LABEL[a.status] ?? a.status}
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      }
+    </div>
+  </section>
+</SiteLayout>
+
+<script>
+  const form = document.getElementById('form-phan-tich') as HTMLFormElement | null;
+  const errorBox = document.getElementById('loi') as HTMLParagraphElement | null;
+
+  form?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const button = form.querySelector<HTMLButtonElement>('[data-submit]');
+    const input = form.querySelector<HTMLInputElement>('input[name="input"]');
+    if (!button || !input || !errorBox) return;
+
+    errorBox.hidden = true;
+    button.disabled = true;
+    button.textContent = 'Đang tạo...';
+
+    try {
+      const response = await fetch('/api/tiktok/analyze', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ input: input.value }),
+      });
+      const data = (await response.json()) as { ok: boolean; id?: string; error?: string };
+      if (!data.ok || !data.id) throw new Error(data.error ?? 'Không tạo được phân tích.');
+      window.location.href = `/tiktok/phan-tich/${data.id}`;
+    } catch (error) {
+      errorBox.textContent = error instanceof Error ? error.message : 'Có lỗi xảy ra, bạn thử lại nhé.';
+      errorBox.hidden = false;
+      button.disabled = false;
+      button.textContent = 'Phân tích';
+    }
+  });
+</script>

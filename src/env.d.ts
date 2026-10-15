@@ -19,4 +19,9 @@ declare namespace App {
 interface Env {
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_CLIENT_SECRET?: string;
+  /** Nguồn dữ liệu TikTok: 'mock' (mặc định) | 'apify' */
+  TIKTOK_PROVIDER?: string;
+  APIFY_TOKEN?: string;
+  /** Nguồn sinh ảnh người mẫu ảo: 'workers-ai' (mặc định) | 'external' */
+  IMAGE_PROVIDER?: string;
 }

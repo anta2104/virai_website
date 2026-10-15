@@ -6,6 +6,7 @@ import {
   MATERIAL_LABEL,
   ORDER_STATUS_LABEL,
   ORDER_TYPE_LABEL,
+  parseCreditMeta,
   parseShippingInfo,
 } from '../../../lib/orders';
 import { getMemorialById } from '../../../lib/memorials';
@@ -40,18 +41,22 @@ const qrProvider = qrProviderFrom(env);
 const sepayImageUrl = qrInput && qrProvider === 'sepay' ? sepayQrUrl(qrInput) : null;
 
 const isPaid = order.status !== 'pending' && order.status !== 'cancelled';
+const creditMeta = order.type === 'credits' ? parseCreditMeta(order.meta) : null;
+const backHref = memorial ? `/tai-khoan/be/${memorial.id}` : creditMeta ? '/tai-khoan/tin-chi' : '/tai-khoan/don-hang';
+const backLabel = memorial ? `Về trang của ${memorial.petName}` : creditMeta ? 'Về tín chỉ studio' : 'Về danh sách đơn';
 ---
 
 <AppLayout
   title={isPaid ? 'Đơn đã thanh toán' : 'Thanh toán chuyển khoản'}
-  backHref={memorial ? `/tai-khoan/be/${memorial.id}` : '/tai-khoan/don-hang'}
-  backLabel={memorial ? `Về trang của ${memorial.petName}` : 'Về danh sách đơn'}
+  backHref={backHref}
+  backLabel={backLabel}
 >
   <div class="card p-6">
     <div class="flex flex-wrap items-start justify-between gap-4 border-b border-cream-300 pb-5">
       <div>
         <p class="font-medium text-ink-900">{ORDER_TYPE_LABEL[order.type] ?? order.type}</p>
         {memorial && <p class="text-sm text-ink-500">Cho bé {memorial.petName}</p>}
+        {creditMeta && <p class="text-sm text-ink-500">{creditMeta.credits} tín chỉ cho studio người mẫu ảo</p>}
         <p class="mt-1 text-xs text-ink-500">Tạo lúc {formatDateTime(order.createdAt)}</p>
       </div>
       <div class="text-right">
@@ -74,10 +79,16 @@ const isPaid = order.status !== 'pending' && order.status !== 'cancelled';
             Đã nhận thanh toán lúc {formatDateTime(order.paidAt)}. Cảm ơn bạn!
             {order.type === 'physical_combo' &&
               ' Chúng tôi sẽ liên hệ khi thẻ QR được gửi đi.'}
+            {creditMeta && ` Đã cộng ${creditMeta.credits} tín chỉ vào tài khoản của bạn.`}
           </p>
           {memorial && (
             <a href={`/tai-khoan/be/${memorial.id}`} class="btn-primary mt-5">
               Về trang của {memorial.petName}
+            </a>
+          )}
+          {creditMeta && (
+            <a href="/nguoi-mau-ao/tao" class="btn-primary mt-5">
+              Tạo buổi chụp ảnh
             </a>
           )}
         </div>

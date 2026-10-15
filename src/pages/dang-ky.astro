@@ -12,8 +12,16 @@ import { googleAuthConfigured } from '../lib/google-auth';
 import { env } from '../lib/env';
 
 
+/** Chỉ nhận đường dẫn nội bộ; mặc định về luồng tạo trang kỷ niệm như trước. */
+function safeNext(value: string | null): string {
+  if (!value) return '/tai-khoan/tao-trang';
+  return value.startsWith('/') && !value.startsWith('//') ? value : '/tai-khoan/tao-trang';
+}
+
+const next = safeNext(Astro.url.searchParams.get('next'));
+
 if (Astro.locals.user) {
-  return Astro.redirect('/tai-khoan');
+  return Astro.redirect(next === '/tai-khoan/tao-trang' ? '/tai-khoan' : next);
 }
 
 let error: string | null = null;
@@ -24,6 +32,7 @@ if (Astro.request.method === 'POST') {
   const name = String(form.get('name') ?? '').trim();
   const email = String(form.get('email') ?? '').trim();
   const password = String(form.get('password') ?? '');
+  const formNext = safeNext(String(form.get('next') ?? ''));
   values = { name, email };
 
   error =
@@ -43,21 +52,21 @@ if (Astro.request.method === 'POST') {
     } else {
       const session = await createSession(getDb(env.DB), result.user.id, env.SESSION_SECRET);
       setSessionCookie(Astro.cookies, session.cookieValue, session.expiresAt, Astro.url.protocol === 'https:');
-      return Astro.redirect('/tai-khoan/tao-trang');
+      return Astro.redirect(formNext);
     }
   }
 }
 ---
 
-<SiteLayout title="Tạo tài khoản" description="Tạo tài khoản miễn phí để lập trang kỷ niệm cho bé.">
+<SiteLayout title="Tạo tài khoản" description="Tạo tài khoản miễn phí để dùng phân tích TikTok và studio người mẫu ảo.">
   <section class="px-4 py-16 sm:px-6 lg:py-24">
     <div class="mx-auto w-full max-w-sm">
       <div>
         <p class="eyebrow">Bắt đầu</p>
         <h1 class="mt-3 font-serif text-3xl font-semibold">Tạo tài khoản</h1>
         <p class="mt-3 text-ink-500">
-          Miễn phí, không cần thẻ ngân hàng. Bạn sẽ tạo được trang kỷ niệm đầu tiên ngay sau bước
-          này.
+          Miễn phí, không cần thẻ ngân hàng. Xong bước này là phân tích được kênh TikTok và thử
+          studio người mẫu ảo ngay.
         </p>
 
         {error && <p class="alert-error mt-6">{error}</p>}
@@ -66,7 +75,7 @@ if (Astro.request.method === 'POST') {
           googleAuthConfigured(env) && (
             <>
               <a
-                href="/api/auth/google?next=/tai-khoan/tao-trang"
+                href={`/api/auth/google?next=${encodeURIComponent(next)}`}
                 class="btn-secondary mt-6 flex w-full items-center justify-center gap-2.5"
               >
                 <svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
@@ -100,6 +109,7 @@ if (Astro.request.method === 'POST') {
         }
 
         <form method="POST" class="mt-6 space-y-4">
+          <input type="hidden" name="next" value={next} />
           <div>
             <label class="label" for="name">Tên của bạn</label>
             <input class="input" id="name" name="name" required maxlength="80" value={values.name} autocomplete="name" />

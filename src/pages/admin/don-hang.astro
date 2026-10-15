@@ -9,6 +9,7 @@ import {
   ORDER_TYPE_LABEL,
   getOrder,
   markOrderPaid,
+  parseCreditMeta,
   parseShippingInfo,
   sendOrderShippedEmail,
 } from '../../lib/orders';
@@ -28,6 +29,10 @@ if (Astro.request.method === 'POST') {
 
   if (!order) {
     error = 'Không tìm thấy đơn.';
+  } else if (action === 'confirmPaid' && order.status !== 'pending') {
+    // Nút chỉ hiện với đơn pending, nhưng tab cũ hoặc POST tay vẫn tới được đây;
+    // đơn đã huỷ mà xác nhận thì đơn tín chỉ sẽ được cộng tín chỉ.
+    error = `Đơn ${order.paymentCode} không còn ở trạng thái chờ thanh toán.`;
   } else if (action === 'confirmPaid') {
     await markOrderPaid(
       order,
@@ -71,6 +76,7 @@ const rows = await db
       <ul class="space-y-4">
         {rows.map(({ order, user, memorial }) => {
           const shipping = parseShippingInfo(order.shippingInfo);
+          const creditMeta = order.type === 'credits' ? parseCreditMeta(order.meta) : null;
           return (
             <li class="card p-5">
               <div class="flex flex-wrap items-start justify-between gap-4">
@@ -82,6 +88,7 @@ const rows = await db
                   <p class="mt-1 text-sm text-ink-500">
                     {user.name} ({user.email})
                     {memorial && ` · bé ${memorial.petName}`}
+                    {creditMeta && ` · ${creditMeta.credits} tín chỉ studio`}
                   </p>
                   <p class="mt-1 text-xs text-ink-500">
                     Tạo {formatDateTime(order.createdAt)}

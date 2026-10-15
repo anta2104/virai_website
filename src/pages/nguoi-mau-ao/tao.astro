@@ -1,0 +1,286 @@
+---
+import AppLayout from '../../layouts/AppLayout.astro';
+import { listActiveModels, MODEL_PLACEHOLDER_CLASS } from '../../lib/studio/models';
+import { SCENE_PRESETS } from '../../lib/studio/prompt';
+import { MAX_COUNT, MAX_PRODUCT_IMAGES, MIN_COUNT } from '../../lib/studio/service';
+import { balanceOf, ensureWelcomeCredits } from '../../lib/credits';
+import { STUDIO_COSTS } from '../../lib/plans';
+
+const user = Astro.locals.user;
+if (!user) {
+  const next = encodeURIComponent(Astro.url.pathname + Astro.url.search);
+  return Astro.redirect(`/dang-nhap?next=${next}`);
+}
+
+await ensureWelcomeCredits(user.id);
+const [models, balance] = await Promise.all([listActiveModels(), balanceOf(user.id)]);
+
+const preselected = Astro.url.searchParams.get('model') ?? models[0]?.model.id ?? '';
+const source = Astro.url.searchParams.get('tu-phan-tich') ?? '';
+const perImage = STUDIO_COSTS.photoshootImage;
+---
+
+<AppLayout
+  title="Tạo buổi chụp ảnh"
+  eyebrow="Studio người mẫu ảo"
+  description="Chọn người mẫu, mô tả sản phẩm, chọn bối cảnh. Ảnh hiện dần trong vài phút."
+  backHref="/nguoi-mau-ao"
+  backLabel="Về trang người mẫu"
+  wide
+>
+  <div slot="actions" class="text-right text-sm">
+    <p class="text-ink-500">Số dư</p>
+    <p class="font-serif text-2xl font-semibold text-ink-900" data-balance={balance}>{balance} tín chỉ</p>
+    <a href="/tai-khoan/tin-chi" class="link-quiet text-xs">Nạp thêm</a>
+  </div>
+
+  {
+    source && (
+      <p class="alert-info mb-6">
+        Buổi chụp này được mở từ phân tích TikTok. Gợi ý: mô tả sản phẩm theo đúng chủ đề đang hiệu
+        quả của kênh.
+      </p>
+    )
+  }
+
+  <form
+    method="POST"
+    action="/api/studio/jobs"
+    enctype="multipart/form-data"
+    class="grid gap-10 lg:grid-cols-[1.1fr_1fr]"
+    data-studio-form
+  >
+    <input type="hidden" name="source" value={source} />
+
+    <div class="space-y-10">
+      <fieldset>
+        <legend class="label">1. Chọn người mẫu</legend>
+        <div class="mt-3 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {
+            models.map(({ model, persona, portraitUrl }) => (
+              <label class="group cursor-pointer">
+                <input
+                  type="radio"
+                  name="modelId"
+                  value={model.id}
+                  checked={model.id === preselected}
+                  class="peer sr-only"
+                  required
+                />
+                <span class="block overflow-hidden rounded-2xl border-2 border-cream-300 transition peer-checked:border-clay-500 peer-focus-visible:ring-2 peer-focus-visible:ring-clay-200">
+                  <span class="block aspect-square w-full bg-cream-100">
+                    {portraitUrl ? (
+                      <img src={portraitUrl} alt="" class="h-full w-full object-cover" loading="lazy" />
+                    ) : (
+                      <span
+                        class:list={[
+                          'flex h-full w-full items-center justify-center font-serif text-4xl font-semibold',
+                          MODEL_PLACEHOLDER_CLASS[model.slug] ?? 'bg-cream-200 text-ink-700',
+                        ]}
+                      >
+                        {model.name.charAt(0)}
+                      </span>
+                    )}
+                  </span>
+                  <span class="block px-3 py-2">
+                    <span class="block font-medium text-ink-900">{model.name}</span>
+                    <span class="block truncate text-xs text-ink-500">{persona.niches.join(', ')}</span>
+                  </span>
+                </span>
+              </label>
+            ))
+          }
+        </div>
+      </fieldset>
+
+      <fieldset class="space-y-5">
+        <legend class="label">2. Sản phẩm</legend>
+        <div>
+          <label for="productName" class="label">Tên sản phẩm</label>
+          <input
+            id="productName"
+            name="productName"
+            class="input"
+            required
+            maxlength="120"
+            placeholder="Ví dụ: Serum vitamin C Bright 30ml"
+          />
+        </div>
+        <div>
+          <label for="productDescription" class="label">Mô tả ngắn</label>
+          <textarea
+            id="productDescription"
+            name="productDescription"
+            class="input min-h-28"
+            maxlength="600"
+            placeholder="Màu sắc, hình dáng, chất liệu, công dụng chính. Càng cụ thể thì ảnh càng sát: chai thủy tinh màu hổ phách, nắp nhỏ giọt trắng, nhãn vàng nhạt."
+          ></textarea>
+          <p class="hint">Ở bản hiện tại, hình dáng sản phẩm trong ảnh đi theo mô tả bằng lời là chính.</p>
+        </div>
+        <div>
+          <label for="category" class="label">Ngành hàng</label>
+          <input
+            id="category"
+            name="category"
+            class="input"
+            maxlength="60"
+            list="category-list"
+            placeholder="Mỹ phẩm, thời trang, gia dụng..."
+          />
+          <datalist id="category-list">
+            <option value="Mỹ phẩm"></option>
+            <option value="Thời trang"></option>
+            <option value="Phụ kiện"></option>
+            <option value="Gia dụng"></option>
+            <option value="Công nghệ"></option>
+            <option value="Thực phẩm"></option>
+            <option value="Mẹ và bé"></option>
+            <option value="Thể thao"></option>
+          </datalist>
+        </div>
+        <div>
+          <label for="files" class="label">Ảnh sản phẩm (tuỳ chọn, tối đa {MAX_PRODUCT_IMAGES})</label>
+          <input
+            id="files"
+            name="files"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            class="block w-full text-sm text-ink-700 file:mr-4 file:rounded-full file:border-0 file:bg-cream-200 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-ink-900"
+          />
+          <p class="hint">
+            JPG, PNG, WebP, mỗi ảnh tối đa 6MB. Không tải ảnh có mặt người thật: studio không ghép mặt
+            thật vào ảnh.
+          </p>
+        </div>
+      </fieldset>
+    </div>
+
+    <div class="space-y-10">
+      <fieldset class="space-y-5">
+        <legend class="label">3. Bối cảnh</legend>
+        <div class="grid gap-2 sm:grid-cols-2">
+          {
+            SCENE_PRESETS.map((scene, index) => (
+              <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-cream-300 bg-white/70 px-4 py-3 text-sm transition has-[:checked]:border-clay-500 has-[:checked]:bg-clay-50">
+                <input type="radio" name="scene" value={scene.id} checked={index === 0} class="accent-clay-500" />
+                <span class="text-ink-900">{scene.label}</span>
+              </label>
+            ))
+          }
+        </div>
+        <div>
+          <label for="sceneCustom" class="label">Hoặc tự mô tả bối cảnh</label>
+          <input
+            id="sceneCustom"
+            name="sceneCustom"
+            class="input"
+            maxlength="200"
+            placeholder="Ví dụ: bàn trang điểm cạnh cửa sổ, nắng chiều"
+          />
+          <p class="hint">Có nhập ô này thì bỏ qua lựa chọn ở trên.</p>
+        </div>
+        <div>
+          <label for="notes" class="label">Ghi chú thêm (tuỳ chọn)</label>
+          <input
+            id="notes"
+            name="notes"
+            class="input"
+            maxlength="200"
+            placeholder="Ví dụ: người mẫu cầm sản phẩm bằng tay phải, tông ảnh ấm"
+          />
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend class="label">4. Số ảnh</legend>
+        <div class="mt-3 flex items-center gap-4">
+          <input
+            type="number"
+            name="count"
+            value="2"
+            min={MIN_COUNT}
+            max={MAX_COUNT}
+            class="input w-24"
+            data-count
+            required
+          />
+          <p class="text-sm text-ink-500">
+            Mỗi ảnh {perImage} tín chỉ · tổng <strong class="text-ink-900" data-cost>{2 * perImage}</strong> tín chỉ
+          </p>
+        </div>
+        <p class="hint mt-2">Mỗi ảnh một góc máy khác nhau. Ảnh lỗi được hoàn tín chỉ.</p>
+      </fieldset>
+
+      <div class="card p-5">
+        <p class="alert-error hidden" data-error role="alert"></p>
+        <p class="hidden text-sm text-ink-500" data-progress role="status" aria-live="polite">
+          Đang gửi yêu cầu...
+        </p>
+        <button type="submit" class="btn-primary w-full" data-submit data-per-image={perImage}>
+          Bắt đầu chụp
+        </button>
+        <p class="hint mt-3 text-center">
+          Bằng cách bấm, bạn xác nhận sản phẩm không thuộc nhóm bị từ chối và ảnh tải lên không chứa mặt
+          người thật.
+        </p>
+      </div>
+    </div>
+  </form>
+</AppLayout>
+
+<script>
+  const form = document.querySelector<HTMLFormElement>('[data-studio-form]');
+  if (form) {
+    const count = form.querySelector<HTMLInputElement>('[data-count]')!;
+    const cost = form.querySelector<HTMLElement>('[data-cost]')!;
+    const submit = form.querySelector<HTMLButtonElement>('[data-submit]')!;
+    const errorBox = form.querySelector<HTMLElement>('[data-error]')!;
+    const progress = form.querySelector<HTMLElement>('[data-progress]')!;
+    const perImage = Number(submit.dataset.perImage ?? 1);
+    const balanceEl = document.querySelector<HTMLElement>('[data-balance]');
+    const balance = Number(balanceEl?.dataset.balance ?? 0);
+
+    const updateCost = () => {
+      const n = Math.max(1, Math.min(4, Number(count.value) || 1));
+      const total = n * perImage;
+      cost.textContent = String(total);
+      submit.textContent = total > balance ? `Thiếu ${total - balance} tín chỉ — nạp thêm` : 'Bắt đầu chụp';
+    };
+    count.addEventListener('input', updateCost);
+    updateCost();
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const total = (Number(count.value) || 1) * perImage;
+      if (total > balance) {
+        window.location.href = '/tai-khoan/tin-chi';
+        return;
+      }
+
+      errorBox.classList.add('hidden');
+      progress.classList.remove('hidden');
+      submit.disabled = true;
+
+      try {
+        const response = await fetch(form.action, { method: 'POST', body: new FormData(form) });
+        const data = (await response.json()) as { ok: boolean; id?: string; error?: string; code?: string };
+        if (data.ok && data.id) {
+          window.location.href = `/nguoi-mau-ao/job/${data.id}`;
+          return;
+        }
+        errorBox.textContent = data.error ?? 'Có lỗi xảy ra, bạn thử lại nhé.';
+        errorBox.classList.remove('hidden');
+        if (data.code === 'credits') {
+          errorBox.insertAdjacentHTML('beforeend', ' <a class="underline" href="/tai-khoan/tin-chi">Nạp tín chỉ</a>');
+        }
+      } catch {
+        errorBox.textContent = 'Không gửi được yêu cầu. Bạn kiểm tra mạng rồi thử lại.';
+        errorBox.classList.remove('hidden');
+      } finally {
+        progress.classList.add('hidden');
+        submit.disabled = false;
+      }
+    });
+  }
+</script>

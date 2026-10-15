@@ -40,3 +40,11 @@ PAYMENT_CODE_PREFIX=SEVQR
 #   http://localhost:4321/api/auth/google/callback   (cho lúc dev)
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
+
+# Phân tích TikTok — nguồn dữ liệu: mock (mặc định, dữ liệu giả để dev) hoặc apify
+TIKTOK_PROVIDER=mock
+# Token Apify khi TIKTOK_PROVIDER=apify (https://console.apify.com)
+APIFY_TOKEN=
+
+# Studio người mẫu ảo — nguồn sinh ảnh: workers-ai (mặc định) hoặc external
+IMAGE_PROVIDER=workers-ai

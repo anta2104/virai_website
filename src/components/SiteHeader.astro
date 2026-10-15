@@ -9,13 +9,17 @@ const { user = null } = Astro.props;
 const path = Astro.url.pathname;
 
 const links = [
-  { href: '/', label: 'Trang chủ' },
-  { href: '/cach-hoat-dong', label: 'Cách hoạt động' },
-  { href: '/vuon-tuong-niem', label: 'Vườn tưởng niệm' },
+  { href: '/tiktok', label: 'Phân tích TikTok' },
+  { href: '/nguoi-mau-ao', label: 'Người mẫu ảo' },
   { href: '/bang-gia', label: 'Bảng giá' },
+  { href: '/tuong-niem', label: 'Tưởng niệm' },
 ];
 
-const isActive = (href: string) => (href === '/' ? path === '/' : path.startsWith(href));
+// /tuong-niem gom cả vườn tưởng niệm, cách hoạt động và trang /be
+const isActive = (href: string) =>
+  href === '/tuong-niem'
+    ? /^\/(tuong-niem|vuon-tuong-niem|cach-hoat-dong|be)(\/|$)/.test(path)
+    : path.startsWith(href);
 ---
 
 <header class="sticky top-0 z-40 border-b border-cream-300/80 bg-cream-50/90 backdrop-blur">
@@ -83,8 +87,8 @@ const isActive = (href: string) => (href === '/' ? path === '/' : path.startsWit
             <a href="/dang-nhap" class="btn-ghost btn-sm hidden sm:inline-flex">
               Đăng nhập
             </a>
-            <a href="/dang-ky" class="btn-primary btn-sm">
-              Tạo trang miễn phí
+            <a href="/tiktok" class="btn-primary btn-sm">
+              Phân tích miễn phí
             </a>
           </>
         )
@@ -156,8 +160,8 @@ const isActive = (href: string) => (href === '/' ? path === '/' : path.startsWit
             </div>
           ) : (
             <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <a href="/dang-ky" class="btn-primary btn-sm">
-                Tạo trang miễn phí
+              <a href="/tiktok" class="btn-primary btn-sm">
+                Phân tích miễn phí
               </a>
               <a href="/dang-nhap" class="text-sm font-medium text-clay-700">
                 Đăng nhập

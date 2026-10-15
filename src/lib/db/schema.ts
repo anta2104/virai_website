@@ -182,6 +182,8 @@ export const orders = sqliteTable(
     note: text('note'),
     createdAt: createdAt(),
     paidAt: integer('paid_at'),
+    /** JSON tuỳ loại đơn, ví dụ { credits: 20 } cho đơn nạp tín chỉ */
+    meta: text('meta'),
   },
   (t) => [
     uniqueIndex('orders_payment_code_unique').on(t.paymentCode),
@@ -228,6 +230,194 @@ export const aiUsage = sqliteTable(
   (t) => [uniqueIndex('ai_usage_user_day_unique').on(t.userId, t.day)],
 );
 
+/* ── Phân tích TikTok ───────────────────────────────────────────────────── */
+
+/** Kênh đã từng được kéo dữ liệu. Thông tin profile là bản chụp lần kéo gần nhất. */
+export const creators = sqliteTable(
+  'creators',
+  {
+    id: text('id').primaryKey(),
+    platform: text('platform').notNull().default('tiktok'),
+    /** Handle không có @, chữ thường */
+    handle: text('handle').notNull(),
+    displayName: text('display_name'),
+    avatarUrl: text('avatar_url'),
+    bio: text('bio'),
+    followers: integer('followers').notNull().default(0),
+    following: integer('following').notNull().default(0),
+    likesTotal: integer('likes_total').notNull().default(0),
+    videoCount: integer('video_count').notNull().default(0),
+    fetchedAt: integer('fetched_at'),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('creators_platform_handle_unique').on(t.platform, t.handle)],
+);
+
+export const videos = sqliteTable(
+  'videos',
+  {
+    id: text('id').primaryKey(),
+    creatorId: text('creator_id')
+      .notNull()
+      .references(() => creators.id, { onDelete: 'cascade' }),
+    tiktokId: text('tiktok_id').notNull(),
+    url: text('url').notNull(),
+    caption: text('caption'),
+    durationS: integer('duration_s'),
+    /** unix epoch giây */
+    postedAt: integer('posted_at'),
+    musicTitle: text('music_title'),
+    /** JSON string[] không có # */
+    hashtagsJson: text('hashtags_json'),
+    coverUrl: text('cover_url'),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex('videos_creator_tiktok_unique').on(t.creatorId, t.tiktokId),
+    index('videos_creator_posted_idx').on(t.creatorId, t.postedAt),
+  ],
+);
+
+/** Mỗi lần kéo dữ liệu ghi một bản chụp để sau này vẽ tăng trưởng theo thời gian. */
+export const videoSnapshots = sqliteTable(
+  'video_snapshots',
+  {
+    id: text('id').primaryKey(),
+    videoId: text('video_id')
+      .notNull()
+      .references(() => videos.id, { onDelete: 'cascade' }),
+    capturedAt: integer('captured_at').notNull(),
+    views: integer('views').notNull().default(0),
+    likes: integer('likes').notNull().default(0),
+    comments: integer('comments').notNull().default(0),
+    shares: integer('shares').notNull().default(0),
+    saves: integer('saves').notNull().default(0),
+  },
+  (t) => [index('video_snapshots_video_idx').on(t.videoId, t.capturedAt)],
+);
+
+/** Một lần người dùng yêu cầu phân tích: vừa là job chạy nền, vừa là kết quả. */
+export const creatorAnalyses = sqliteTable(
+  'creator_analyses',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    handle: text('handle').notNull(),
+    creatorId: text('creator_id').references(() => creators.id, { onDelete: 'set null' }),
+    /** 'queued' | 'fetching' | 'analyzing' | 'done' | 'failed' */
+    status: text('status').notNull().default('queued'),
+    /** 'mock' | 'apify' */
+    provider: text('provider').notNull().default('mock'),
+    /** Hash dữ liệu đầu vào của LLM, để không gọi lại khi dữ liệu không đổi */
+    inputHash: text('input_hash'),
+    /** JSON chỉ số tính bằng code (xem src/lib/tiktok/metrics.ts) */
+    metricsJson: text('metrics_json'),
+    /** JSON kết quả LLM (xem src/lib/tiktok/analyze.ts) */
+    resultJson: text('result_json'),
+    error: text('error'),
+    createdAt: createdAt(),
+    finishedAt: integer('finished_at'),
+  },
+  (t) => [
+    index('creator_analyses_user_idx').on(t.userId, t.createdAt),
+    index('creator_analyses_handle_idx').on(t.handle, t.status),
+  ],
+);
+
+/* ── Người mẫu ảo ──────────────────────────────────────────────────────── */
+
+export const virtualModels = sqliteTable(
+  'virtual_models',
+  {
+    id: text('id').primaryKey(),
+    slug: text('slug').notNull(),
+    name: text('name').notNull(),
+    tagline: text('tagline').notNull(),
+    /** JSON: { appearance, style, voice, niches[], promptBase } — mô tả cố định để giữ nhất quán */
+    personaJson: text('persona_json').notNull(),
+    /** Key R2 của ảnh đại diện, null khi chưa sinh */
+    portraitKey: text('portrait_key'),
+    sortOrder: integer('sort_order').notNull().default(0),
+    active: integer('active').notNull().default(1),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('virtual_models_slug_unique').on(t.slug)],
+);
+
+export const products = sqliteTable(
+  'products',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    description: text('description'),
+    category: text('category'),
+    /** JSON string[] các key R2 ảnh sản phẩm */
+    imagesJson: text('images_json'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('products_user_idx').on(t.userId, t.createdAt)],
+);
+
+export const studioJobs = sqliteTable(
+  'studio_jobs',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    modelId: text('model_id')
+      .notNull()
+      .references(() => virtualModels.id),
+    productId: text('product_id')
+      .notNull()
+      .references(() => products.id, { onDelete: 'cascade' }),
+    /** 'photoshoot' | 'talking_video' (giai đoạn sau) */
+    kind: text('kind').notNull().default('photoshoot'),
+    /** 'queued' | 'running' | 'done' | 'failed' */
+    status: text('status').notNull().default('queued'),
+    /** JSON: { scene, count, notes } người dùng nhập */
+    briefJson: text('brief_json').notNull(),
+    /** Prompt cuối cùng đã gửi cho model sinh ảnh, để debug và sinh lại */
+    prompt: text('prompt'),
+    /** 'workers-ai' | 'external' */
+    provider: text('provider').notNull().default('workers-ai'),
+    /** JSON string[] các key R2 kết quả */
+    resultKeysJson: text('result_keys_json'),
+    costCredits: integer('cost_credits').notNull().default(0),
+    error: text('error'),
+    createdAt: createdAt(),
+    finishedAt: integer('finished_at'),
+  },
+  (t) => [index('studio_jobs_user_idx').on(t.userId, t.createdAt)],
+);
+
+/** Sổ cái tín chỉ: số dư = tổng delta. Không sửa dòng cũ, chỉ thêm dòng mới. */
+export const creditLedger = sqliteTable(
+  'credit_ledger',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    delta: integer('delta').notNull(),
+    /** 'topup' | 'job' | 'refund' | 'bonus' | 'admin' */
+    reason: text('reason').notNull(),
+    /** id đơn hàng hoặc job liên quan */
+    refId: text('ref_id'),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index('credit_ledger_user_idx').on(t.userId, t.createdAt),
+    // Mỗi đơn/job chỉ được ghi một dòng cùng lý do: webhook gọi trùng không cộng hai lần
+    uniqueIndex('credit_ledger_reason_ref_unique').on(t.reason, t.refId),
+  ],
+);
+
 export type User = typeof users.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
@@ -236,3 +426,11 @@ export type Photo = typeof photos.$inferSelect;
 export type GuestbookEntry = typeof guestbookEntries.$inferSelect;
 export type Order = typeof orders.$inferSelect;
 export type Reminder = typeof reminders.$inferSelect;
+export type Creator = typeof creators.$inferSelect;
+export type Video = typeof videos.$inferSelect;
+export type VideoSnapshot = typeof videoSnapshots.$inferSelect;
+export type CreatorAnalysis = typeof creatorAnalyses.$inferSelect;
+export type VirtualModel = typeof virtualModels.$inferSelect;
+export type Product = typeof products.$inferSelect;
+export type StudioJob = typeof studioJobs.$inferSelect;
+export type CreditEntry = typeof creditLedger.$inferSelect;

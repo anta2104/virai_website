@@ -10,8 +10,8 @@ export const GET: APIRoute = async ({ request }) => {
   const png = await renderOg(
     siteOgHtml({
       brand: site.name,
-      title: 'Bé đã đi rồi.\nKỷ niệm thì vẫn ở lại.',
-      subtitle: 'Trang tưởng niệm thú cưng: ảnh, câu chuyện, sổ lưu bút và mã QR để chia sẻ.',
+      title: 'Phân tích TikTok bằng AI.\nNgười mẫu ảo chụp sản phẩm.',
+      subtitle: 'Phân tích kênh TikTok bằng AI và thuê người mẫu ảo chụp ảnh sản phẩm.',
     }),
     fonts,
   );

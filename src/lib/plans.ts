@@ -134,6 +134,32 @@ export function isThemeAllowed(theme: string, isPremium: boolean | number): bool
   return limitsFor(isPremium).themes.includes(theme);
 }
 
+/* ── Tín chỉ cho studio người mẫu ảo ───────────────────────────────────── */
+
+/** Gói nạp tín chỉ. Giá chốt vào `orders.amount` lúc tạo đơn. */
+export const CREDIT_PACKS = [
+  { id: 'thu', credits: 10, price: 49_000, label: 'Gói thử' },
+  { id: 'shop', credits: 40, price: 149_000, label: 'Gói shop' },
+  { id: 'pro', credits: 120, price: 349_000, label: 'Gói pro' },
+] as const;
+
+export type CreditPackId = (typeof CREDIT_PACKS)[number]['id'];
+
+export function creditPack(id: string) {
+  return CREDIT_PACKS.find((pack) => pack.id === id) ?? null;
+}
+
+/** Số tín chỉ trừ cho từng loại việc trong studio. */
+export const STUDIO_COSTS = {
+  /** mỗi ảnh */
+  photoshootImage: 1,
+  /** mỗi video nói chuyện (giai đoạn sau) */
+  talkingVideo: 15,
+} as const;
+
+/** Tín chỉ tặng khi tài khoản dùng studio lần đầu — đủ để thử một ảnh. */
+export const WELCOME_CREDITS = 2;
+
 export function formatVnd(amount: number): string {
   return `${amount.toLocaleString('vi-VN')}đ`;
 }

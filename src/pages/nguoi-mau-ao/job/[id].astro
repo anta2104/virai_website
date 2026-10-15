@@ -1,0 +1,175 @@
+---
+import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
+import { notFound } from '../../../lib/guards';
+import {
+  getOwnedJob,
+  getProduct,
+  JOB_STATUS_LABEL,
+  parseBrief,
+  parseImageKeys,
+  parseResultKeys,
+} from '../../../lib/studio/service';
+import { getModel } from '../../../lib/studio/models';
+import { SCENE_PRESETS } from '../../../lib/studio/prompt';
+import { formatDateTime } from '../../../lib/format';
+
+const user = Astro.locals.user;
+if (!user) {
+  const next = encodeURIComponent(Astro.url.pathname);
+  return Astro.redirect(`/dang-nhap?next=${next}`);
+}
+
+const job = await getOwnedJob(Astro.params.id!, user.id);
+if (!job) return notFound('Không tìm thấy buổi chụp');
+
+const [model, product] = await Promise.all([getModel(job.modelId), getProduct(job.productId)]);
+const brief = parseBrief(job.briefJson);
+const results = parseResultKeys(job.resultKeysJson);
+const productImages = parseImageKeys(product?.imagesJson ?? null);
+const sceneLabel = SCENE_PRESETS.find((scene) => scene.id === brief.scene)?.label ?? brief.scene;
+const inProgress = job.status === 'queued' || job.status === 'running';
+
+const retryParams = new URLSearchParams({ model: job.modelId });
+---
+
+<AppLayout
+  title={product ? `Buổi chụp: ${product.name}` : 'Buổi chụp'}
+  eyebrow="Studio người mẫu ảo"
+  backHref="/tai-khoan/tin-chi"
+  backLabel="Về tín chỉ và lịch sử"
+  wide
+>
+  <div slot="actions" class="flex flex-wrap items-center gap-2">
+    <span
+      class:list={[
+        'badge',
+        job.status === 'done' && 'bg-sage-100 text-sage-700',
+        inProgress && 'bg-cream-200 text-ink-700',
+        job.status === 'failed' && 'bg-red-50 text-red-700',
+      ]}
+      data-status-badge
+    >
+      {JOB_STATUS_LABEL[job.status] ?? job.status}
+    </span>
+    <a href={`/nguoi-mau-ao/tao?${retryParams}`} class="btn-secondary btn-sm">Chụp lại</a>
+  </div>
+
+  <div class="grid gap-8 lg:grid-cols-[1fr_280px]">
+    <section data-job data-job-id={job.id} data-status={job.status} data-count={brief.count}>
+      {
+        job.status === 'failed' && (
+          <div class="alert-error mb-6">
+            <p class="font-medium">Buổi chụp không thành công, đã hoàn {job.costCredits} tín chỉ.</p>
+            {job.error && <p class="mt-1 text-xs opacity-80">Chi tiết kỹ thuật: {job.error}</p>}
+          </div>
+        )
+      }
+
+      {
+        inProgress && (
+          <p class="alert-info mb-6" data-progress role="status" aria-live="polite">
+            Đang chụp {results.length}/{brief.count} ảnh. Trang tự cập nhật, bạn cứ để mở.
+          </p>
+        )
+      }
+
+      {
+        results.length === 0 && !inProgress && job.status !== 'failed' && (
+          <p class="text-sm text-ink-500">Chưa có ảnh nào.</p>
+        )
+      }
+
+      <ul class="grid gap-4 sm:grid-cols-2" data-results>
+        {
+          results.map((key, index) => (
+            <li class="card overflow-hidden">
+              <img src={`/media/${key}`} alt={`Ảnh ${index + 1}`} class="aspect-square w-full object-cover" />
+              <div class="flex items-center justify-between px-4 py-3 text-sm">
+                <span class="text-ink-500">Ảnh {index + 1}</span>
+                <a href={`/media/${key}`} download={`virai-studio-${job.id.slice(0, 8)}-${index + 1}.png`} class="link-quiet">
+                  Tải về
+                </a>
+              </div>
+            </li>
+          ))
+        }
+        {
+          inProgress &&
+            Array.from({ length: Math.max(0, brief.count - results.length) }).map(() => (
+              <li class="card flex aspect-square items-center justify-center text-cream-400" data-placeholder>
+                <Icon name="image" size={40} weight={1.25} />
+              </li>
+            ))
+        }
+      </ul>
+    </section>
+
+    <aside class="space-y-5 text-sm">
+      <div class="card p-5">
+        <p class="eyebrow">Người mẫu</p>
+        <p class="mt-2 font-medium text-ink-900">{model?.model.name ?? '—'}</p>
+        <p class="text-ink-500">{model?.model.tagline}</p>
+      </div>
+      <div class="card p-5">
+        <p class="eyebrow">Sản phẩm</p>
+        <p class="mt-2 font-medium text-ink-900">{product?.name ?? '—'}</p>
+        {product?.category && <p class="text-ink-500">{product.category}</p>}
+        {product?.description && <p class="mt-2 text-ink-700">{product.description}</p>}
+        {
+          productImages.length > 0 && (
+            <ul class="mt-3 flex gap-2">
+              {productImages.map((key) => (
+                <li>
+                  <img src={`/media/${key}`} alt="" class="h-14 w-14 rounded-lg object-cover" />
+                </li>
+              ))}
+            </ul>
+          )
+        }
+      </div>
+      <div class="card p-5">
+        <p class="eyebrow">Bối cảnh</p>
+        <p class="mt-2 text-ink-900">{sceneLabel}</p>
+        {brief.notes && <p class="mt-1 text-ink-500">{brief.notes}</p>}
+        <p class="mt-3 text-xs text-ink-500">
+          {brief.count} ảnh · {job.costCredits} tín chỉ · tạo lúc {formatDateTime(job.createdAt)}
+        </p>
+      </div>
+      {
+        job.prompt && (
+          <details class="card p-5">
+            <summary class="cursor-pointer text-xs text-ink-500">Prompt đã dùng</summary>
+            <p class="mt-2 text-xs text-ink-700">{job.prompt}</p>
+          </details>
+        )
+      }
+    </aside>
+  </div>
+</AppLayout>
+
+<script>
+  /** Hỏi máy chủ mỗi 3 giây; có ảnh mới hoặc đổi trạng thái thì tải lại trang. */
+  const section = document.querySelector<HTMLElement>('[data-job]');
+  if (section && (section.dataset.status === 'queued' || section.dataset.status === 'running')) {
+    const jobId = section.dataset.jobId!;
+    const known = section.querySelectorAll('[data-results] > li:not([data-placeholder])').length;
+    const startedAt = Date.now();
+
+    const poll = async () => {
+      if (Date.now() - startedAt > 15 * 60 * 1000) return;
+      try {
+        const response = await fetch(`/api/studio/jobs/${jobId}/status`);
+        const data = (await response.json()) as { status?: string; done?: number };
+        if ((data.status && data.status !== 'queued' && data.status !== 'running') || (data.done ?? 0) > known) {
+          window.location.reload();
+          return;
+        }
+      } catch {
+        // mất mạng tạm thời — thử lại vòng sau
+      }
+      setTimeout(poll, 3000);
+    };
+    setTimeout(poll, 3000);
+  }
+</script>

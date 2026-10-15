@@ -28,6 +28,9 @@ const path = Astro.url.pathname;
 
 const navItems = [
   { href: '/tai-khoan', label: 'Trang kỷ niệm' },
+  { href: '/tiktok', label: 'Phân tích TikTok' },
+  { href: '/nguoi-mau-ao', label: 'Người mẫu ảo' },
+  { href: '/tai-khoan/tin-chi', label: 'Tín chỉ' },
   { href: '/tai-khoan/don-hang', label: 'Đơn hàng' },
 ];
 ---
@@ -47,7 +50,7 @@ const navItems = [
         <nav class="flex items-center gap-5 text-sm" aria-label="Khu vực tài khoản">
           {
             navItems.map((item) => {
-              const active = path === item.href;
+              const active = item.href === '/tai-khoan' ? path === item.href : path.startsWith(item.href);
               return (
                 <a
                   href={item.href}

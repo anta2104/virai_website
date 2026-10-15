@@ -1,0 +1,161 @@
+---
+import SiteLayout from '../../layouts/SiteLayout.astro';
+import Icon from '../../components/Icon.astro';
+import { listActiveModels, MODEL_PLACEHOLDER_CLASS } from '../../lib/studio/models';
+import { CREDIT_PACKS, STUDIO_COSTS, WELCOME_CREDITS, formatVnd } from '../../lib/plans';
+import { site } from '../../lib/site';
+
+const models = await listActiveModels();
+const user = Astro.locals.user;
+const ctaHref = user ? '/nguoi-mau-ao/tao' : '/dang-nhap?next=%2Fnguoi-mau-ao%2Ftao';
+const cheapest = CREDIT_PACKS[0];
+---
+
+<SiteLayout
+  title={`Người mẫu ảo cho thuê · ${site.name}`}
+  description="Thuê người mẫu ảo do AI tạo để chụp ảnh sản phẩm: chọn người mẫu, mô tả sản phẩm, nhận ảnh quảng cáo trong vài phút."
+>
+  <section class="section">
+    <div class="container-page">
+      <div class="max-w-2xl">
+        <p class="eyebrow">Studio người mẫu ảo</p>
+        <h1 class="display mt-3">Người mẫu ảo chụp ảnh sản phẩm cho shop của bạn</h1>
+        <p class="measure mt-5 text-lg text-ink-500">
+          Năm gương mặt do AI tạo, mỗi người một ngách. Bạn đưa tên và mô tả sản phẩm, chọn bối cảnh,
+          vài phút sau có ảnh để đăng TikTok, Shopee hay Facebook. Không cần thuê studio, không cần
+          hẹn lịch.
+        </p>
+        <div class="mt-8 flex flex-wrap items-center gap-3">
+          <a href={ctaHref} class="btn-primary">Tạo buổi chụp đầu tiên</a>
+          <span class="text-sm text-ink-500">
+            Tặng {WELCOME_CREDITS} tín chỉ khi dùng lần đầu, đủ thử {WELCOME_CREDITS} ảnh.
+          </span>
+        </div>
+      </div>
+
+      <div class="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {
+          models.map(({ model, persona, portraitUrl }) => (
+            <article class="card overflow-hidden">
+              <div class="aspect-[4/5] w-full bg-cream-100">
+                {portraitUrl ? (
+                  <img
+                    src={portraitUrl}
+                    alt={`Người mẫu ảo ${model.name}`}
+                    class="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div
+                    class:list={[
+                      'flex h-full w-full items-center justify-center font-serif text-7xl font-semibold',
+                      MODEL_PLACEHOLDER_CLASS[model.slug] ?? 'bg-cream-200 text-ink-700',
+                    ]}
+                    aria-label={`Người mẫu ảo ${model.name}, chưa có ảnh đại diện`}
+                  >
+                    {model.name.charAt(0)}
+                  </div>
+                )}
+              </div>
+              <div class="p-5">
+                <div class="flex items-baseline justify-between gap-3">
+                  <h2 class="font-serif text-xl font-semibold">{model.name}</h2>
+                  <span class="text-xs text-ink-500">
+                    {persona.age} tuổi · {persona.gender}
+                  </span>
+                </div>
+                <p class="mt-1 text-sm text-ink-700">{model.tagline}</p>
+                <p class="mt-3 text-sm text-ink-500">{persona.appearance}</p>
+                <ul class="mt-4 flex flex-wrap gap-1.5">
+                  {persona.niches.map((niche) => (
+                    <li class="badge bg-cream-200 text-ink-700">{niche}</li>
+                  ))}
+                </ul>
+                <a
+                  href={user ? `/nguoi-mau-ao/tao?model=${model.id}` : ctaHref}
+                  class="btn-secondary btn-sm mt-5"
+                >
+                  Chụp với {model.name}
+                </a>
+              </div>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="section bg-cream-100">
+    <div class="container-page">
+      <p class="eyebrow">Cách hoạt động</p>
+      <div class="mt-6 grid gap-8 md:grid-cols-3">
+        <div>
+          <span class="inline-flex text-clay-500"><Icon name="image" size={28} /></span>
+          <h2 class="mt-3 font-serif text-lg font-semibold">1. Chọn người mẫu và mô tả sản phẩm</h2>
+          <p class="mt-2 text-sm text-ink-500">
+            Tên sản phẩm, vài dòng mô tả, ảnh sản phẩm nếu có. Chọn bối cảnh: studio, quán cà phê, phố,
+            phòng gym...
+          </p>
+        </div>
+        <div>
+          <span class="inline-flex text-clay-500"><Icon name="clock" size={28} /></span>
+          <h2 class="mt-3 font-serif text-lg font-semibold">2. Chờ vài phút</h2>
+          <p class="mt-2 text-sm text-ink-500">
+            Hệ thống dựng prompt từ hồ sơ cố định của người mẫu nên gương mặt giữ nhất quán giữa các
+            lần chụp. Ảnh xong hiện dần trên trang.
+          </p>
+        </div>
+        <div>
+          <span class="inline-flex text-clay-500"><Icon name="share" size={28} /></span>
+          <h2 class="mt-3 font-serif text-lg font-semibold">3. Tải về và đăng</h2>
+          <p class="mt-2 text-sm text-ink-500">
+            Ảnh thuộc về bạn, dùng cho bài đăng và gian hàng. Không ưng thì chụp lại, ảnh lỗi được hoàn
+            tín chỉ.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container-page">
+      <div class="grid gap-10 lg:grid-cols-[1fr_1.2fr]">
+        <div>
+          <p class="eyebrow">Giá</p>
+          <h2 class="mt-3 font-serif text-3xl font-semibold">Trả theo tín chỉ, không thuê bao</h2>
+          <p class="measure mt-4 text-ink-500">
+            Mỗi ảnh trừ {STUDIO_COSTS.photoshootImage} tín chỉ. Nạp từ {formatVnd(cheapest.price)} cho{' '}
+            {cheapest.credits} tín chỉ. Tín chỉ không hết hạn.
+          </p>
+          <a href={user ? '/tai-khoan/tin-chi' : '/dang-nhap?next=%2Ftai-khoan%2Ftin-chi'} class="btn-secondary mt-6">
+            Xem các gói nạp
+          </a>
+        </div>
+        <ul class="grid gap-4 sm:grid-cols-3">
+          {
+            CREDIT_PACKS.map((pack) => (
+              <li class="card p-5">
+                <p class="text-sm text-ink-500">{pack.label}</p>
+                <p class="mt-1 font-serif text-2xl font-semibold text-ink-900">{pack.credits} tín chỉ</p>
+                <p class="mt-1 text-sm text-ink-700">{formatVnd(pack.price)}</p>
+                <p class="hint">{formatVnd(Math.round(pack.price / pack.credits))} mỗi ảnh</p>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+
+      <div class="alert-info mt-12 max-w-3xl">
+        <p class="font-medium">Minh bạch về AI</p>
+        <p class="mt-1">
+          Cả năm người mẫu đều là nhân vật do AI tạo, không dựa trên người thật. Khi dùng ảnh để quảng
+          cáo, bạn nên ghi rõ "hình ảnh do AI tạo". Studio không nhận ảnh mặt người thật để ghép, và
+          không nhận sản phẩm thuộc nhóm thuốc kê đơn, rượu bia, thuốc lá, cờ bạc, vũ khí, nội dung
+          người lớn. Ở bản hiện tại, ảnh sản phẩm bạn tải lên được lưu để tham chiếu; mức giống sản
+          phẩm thật còn phụ thuộc mô tả bằng lời, nên hãy mô tả màu sắc, hình dáng, chất liệu càng cụ
+          thể càng tốt.
+        </p>
+      </div>
+    </div>
+  </section>
+</SiteLayout>

@@ -3,13 +3,20 @@ import { getDb, withDbRetry } from './db';
 import { memorials, orders, users, type Memorial, type Order } from './db/schema';
 import { newId } from './ids';
 import { newPaymentCode } from './payment-code';
-import { amountToCharge, formatVnd } from './plans';
+import { amountToCharge, creditPack, formatVnd } from './plans';
+import { balanceOf, grant } from './credits';
 import { ensureRemindersFor } from './reminders';
-import { orderPaidEmail, orderShippedEmail, sendEmail } from './email';
-import { memorialUrl } from './site';
+import { creditsPaidEmail, orderPaidEmail, orderShippedEmail, sendEmail } from './email';
+import { memorialUrl, site } from './site';
 import { env, waitUntil } from './env';
 
-export type OrderType = 'premium' | 'physical_combo';
+export type OrderType = 'premium' | 'physical_combo' | 'credits';
+
+/** Dữ liệu riêng của đơn nạp tín chỉ, lưu trong `orders.meta`. */
+export interface CreditOrderMeta {
+  credits: number;
+  packId: string;
+}
 
 export interface ShippingInfo {
   fullName: string;
@@ -26,7 +33,56 @@ export interface ShippingInfo {
  * giá thì giữ giá đó kể cả khi chuyển khoản sau khi ưu đãi kết thúc.
  */
 export function amountFor(type: OrderType): number {
+  if (type === 'credits') throw new Error('Đơn tín chỉ lấy giá theo gói, xem createCreditOrder');
   return amountToCharge(type === 'physical_combo' ? 'physicalCombo' : 'premium');
+}
+
+/**
+ * Tạo đơn nạp tín chỉ. Tái dùng đơn chờ thanh toán cùng gói nếu có, để khách
+ * bấm lại không sinh ra nhiều mã chuyển khoản.
+ */
+export async function createCreditOrder(userId: string, packId: string): Promise<Order | null> {
+  const pack = creditPack(packId);
+  if (!pack) return null;
+
+  const db = getDb(env.DB);
+  const pending = await db
+    .select()
+    .from(orders)
+    .where(and(eq(orders.userId, userId), eq(orders.type, 'credits'), eq(orders.status, 'pending')))
+    .orderBy(desc(orders.createdAt))
+    .limit(5);
+  const same = pending.find((order) => parseCreditMeta(order.meta)?.packId === pack.id);
+  if (same) return same;
+
+  const meta: CreditOrderMeta = { credits: pack.credits, packId: pack.id };
+  const order: Order = {
+    id: newId(),
+    userId,
+    memorialId: null,
+    type: 'credits',
+    amount: pack.price,
+    paymentCode: newPaymentCode(env),
+    status: 'pending',
+    shippingInfo: null,
+    note: null,
+    createdAt: Math.floor(Date.now() / 1000),
+    paidAt: null,
+    meta: JSON.stringify(meta),
+  };
+  await db.insert(orders).values(order);
+  return order;
+}
+
+export function parseCreditMeta(raw: string | null): CreditOrderMeta | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<CreditOrderMeta>;
+    if (typeof parsed.credits !== 'number' || parsed.credits <= 0) return null;
+    return { credits: parsed.credits, packId: String(parsed.packId ?? '') };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -90,6 +146,7 @@ export async function getOrCreateOrder(input: {
     note: null,
     createdAt: Math.floor(Date.now() / 1000),
     paidAt: null,
+    meta: null,
   };
 
   await db.insert(orders).values(order);
@@ -141,6 +198,20 @@ export async function markOrderPaid(
   // Chỉ lần chuyển pending → paid mới gửi email. Webhook có thể gọi trùng, mà
   // khách thì không nên nhận hai lần cùng một tin báo.
   const firstTime = order.status === 'pending';
+
+  // Đơn tín chỉ: cộng vào sổ cái TRƯỚC khi đổi trạng thái. Nếu ghi sổ hỏng thì
+  // đơn vẫn pending, webhook gửi lại sẽ chạy tiếp; làm ngược lại thì đơn đã
+  // "paid" mà khách không có tín chỉ và không còn đường thử lại. `grant` tự bỏ
+  // qua nếu đơn này đã được cộng (webhook trùng, admin xác nhận tay sau webhook).
+  if (order.type === 'credits') {
+    const meta = parseCreditMeta(order.meta);
+    if (meta) {
+      await grant(order.userId, meta.credits, 'topup', order.id);
+    } else {
+      console.error(`[orders] Đơn tín chỉ ${order.paymentCode} thiếu meta, không cộng được`);
+    }
+  }
+
   if (firstTime) {
     await db
       .update(orders)
@@ -198,6 +269,23 @@ export async function sendOrderShippedEmail(order: Order): Promise<void> {
 async function sendOrderPaidEmail(order: Order, memorial: Memorial | null): Promise<void> {
   const owner = await ownerOf(order);
   if (!owner) return;
+
+  const creditMeta = order.type === 'credits' ? parseCreditMeta(order.meta) : null;
+  if (creditMeta) {
+    const message = creditsPaidEmail({
+      ownerName: owner.name,
+      amountText: formatVnd(order.amount),
+      paymentCode: order.paymentCode,
+      credits: creditMeta.credits,
+      balance: await balanceOf(owner.id),
+      studioUrl: new URL('/nguoi-mau-ao/tao', site.url).href,
+    });
+    const result = await sendEmail(env, { ...message, to: owner.email });
+    if (!result.ok) {
+      console.error(`[orders] Không gửi được email tín chỉ cho đơn ${order.paymentCode}:`, result.error);
+    }
+    return;
+  }
 
   const message = orderPaidEmail({
     ownerName: owner.name,
@@ -261,6 +349,7 @@ export const ORDER_STATUS_LABEL: Record<string, string> = {
 export const ORDER_TYPE_LABEL: Record<string, string> = {
   premium: 'Nâng cấp Premium',
   physical_combo: 'Combo thẻ QR vật lý',
+  credits: 'Nạp tín chỉ studio',
 };
 
 export const MATERIAL_LABEL: Record<string, string> = {

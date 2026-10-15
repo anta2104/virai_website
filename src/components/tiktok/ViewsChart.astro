@@ -1,0 +1,101 @@
+---
+/**
+ * Biểu đồ đường một chuỗi: view của từng video theo ngày đăng.
+ * SVG inline, không thư viện. Một chuỗi nên không cần chú giải; mỗi điểm có
+ * <title> để rê chuột thấy số.
+ */
+import { compactNumber } from '../../lib/tiktok/metrics';
+import type { SeriesPoint } from '../../lib/tiktok/metrics';
+
+interface Props {
+  series: SeriesPoint[];
+  highlightIds?: string[];
+}
+const { series, highlightIds = [] } = Astro.props;
+
+const W = 720;
+const H = 260;
+const PAD = { top: 16, right: 16, bottom: 36, left: 52 };
+const innerW = W - PAD.left - PAD.right;
+const innerH = H - PAD.top - PAD.bottom;
+
+// Chuỗi rỗng (provider không đọc được ngày đăng) thì xMin/xMax thành ±Infinity
+// và Intl.DateTimeFormat ném RangeError — chặn ngay từ đây.
+const empty = series.length === 0;
+const xs = empty ? [0] : series.map((p) => p.postedAt);
+const ys = empty ? [0] : series.map((p) => p.views);
+const xMin = Math.min(...xs);
+const xMax = Math.max(...xs);
+const yMax = Math.max(1, ...ys);
+
+/** Bước trục y "đẹp": 1, 2, 5 × 10^n */
+function niceStep(max: number, ticks = 4): number {
+  const rough = max / ticks;
+  const power = 10 ** Math.floor(Math.log10(rough));
+  const candidates = [1, 2, 5, 10].map((m) => m * power);
+  return candidates.find((c) => c >= rough) ?? candidates[3]!;
+}
+const step = niceStep(yMax);
+const yTop = Math.ceil(yMax / step) * step;
+const yTicks = Array.from({ length: Math.floor(yTop / step) + 1 }, (_, i) => i * step);
+
+const x = (t: number) => PAD.left + (xMax === xMin ? innerW / 2 : ((t - xMin) / (xMax - xMin)) * innerW);
+const y = (v: number) => PAD.top + innerH - (v / yTop) * innerH;
+
+const path = series.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(p.postedAt).toFixed(1)},${y(p.views).toFixed(1)}`).join(' ');
+
+const fmtDate = (t: number) =>
+  new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' }).format(
+    new Date(t * 1000),
+  );
+
+// 4 nhãn ngày rải đều
+const xTicks = [0, 1 / 3, 2 / 3, 1].map((f) => xMin + (xMax - xMin) * f);
+const highlight = new Set(highlightIds);
+---
+
+<figure>
+  {empty && <p class="alert-info">Chưa có dữ liệu ngày đăng để vẽ biểu đồ.</p>}
+  <svg viewBox={`0 0 ${W} ${H}`} class="h-auto w-full" role="img" aria-label="View của từng video theo ngày đăng">
+    {
+      yTicks.map((v) => (
+        <g>
+          <line x1={PAD.left} x2={W - PAD.right} y1={y(v)} y2={y(v)} stroke="var(--color-cream-300)" stroke-width="1" />
+          <text x={PAD.left - 8} y={y(v) + 4} text-anchor="end" font-size="11" fill="var(--color-ink-500)">
+            {compactNumber(v)}
+          </text>
+        </g>
+      ))
+    }
+    {
+      xTicks.map((t) => (
+        <text x={x(t)} y={H - 12} text-anchor="middle" font-size="11" fill="var(--color-ink-500)">
+          {fmtDate(t)}
+        </text>
+      ))
+    }
+    <path d={path} fill="none" stroke="var(--color-clay-500)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+    {
+      series.map((p) => (
+        <g>
+          <circle
+            cx={x(p.postedAt)}
+            cy={y(p.views)}
+            r={highlight.has(p.tiktokId) ? 6 : 4}
+            fill={highlight.has(p.tiktokId) ? 'var(--color-candle)' : 'var(--color-clay-500)'}
+            stroke="var(--color-cream-50)"
+            stroke-width="2"
+          >
+            <title>{`${fmtDate(p.postedAt)} · ${p.views.toLocaleString('vi-VN')} view · tương tác ${(p.engagementRate * 100).toFixed(1)}%`}</title>
+          </circle>
+          <circle cx={x(p.postedAt)} cy={y(p.views)} r="12" fill="transparent">
+            <title>{`${fmtDate(p.postedAt)} · ${p.views.toLocaleString('vi-VN')} view`}</title>
+          </circle>
+        </g>
+      ))
+    }
+  </svg>
+  <figcaption class="mt-2 text-xs text-ink-500">
+    Mỗi chấm là một video. Chấm vàng là video nổi bật (view vượt 2 lần trung vị). Rê chuột để xem số.
+  </figcaption>
+</figure>

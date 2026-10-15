@@ -1,104 +1,72 @@
 ---
 import SiteLayout from '../layouts/SiteLayout.astro';
-import PricingTable from '../components/PricingTable.astro';
 import Icon from '../components/Icon.astro';
 import type { IconName } from '../lib/icons';
 import { site } from '../lib/site';
-import { listDemoMemorials, listPhotos, coverUrlOf } from '../lib/memorials';
-import { formatDate } from '../lib/format';
-import { isPromoActive, PROMO } from '../lib/plans';
-import { env } from '../lib/env';
+import { listActiveModels, MODEL_PLACEHOLDER_CLASS } from '../lib/studio/models';
+import { CREDIT_PACKS, STUDIO_COSTS, WELCOME_CREDITS, formatVnd } from '../lib/plans';
 
-// Trang mẫu để khách bấm xem ngay — chỉ hiện nếu đã seed trong D1
-const demos = await listDemoMemorials(env.DB).catch(() => []);
-const demoCards = await Promise.all(
-  demos.slice(0, 3).map(async (memorial) => {
-    const photoList = await listPhotos(env.DB, memorial.id);
-    return { memorial, cover: coverUrlOf(memorial, photoList) };
-  }),
-);
+const user = Astro.locals.user;
+const models = await listActiveModels().catch(() => []);
+const cheapest = CREDIT_PACKS[0];
+const studioHref = user ? '/nguoi-mau-ao/tao' : '/nguoi-mau-ao';
 
-const steps = [
+const tiktokPoints: Array<{ icon: IconName; title: string; body: string }> = [
   {
-    title: 'Kể về bé',
-    body: 'Tên, giống loài, ngày sinh và ngày bé rời đi. Vừa nhập ngày dương là trang hiện luôn ngày âm tương ứng.',
+    icon: 'eye',
+    title: 'Chỉ số thật của 30 video gần nhất',
+    body: 'View, like, bình luận, chia sẻ, lưu. Tỉ lệ lưu và chia sẻ tính riêng vì đó là hai tín hiệu TikTok ưu tiên đẩy.',
   },
   {
-    title: 'Tải ảnh và viết câu chuyện',
-    body: 'Chọn những tấm bạn thương nhất. Không biết mở đầu thế nào thì trả lời vài câu gợi ý, AI dựng thành bài hoàn chỉnh để bạn sửa lại theo giọng mình.',
-  },
-  {
-    title: 'Chia sẻ bằng mã QR',
-    body: 'Mỗi trang có địa chỉ riêng và mã QR riêng. Dán link lên Facebook hay Zalo là có sẵn ảnh xem trước đẹp.',
-  },
-];
-
-const features: Array<{ icon: IconName; title: string; body: string }> = [
-  {
-    icon: 'moon',
-    title: 'Nhắc 49 ngày và ngày giỗ theo âm lịch',
-    body: 'Chúng tôi chuyển ngày mất sang âm lịch, tính ngày cúng 49 ngày, 100 ngày và giỗ hằng năm, rồi gửi email nhắc trước ba ngày. Âm lịch lệch mỗi năm một khác — đây là thứ dễ quên nhất.',
+    icon: 'clock',
+    title: 'Giờ đăng hiệu quả của chính kênh bạn',
+    body: 'Không phải khung giờ chung chung trên mạng. Tính từ video của bạn: thứ nào, giờ nào view trung vị cao nhất.',
   },
   {
     icon: 'quill',
-    title: 'AI viết giúp phần khó nhất',
-    body: 'Nhiều người ngồi trước ô trống rồi bỏ dở. Bạn chỉ cần trả lời “bé thích ăn gì”, “kỷ niệm nào nhớ nhất”, phần còn lại để chúng tôi lo. Bài viết vẫn là của bạn, sửa được từng chữ.',
+    title: 'AI nói vì sao video nổi và nên làm gì tiếp',
+    body: 'Nhóm chủ đề đang kéo kênh, xu hướng lên hay xuống, 5 ý tưởng video kế tiếp kèm câu mở đầu.',
+  },
+];
+
+const steps = [
+  {
+    title: 'Dán link kênh TikTok',
+    body: 'Link hoặc @tên kênh đều được. Hệ thống kéo video gần nhất và tính chỉ số trong vài giây.',
   },
   {
-    icon: 'qr',
-    title: 'Mã QR để chia sẻ hoặc khắc thẻ',
-    body: 'Tải mã về tự in dán vào khung ảnh, hoặc đặt thẻ kim loại và gỗ khắc sẵn để đặt cạnh tro cốt, vòng cổ.',
+    title: 'Đọc phân tích',
+    body: 'Biểu đồ, bảng video, giờ đăng tốt, hashtag hiệu quả và phần AI đọc xu hướng kèm điểm sức khỏe kênh.',
   },
   {
-    icon: 'candle',
-    title: 'Thắp nến, thả hoa, viết lưu bút',
-    body: 'Người ghé thăm để lại một ngọn nến hay vài dòng. Mọi lời nhắn chờ bạn duyệt trước khi hiện, nên trang luôn giữ được sự trang trọng.',
-  },
-  {
-    icon: 'share',
-    title: 'Ảnh chia sẻ tự sinh, không cần thiết kế',
-    body: 'Dán link lên mạng xã hội là có ngay tấm ảnh xem trước với ảnh của bé, tên và ngày tháng — đúng tỉ lệ Facebook và Zalo yêu cầu.',
-  },
-  {
-    icon: 'infinity',
-    title: 'Trả một lần, giữ trọn đời',
-    body: 'Không thuê tháng, không phí duy trì hằng năm. Gói Premium trả một lần cho mỗi bé và trang được giữ lâu dài.',
+    title: 'Tạo ảnh sản phẩm theo xu hướng',
+    body: 'Bấm sang studio, chọn người mẫu ảo, đưa sản phẩm vào. Vài phút sau có ảnh để đăng.',
   },
 ];
 
 const faqs = [
   {
-    q: 'Tạo trang có mất phí không?',
-    a: 'Không. Bạn tạo được một trang kỷ niệm hoàn chỉnh miễn phí với 10 ảnh. Chỉ khi cần thêm ảnh, thêm giao diện hoặc email nhắc ngày giỗ thì mới cần nâng cấp.',
+    q: 'Phân tích kênh có mất phí không?',
+    a: 'Không. Bạn chỉ cần tài khoản miễn phí. Studio người mẫu ảo tính theo tín chỉ, mỗi ảnh một tín chỉ.',
   },
   {
-    q: 'Trang của bé có bị xoá sau một thời gian không?',
-    a: 'Không. Trang được giữ lâu dài. Gói Premium là khoản trả một lần cho mỗi bé, không phải phí duy trì hằng năm.',
+    q: 'Tôi có phân tích được kênh của người khác không?',
+    a: 'Được, miễn là kênh công khai. Dùng để học từ kênh cùng ngách hoặc so với đối thủ.',
   },
   {
-    q: 'Tôi thanh toán bằng cách nào?',
-    a: 'Chuyển khoản ngân hàng qua mã VietQR — mở app ngân hàng, quét mã, số tiền và nội dung đã điền sẵn. Hệ thống tự xác nhận, thường trong vài giây.',
+    q: 'Người mẫu ảo là ai?',
+    a: 'Là nhân vật do AI tạo, không dựa trên người thật. Chúng tôi không nhận ảnh mặt người thật đưa vào studio.',
   },
   {
-    q: 'Ai xem được trang của bé?',
-    a: 'Mặc định chỉ người có đường link hoặc quét mã QR. Trang không nằm trong danh sách công khai nào và không có trong sitemap, trừ khi chính bạn bật "Hiện trong Vườn tưởng niệm" — bật rồi tắt lại được bất cứ lúc nào. Bạn cũng ẩn hẳn trang được.',
-  },
-  {
-    q: 'Lời lưu bút của người lạ có tự hiện lên không?',
-    a: 'Không. Mọi lời nhắn đều chờ bạn duyệt. Bạn ẩn hoặc xoá được bất cứ lời nào.',
+    q: 'Ảnh sinh ra có đúng sản phẩm của tôi không?',
+    a: 'Ở bản hiện tại, người mẫu và bối cảnh giữ nhất quán, còn sản phẩm dựng theo mô tả bằng lời nên có thể lệch chi tiết. Ảnh lỗi được hoàn tín chỉ.',
   },
 ];
 
 const jsonLd = {
   '@context': 'https://schema.org',
   '@graph': [
-    {
-      '@type': 'WebSite',
-      name: site.name,
-      url: site.url,
-      description: site.description,
-      inLanguage: 'vi',
-    },
+    { '@type': 'WebSite', name: site.name, url: site.url, description: site.description, inLanguage: 'vi' },
     {
       '@type': 'Organization',
       name: site.company,
@@ -118,259 +86,179 @@ const jsonLd = {
 };
 ---
 
-<SiteLayout
-  title={`${site.name} — ${site.tagline}`}
-  description={site.description}
-  jsonLd={jsonLd}
->
-  <!-- Mở đầu: căn trái như một trang sách, không phải khối căn giữa -->
+<SiteLayout title={`${site.name} — ${site.tagline}`} description={site.description} jsonLd={jsonLd}>
+  <!-- Mở đầu -->
   <section class="container-page px-4 pt-14 pb-16 sm:px-6 lg:px-8 lg:pt-24">
-    <div class="grid gap-14 lg:grid-cols-[1.15fr_0.85fr] lg:items-end lg:gap-14">
+    <div class="grid gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
       <div>
-        <p class="eyebrow">Trang tưởng niệm thú cưng</p>
-        <h1 class="display mt-5 text-[2.5rem] sm:text-[3.4rem] xl:text-6xl">
-          Bé đã đi rồi.<br />Kỷ niệm thì vẫn ở lại.
+        <p class="eyebrow">Cho người bán hàng và creator trên TikTok</p>
+        <h1 class="display mt-4">
+          Biết video nào đang kéo kênh lên.<br />Có người mẫu chụp sản phẩm ngay.
         </h1>
-        <p class="measure mt-7 text-lg text-ink-500">
-          Một trang riêng cho người bạn nhỏ của bạn: ảnh, câu chuyện, sổ lưu bút và mã QR để chia
-          sẻ. Miễn phí để bắt đầu — và chúng tôi nhắc bạn ngày 49 cùng ngày giỗ theo âm lịch.
+        <p class="measure mt-6 text-lg text-ink-500">
+          Dán link kênh TikTok, AI đọc 30 video gần nhất và nói rõ vì sao video nổi, nên đăng giờ nào,
+          làm gì tiếp. Cần ảnh sản phẩm thì thuê một trong năm người mẫu ảo, vài phút là có.
         </p>
-
-        <div class="mt-9 flex flex-wrap items-center gap-x-6 gap-y-3">
-          <a href="/dang-ky" class="btn-primary px-7 py-3.5 text-base">Tạo trang miễn phí</a>
-          {
-            demoCards.length > 0 && (
-              <a
-                href={`/be/${demoCards[0]!.memorial.slug}`}
-                class="inline-flex items-center gap-2 text-base font-medium text-clay-700 transition hover:gap-3"
-              >
-                Xem một trang mẫu
-                <Icon name="arrow-right" size={18} />
-              </a>
-            )
-          }
+        <div class="mt-8 flex flex-wrap items-center gap-3">
+          <a href="/tiktok" class="btn-primary">Phân tích kênh miễn phí</a>
+          <a href="/nguoi-mau-ao" class="btn-secondary">Xem người mẫu ảo</a>
         </div>
-        <p class="mt-5 text-sm text-ink-500">Không cần thẻ ngân hàng · Khoảng 5 phút</p>
+        <p class="mt-4 text-sm text-ink-500">
+          Không cần thẻ. Tài khoản mới được tặng {WELCOME_CREDITS} tín chỉ để thử studio.
+        </p>
       </div>
 
-      <!-- Ba trang mẫu xếp lệch như ảnh rời trên mặt bàn -->
+      <!-- Hai sản phẩm đặt cạnh nhau như hai thẻ, để người xem thấy ngay site có gì -->
+      <div class="grid gap-4">
+        <a href="/tiktok" class="card group flex gap-4 p-5 transition hover:border-clay-300">
+          <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-clay-50 text-clay-600">
+            <Icon name="eye" size={22} />
+          </span>
+          <span>
+            <span class="block font-serif text-lg font-semibold text-ink-900 group-hover:text-clay-700">
+              Phân tích kênh TikTok
+            </span>
+            <span class="mt-1 block text-sm text-ink-500">
+              Chỉ số từng video, giờ đăng tốt, hashtag hiệu quả, AI đọc xu hướng. Miễn phí.
+            </span>
+          </span>
+        </a>
+        <a href={studioHref} class="card group flex gap-4 p-5 transition hover:border-clay-300">
+          <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-clay-50 text-clay-600">
+            <Icon name="image" size={22} />
+          </span>
+          <span>
+            <span class="block font-serif text-lg font-semibold text-ink-900 group-hover:text-clay-700">
+              Người mẫu ảo cho thuê
+            </span>
+            <span class="mt-1 block text-sm text-ink-500">
+              Năm gương mặt do AI tạo, mỗi người một ngách. {STUDIO_COSTS.photoshootImage} tín chỉ mỗi ảnh,
+              gói từ {formatVnd(cheapest.price)}.
+            </span>
+          </span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Phân tích TikTok: ba điểm chính -->
+  <section class="section bg-cream-100">
+    <div class="container-page">
+      <p class="eyebrow">Phân tích TikTok</p>
+      <h2 class="mt-3 max-w-2xl font-serif text-3xl font-semibold">
+        Số liệu tính bằng code, nhận định do AI viết. Không trộn lẫn hai thứ.
+      </h2>
+      <div class="mt-10 grid gap-8 md:grid-cols-3">
+        {
+          tiktokPoints.map((point) => (
+            <div>
+              <span class="inline-flex text-clay-500">
+                <Icon name={point.icon} size={28} />
+              </span>
+              <h3 class="mt-3 font-serif text-lg font-semibold">{point.title}</h3>
+              <p class="mt-2 text-sm text-ink-500">{point.body}</p>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Người mẫu ảo -->
+  <section class="section">
+    <div class="container-page">
+      <div class="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p class="eyebrow">Studio người mẫu ảo</p>
+          <h2 class="mt-3 font-serif text-3xl font-semibold">Năm người mẫu, năm ngách hàng</h2>
+          <p class="measure mt-3 text-ink-500">
+            Mỗi người có hồ sơ ngoại hình cố định nên gương mặt giữ nhất quán giữa các lần chụp. Bạn chọn
+            người hợp với sản phẩm, còn lại để studio lo.
+          </p>
+        </div>
+        <a href="/nguoi-mau-ao" class="btn-secondary">Xem chi tiết từng người</a>
+      </div>
+
       {
-        demoCards.length > 0 && (
-          <div class="flex items-end justify-center gap-3 sm:gap-5 lg:justify-end">
-            {demoCards.map(({ memorial, cover }, index) => (
-              <a
-                href={`/be/${memorial.slug}`}
-                class:list={[
-                  'group block w-1/3 max-w-[13rem] shrink-0 bg-white p-2.5 pb-9 shadow-[0_2px_12px_rgba(63,38,27,0.10)] transition duration-300 hover:-translate-y-1 hover:rotate-0 hover:shadow-[0_10px_28px_rgba(63,38,27,0.16)] sm:p-3 sm:pb-11',
-                  index === 0 && '-rotate-2',
-                  index === 1 && 'z-10 rotate-1 lg:-translate-y-4',
-                  index === 2 && 'rotate-3',
-                ]}
-              >
-                <span class="block aspect-square overflow-hidden bg-cream-200">
-                  {cover ? (
+        models.length > 0 && (
+          <ul class="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+            {models.map(({ model, persona, portraitUrl }) => (
+              <li class="card overflow-hidden">
+                <div class="aspect-[4/5] w-full bg-cream-100">
+                  {portraitUrl ? (
                     <img
-                      src={cover}
-                      alt={`Ảnh của ${memorial.petName}`}
+                      src={portraitUrl}
+                      alt={`Người mẫu ảo ${model.name}`}
                       class="h-full w-full object-cover"
                       loading="lazy"
                     />
                   ) : (
-                    <span class="flex h-full items-center justify-center text-cream-400">
-                      <Icon name="paw" size={34} />
-                    </span>
+                    <div
+                      class:list={[
+                        'flex h-full w-full items-center justify-center font-serif text-5xl font-semibold',
+                        MODEL_PLACEHOLDER_CLASS[model.slug] ?? 'bg-cream-200 text-ink-700',
+                      ]}
+                      aria-label={`Người mẫu ảo ${model.name}, chưa có ảnh đại diện`}
+                    >
+                      {model.name.charAt(0)}
+                    </div>
                   )}
-                </span>
-                <span class="mt-3 block text-center font-serif text-sm text-ink-900">
-                  {memorial.petName}
-                </span>
-              </a>
+                </div>
+                <div class="p-4">
+                  <p class="font-serif text-lg font-semibold text-ink-900">{model.name}</p>
+                  <p class="mt-0.5 text-xs text-ink-500">{persona.niches.slice(0, 2).join(' · ')}</p>
+                </div>
+              </li>
             ))}
-          </div>
+          </ul>
         )
       }
     </div>
   </section>
 
-  <!-- Ba bước: danh sách có đánh số, phân cách bằng kẻ tóc -->
-  <section class="border-y border-cream-300 bg-cream-100">
-    <div class="container-page px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
-      <div class="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20">
+  <!-- Cách hoạt động -->
+  <section class="section bg-cream-100">
+    <div class="container-page">
+      <p class="eyebrow">Cách hoạt động</p>
+      <ol class="mt-8 grid gap-8 md:grid-cols-3">
+        {
+          steps.map((step, index) => (
+            <li class="flex gap-4">
+              <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-clay-500 font-semibold text-white">
+                {index + 1}
+              </span>
+              <div>
+                <h3 class="font-serif text-lg font-semibold">{step.title}</h3>
+                <p class="mt-2 text-sm text-ink-500">{step.body}</p>
+              </div>
+            </li>
+          ))
+        }
+      </ol>
+    </div>
+  </section>
+
+  <!-- Giá -->
+  <section class="section">
+    <div class="container-page">
+      <div class="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
         <div>
-          <p class="eyebrow">Cách hoạt động</p>
-          <h2 class="mt-4 font-serif text-3xl font-semibold sm:text-4xl">Ba bước, khoảng 5 phút</h2>
-          <p class="measure-tight mt-4 text-ink-500">
-            Bạn không cần chuẩn bị gì nhiều — một tấm ảnh và vài dòng ký ức là đủ để bắt đầu.
+          <p class="eyebrow">Giá</p>
+          <h2 class="mt-3 font-serif text-3xl font-semibold">Phân tích miễn phí. Studio tính theo ảnh.</h2>
+          <p class="measure mt-3 text-ink-500">
+            Không thuê bao tháng. Nạp tín chỉ bằng chuyển khoản VietQR, tín chỉ tự cộng sau khi tiền vào.
+            Ảnh lỗi hoàn lại tín chỉ.
           </p>
-          <a
-            href="/cach-hoat-dong"
-            class="mt-6 inline-flex items-center gap-2 text-sm font-medium text-clay-700 transition hover:gap-3"
-          >
-            Xem chi tiết từng bước
-            <Icon name="arrow-right" size={16} />
-          </a>
+          <a href="/bang-gia" class="link-quiet mt-5 inline-block text-sm font-medium">Xem bảng giá đầy đủ</a>
         </div>
-
-        <ol>
+        <div class="grid gap-4 sm:grid-cols-3">
           {
-            steps.map((step, index) => (
-              <li class="flex gap-6 border-t border-cream-300 py-6 first:border-t-0 first:pt-0 last:pb-0">
-                <span class="mt-1 font-serif text-2xl leading-none text-clay-400 tabular-nums">
-                  {String(index + 1).padStart(2, '0')}
-                </span>
-                <div>
-                  <h3 class="text-lg font-semibold">{step.title}</h3>
-                  <p class="measure mt-1.5 text-ink-500">{step.body}</p>
-                </div>
-              </li>
-            ))
-          }
-        </ol>
-      </div>
-    </div>
-  </section>
-
-  <!-- Điểm khác biệt: hai cột, icon nét mảnh, không đóng khung -->
-  <section class="container-page px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
-    <p class="eyebrow">Vì sao khác</p>
-    <h2 class="measure mt-4 font-serif text-3xl font-semibold sm:text-4xl">
-      Những thứ chỉ có ở một trang tưởng niệm làm cho người Việt
-    </h2>
-
-    <div class="mt-12 grid gap-x-14 gap-y-10 sm:grid-cols-2">
-      {
-        features.map((feature) => (
-          <div class="flex gap-4">
-            <span class="mt-0.5 shrink-0 text-clay-500">
-              <Icon name={feature.icon} size={26} />
-            </span>
-            <div>
-              <h3 class="text-[1.0625rem] font-semibold text-ink-900">{feature.title}</h3>
-              <p class="mt-1.5 text-[0.9375rem] leading-relaxed text-ink-500">{feature.body}</p>
-            </div>
-          </div>
-        ))
-      }
-    </div>
-  </section>
-
-  <!-- Trang mẫu -->
-  {
-    demoCards.length > 0 && (
-      <section class="border-y border-cream-300 bg-cream-100">
-        <div class="container-page px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
-          <div class="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p class="eyebrow">Trang mẫu</p>
-              <h2 class="mt-4 font-serif text-3xl font-semibold sm:text-4xl">
-                Trang của bé trông như thế nào
-              </h2>
-            </div>
-            <p class="measure-tight text-sm text-ink-500">
-              Ba trang dựng sẵn để bạn xem trước khi tự làm.
-            </p>
-          </div>
-
-          <div class="mt-10 grid gap-8 sm:grid-cols-3">
-            {demoCards.map(({ memorial, cover }) => (
-              <a href={`/be/${memorial.slug}`} class="group block">
-                <div class="aspect-[5/4] overflow-hidden bg-cream-200">
-                  {cover ? (
-                    <img
-                      src={cover}
-                      alt={`Ảnh của ${memorial.petName}`}
-                      class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <span class="flex h-full items-center justify-center text-cream-400">
-                      <Icon name="paw" size={40} />
-                    </span>
-                  )}
-                </div>
-                <h3 class="mt-4 font-serif text-xl font-semibold">{memorial.petName}</h3>
-                <p class="mt-1 text-sm text-ink-500 tabular-nums">
-                  {[formatDate(memorial.birthDate), formatDate(memorial.deathDate)]
-                    .filter(Boolean)
-                    .join(' — ')}
-                </p>
-              </a>
-            ))}
-          </div>
-        </div>
-      </section>
-    )
-  }
-
-  <!-- Bảng giá -->
-  <section id="bang-gia" class="container-page px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
-    <div class="flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <p class="eyebrow">Chi phí</p>
-        <h2 class="mt-4 font-serif text-3xl font-semibold sm:text-4xl">
-          Trả một lần, không phí hằng năm
-        </h2>
-      </div>
-      <a
-        href="/bang-gia"
-        class="inline-flex items-center gap-2 text-sm font-medium text-clay-700 transition hover:gap-3"
-      >
-        Chi tiết bảng giá
-        <Icon name="arrow-right" size={16} />
-      </a>
-    </div>
-    {
-      isPromoActive() && (
-        <p class="mt-6 inline-flex flex-wrap items-center gap-x-2 gap-y-1 rounded-full border border-clay-200 bg-clay-50 px-5 py-2.5 text-sm text-clay-800">
-          <strong class="font-semibold">{PROMO.label}:</strong>
-          giảm {PROMO.percent}% gói Premium, đến hết {PROMO.endsAtLabel}
-        </p>
-      )
-    }
-
-    <div class="mt-12">
-      <PricingTable />
-    </div>
-  </section>
-
-  <!-- Câu hỏi thường gặp -->
-  <section class="border-t border-cream-300 bg-cream-100">
-    <div class="container-page px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
-      <div class="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20">
-        <div>
-          <p class="eyebrow">Giải đáp</p>
-          <h2 class="mt-4 font-serif text-3xl font-semibold sm:text-4xl">Câu hỏi thường gặp</h2>
-          <p class="measure-tight mt-4 text-sm text-ink-500">
-            Còn thắc mắc khác? Viết cho chúng tôi ở
-            <a class="link-quiet" href={`mailto:${site.supportEmail}`}>{site.supportEmail}</a>.
-          </p>
-        </div>
-
-        <div>
-          {
-            faqs.map((faq) => (
-              <details class="group border-t border-cream-300 last:border-b">
-                <summary class="flex cursor-pointer list-none items-start justify-between gap-6 py-5 font-medium text-ink-900 marker:hidden">
-                  {faq.q}
-                  <span
-                    class="mt-1 shrink-0 text-clay-500 transition duration-200 group-open:rotate-45"
-                    aria-hidden="true"
-                  >
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 16 16"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                    >
-                      <path d="M8 2.5v11M2.5 8h11" />
-                    </svg>
-                  </span>
-                </summary>
-                <p class="measure pb-5 text-[0.9375rem] leading-relaxed text-ink-500">{faq.a}</p>
-              </details>
+            CREDIT_PACKS.map((pack, index) => (
+              <div class:list={['card p-5', index === 1 && 'border-clay-400 ring-1 ring-clay-300']}>
+                <p class="eyebrow">{pack.label}</p>
+                <p class="mt-2 font-serif text-2xl font-semibold text-ink-900">{pack.credits} ảnh</p>
+                <p class="mt-1 text-sm text-ink-500">{formatVnd(pack.price)}</p>
+              </div>
             ))
           }
         </div>
@@ -378,24 +266,33 @@ const jsonLd = {
     </div>
   </section>
 
-  <!-- Lời mời cuối -->
-  <section class="container-page px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
-    <div class="mx-auto max-w-2xl text-center">
-      <span class="inline-flex text-clay-400">
-        <Icon name="lotus" size={38} weight={1.25} />
-      </span>
-      <h2 class="mt-6 font-serif text-3xl font-semibold sm:text-4xl">
-        Bắt đầu trang cho bé hôm nay
-      </h2>
-      <p class="mt-4 text-ink-500">
-        Một tấm ảnh và vài dòng ký ức là đủ. Phần còn lại làm dần cũng được — trang giữ ở dạng nháp
-        cho tới khi bạn thấy sẵn sàng.
+  <!-- Hỏi đáp -->
+  <section class="section bg-cream-100">
+    <div class="container-narrow">
+      <p class="eyebrow">Hỏi nhanh</p>
+      <dl class="mt-6 divide-y divide-cream-300">
+        {
+          faqs.map((faq) => (
+            <div class="py-5">
+              <dt class="font-medium text-ink-900">{faq.q}</dt>
+              <dd class="mt-2 text-sm text-ink-500">{faq.a}</dd>
+            </div>
+          ))
+        }
+      </dl>
+      <p class="mt-8 text-sm text-ink-500">
+        Bạn đang tìm trang tưởng niệm thú cưng? Dịch vụ đó vẫn ở đây:
+        <a href="/tuong-niem" class="link-quiet">Trang tưởng niệm thú cưng</a>.
       </p>
-      <a href="/dang-ky" class="btn-primary mt-8 px-8 py-3.5 text-base">Tạo trang miễn phí</a>
-      <p class="mt-6 text-sm text-ink-500">
-        Hoặc ghé <a class="link-quiet font-medium" href="/vuon-tuong-niem">Vườn tưởng niệm</a> —
-        những bé được gia đình chọn chia sẻ với mọi người.
-      </p>
+    </div>
+  </section>
+
+  <!-- Kết -->
+  <section class="section">
+    <div class="container-narrow text-center">
+      <h2 class="font-serif text-3xl font-semibold">Dán link kênh của bạn vào xem thử</h2>
+      <p class="mx-auto mt-3 max-w-md text-ink-500">Mất chưa tới một phút, không cần thẻ.</p>
+      <a href="/tiktok" class="btn-primary mt-7">Phân tích kênh miễn phí</a>
     </div>
   </section>
 </SiteLayout>

@@ -5,6 +5,7 @@ import {
   listOrdersOfUser,
   ORDER_STATUS_LABEL,
   ORDER_TYPE_LABEL,
+  parseCreditMeta,
   parseShippingInfo,
 } from '../../lib/orders';
 import { listMemorialsOfUser } from '../../lib/memorials';
@@ -29,6 +30,7 @@ const nameById = new Map(memorials.map((memorial) => [memorial.id, memorial.petN
       <ul class="space-y-4">
         {orders.map((order) => {
           const shipping = parseShippingInfo(order.shippingInfo);
+          const creditMeta = order.type === 'credits' ? parseCreditMeta(order.meta) : null;
           const isPending = order.status === 'pending';
           return (
             <li class="card p-5">
@@ -38,6 +40,7 @@ const nameById = new Map(memorials.map((memorial) => [memorial.id, memorial.petN
                   {order.memorialId && nameById.has(order.memorialId) && (
                     <p class="text-sm text-ink-500">Cho bé {nameById.get(order.memorialId)}</p>
                   )}
+                  {creditMeta && <p class="text-sm text-ink-500">{creditMeta.credits} tín chỉ studio</p>}
                   <p class="mt-1 text-xs text-ink-500">
                     Mã: <code class="font-mono">{order.paymentCode}</code> · tạo lúc{' '}
                     {formatDateTime(order.createdAt)}

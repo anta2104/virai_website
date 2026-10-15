@@ -1,0 +1,14 @@
+---
+interface Props {
+  label: string;
+  value: string;
+  hint?: string;
+}
+const { label, value, hint } = Astro.props;
+---
+
+<div class="card px-5 py-4">
+  <p class="text-xs font-medium tracking-wide text-ink-500 uppercase">{label}</p>
+  <p class="mt-1 font-serif text-2xl font-semibold text-ink-900 tabular-nums">{value}</p>
+  {hint && <p class="mt-1 text-xs text-ink-500">{hint}</p>}
+</div>

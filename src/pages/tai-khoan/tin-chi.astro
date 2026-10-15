@@ -1,0 +1,111 @@
+---
+import AppLayout from '../../layouts/AppLayout.astro';
+import { currentUser } from '../../lib/guards';
+import { balanceOf, CREDIT_REASON_LABEL, ensureWelcomeCredits, listLedger } from '../../lib/credits';
+import { JOB_STATUS_LABEL, listJobsOfUser, parseBrief } from '../../lib/studio/service';
+import { CREDIT_PACKS, STUDIO_COSTS, formatVnd } from '../../lib/plans';
+import { formatDateTime } from '../../lib/format';
+
+const user = currentUser(Astro.locals);
+await ensureWelcomeCredits(user.id);
+
+const [balance, ledger, jobs] = await Promise.all([
+  balanceOf(user.id),
+  listLedger(user.id, 50),
+  listJobsOfUser(user.id, 20),
+]);
+---
+
+<AppLayout
+  title="Tín chỉ studio"
+  eyebrow="Tài khoản"
+  description={`Mỗi ảnh người mẫu ảo trừ ${STUDIO_COSTS.photoshootImage} tín chỉ. Tín chỉ không hết hạn.`}
+  wide
+>
+  <a slot="actions" href="/nguoi-mau-ao/tao" class="btn-primary">Tạo buổi chụp</a>
+
+  <div class="grid gap-8 lg:grid-cols-[1fr_1.4fr]">
+    <section class="space-y-6">
+      <div class="card p-6">
+        <p class="text-sm text-ink-500">Số dư hiện tại</p>
+        <p class="mt-1 font-serif text-4xl font-semibold text-ink-900">{balance} <span class="text-lg font-normal text-ink-500">tín chỉ</span></p>
+      </div>
+
+      <div>
+        <h2 class="font-serif text-xl font-semibold">Nạp tín chỉ</h2>
+        <p class="mt-1 text-sm text-ink-500">Thanh toán bằng chuyển khoản VietQR, tín chỉ cộng ngay khi tiền vào.</p>
+        <ul class="mt-4 space-y-3">
+          {
+            CREDIT_PACKS.map((pack) => (
+              <li class="card flex items-center justify-between gap-4 p-4">
+                <div>
+                  <p class="font-medium text-ink-900">
+                    {pack.label} · {pack.credits} tín chỉ
+                  </p>
+                  <p class="text-sm text-ink-500">
+                    {formatVnd(pack.price)} · {formatVnd(Math.round(pack.price / pack.credits))} mỗi ảnh
+                  </p>
+                </div>
+                <form method="POST" action="/api/credits/order">
+                  <input type="hidden" name="packId" value={pack.id} />
+                  <button type="submit" class="btn-secondary btn-sm">Nạp</button>
+                </form>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+    </section>
+
+    <section class="space-y-8">
+      <div>
+        <h2 class="font-serif text-xl font-semibold">Buổi chụp gần đây</h2>
+        {
+          jobs.length === 0 ? (
+            <p class="mt-3 text-sm text-ink-500">Bạn chưa tạo buổi chụp nào.</p>
+          ) : (
+            <ul class="mt-3 divide-y divide-cream-300 rounded-2xl border border-cream-300 bg-white/70">
+              {jobs.map((job) => {
+                const brief = parseBrief(job.briefJson);
+                return (
+                  <li class="flex items-center justify-between gap-4 px-4 py-3 text-sm">
+                    <div class="min-w-0">
+                      <a href={`/nguoi-mau-ao/job/${job.id}`} class="font-medium text-ink-900 hover:text-clay-700">
+                        {brief.count} ảnh · {formatDateTime(job.createdAt)}
+                      </a>
+                      <p class="text-xs text-ink-500">{JOB_STATUS_LABEL[job.status] ?? job.status}</p>
+                    </div>
+                    <span class="shrink-0 text-ink-500">−{job.costCredits}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          )
+        }
+      </div>
+
+      <div>
+        <h2 class="font-serif text-xl font-semibold">Lịch sử tín chỉ</h2>
+        {
+          ledger.length === 0 ? (
+            <p class="mt-3 text-sm text-ink-500">Chưa có giao dịch nào.</p>
+          ) : (
+            <ul class="mt-3 divide-y divide-cream-300 rounded-2xl border border-cream-300 bg-white/70">
+              {ledger.map((entry) => (
+                <li class="flex items-center justify-between gap-4 px-4 py-3 text-sm">
+                  <div>
+                    <p class="text-ink-900">{CREDIT_REASON_LABEL[entry.reason] ?? entry.reason}</p>
+                    <p class="text-xs text-ink-500">{formatDateTime(entry.createdAt)}</p>
+                  </div>
+                  <span class:list={['font-medium', entry.delta > 0 ? 'text-sage-700' : 'text-ink-700']}>
+                    {entry.delta > 0 ? `+${entry.delta}` : entry.delta}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )
+        }
+      </div>
+    </section>
+  </div>
+</AppLayout>

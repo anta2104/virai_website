@@ -27,6 +27,17 @@ CF_REMOTE=1 npm run dev
 
 Không có AI thì mọi thứ khác vẫn chạy bình thường, nút "Nhờ AI viết giúp" chỉ báo lỗi nhẹ nhàng.
 
+## Hai tính năng mới (nhánh `tiktok-studio`)
+
+Xem `TIKTOK-STUDIO-PLAN.md` để biết kiến trúc, trạng thái và các quyết định còn chờ.
+
+- **Phân tích TikTok** (`/tiktok`): dán link kênh, hệ thống kéo video gần nhất, tính chỉ số
+  bằng code rồi nhờ LLM phân tích xu hướng. Nguồn dữ liệu chọn bằng `TIKTOK_PROVIDER`
+  (`mock` mặc định, không tốn phí; `apify` cần `APIFY_TOKEN`).
+- **Người mẫu ảo** (`/nguoi-mau-ao`): chọn 1 trong 5 người mẫu do AI tạo, nhập sản phẩm,
+  nhận ảnh người mẫu quảng cáo. Trả bằng tín chỉ, nạp qua VietQR như Premium.
+  Nguồn sinh ảnh chọn bằng `IMAGE_PROVIDER` (`workers-ai` mặc định, cần `CF_REMOTE=1` ở local).
+
 ## Lệnh thường dùng
 
 | Lệnh | Việc |

@@ -1,0 +1,37 @@
+---
+/**
+ * Thanh ngang một chuỗi: số video dùng mỗi hashtag, kèm trung vị view.
+ */
+import { compactNumber } from '../../lib/tiktok/metrics';
+import type { TagStat } from '../../lib/tiktok/metrics';
+
+interface Props {
+  tags: TagStat[];
+  prefix?: string;
+}
+const { tags, prefix = '#' } = Astro.props;
+const max = Math.max(1, ...tags.map((t) => t.count));
+---
+
+{
+  tags.length === 0 ? (
+    <p class="text-sm text-ink-500">Không có dữ liệu.</p>
+  ) : (
+    <ul class="space-y-2">
+      {tags.map((t) => (
+        <li class="grid grid-cols-[minmax(0,9rem)_1fr_auto] items-center gap-3 text-sm">
+          <span class="truncate text-ink-700" title={`${prefix}${t.name}`}>
+            {prefix}
+            {t.name}
+          </span>
+          <div class="h-2.5 rounded-full bg-cream-200" title={`${t.count} video`}>
+            <div class="h-full rounded-full bg-clay-500" style={`width:${(t.count / max) * 100}%`} />
+          </div>
+          <span class="text-xs text-ink-500 tabular-nums">
+            {t.count} video · {compactNumber(t.medianViews)} view
+          </span>
+        </li>
+      ))}
+    </ul>
+  )
+}
