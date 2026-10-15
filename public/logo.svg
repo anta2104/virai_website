@@ -1,28 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 64" role="img" aria-label="Virai Memorial">
-  <!-- Nền kem của thương hiệu — Google đọc file này qua JSON-LD nên không để nền trong suốt -->
-  <rect width="320" height="64" rx="12" fill="#fdfbf7" />
-
-  <!-- Trái tim ôm dấu chân — cùng hình với favicon và header -->
-  <g transform="translate(6, 0)">
-    <path
-      d="M32 51c-1.1 0-2.1-.4-2.9-1.1C22.5 44.2 15 38.1 15 30.2 15 24.6 19.3 20 24.7 20c2.9 0 5.6 1.4 7.3 3.6 1.7-2.2 4.4-3.6 7.3-3.6 5.4 0 9.7 4.6 9.7 10.2 0 7.9-7.5 14-14.1 19.7-.8.7-1.8 1.1-2.9 1.1z"
-      fill="#b06d48"
-    />
-    <g fill="#fdfbf7">
-      <ellipse cx="26.4" cy="30.4" rx="2.1" ry="2.7" />
-      <ellipse cx="31.3" cy="28.6" rx="2.1" ry="2.9" />
-      <ellipse cx="36.3" cy="29.3" rx="2.1" ry="2.8" />
-      <ellipse cx="40.3" cy="32.6" rx="2" ry="2.5" />
-      <path d="M33 34.3c3.6 0 6.6 2.6 6.6 5.2 0 2.1-1.9 3.1-4 3.1-1.1 0-2-.3-2.6-.3-.7 0-1.6.3-2.7.3-2.1 0-4-1-4-3.1 0-2.6 3-5.2 6.7-5.2z" />
-    </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 64" role="img" aria-label="Virai">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8a6cff" />
+      <stop offset="1" stop-color="#5a36ea" />
+    </linearGradient>
+  </defs>
+  <rect width="240" height="64" rx="12" fill="#fbfbfd" />
+  <g transform="translate(8 8) scale(0.75)">
+    <rect width="64" height="64" rx="16" fill="url(#g)" />
+    <path d="M17 19h9l6 18 6-18h9L36 47h-8z" fill="#fff" />
+    <circle cx="47" cy="17" r="3.5" fill="#f5b73c" />
   </g>
-
-  <text
-    x="62"
-    y="41"
-    font-family="Lora, Georgia, 'Times New Roman', serif"
-    font-size="24"
-    font-weight="600"
-    fill="#2f2823"
-  >Virai Memorial</text>
+  <text x="70" y="42" font-family="Be Vietnam Pro, system-ui, sans-serif" font-size="30" font-weight="700" fill="#121221" letter-spacing="-1">Virai</text>
 </svg>

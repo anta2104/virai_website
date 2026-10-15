@@ -1,37 +1,43 @@
 @import "tailwindcss";
 
 @theme {
-  /* Tông ấm: kem, nâu đất, xanh rêu nhạt — hợp cảm xúc tưởng niệm */
-  --color-cream-50: #fdfbf7;
-  --color-cream-100: #faf5ec;
-  --color-cream-200: #f3ead9;
-  --color-cream-300: #e8dac2;
-  --color-cream-400: #d9c4a4;
+  /*
+   * Bảng màu sản phẩm công cụ: nền xám rất nhạt, chữ gần đen, một màu nhấn tím
+   * điện. Tên token giữ nguyên từ bản tưởng niệm (cream/clay/sage/ink) để không
+   * phải đổi hàng chục file; ý nghĩa giờ là: cream = nền, clay = màu nhấn,
+   * sage = thành công, ink = chữ. Trang /be giữ tông ấm riêng ở [data-memorial-theme].
+   */
+  --color-cream-50: #fbfbfd;
+  --color-cream-100: #f4f4f8;
+  --color-cream-200: #e9e9f0;
+  --color-cream-300: #d9d9e3;
+  --color-cream-400: #b4b4c4;
 
-  --color-clay-50: #fbf3ee;
-  --color-clay-100: #f5e3d8;
-  --color-clay-200: #e9c6b1;
-  --color-clay-300: #daa484;
-  --color-clay-400: #c9855f;
-  --color-clay-500: #b06d48;
-  --color-clay-600: #94583a;
-  --color-clay-700: #77462f;
-  --color-clay-800: #5b3626;
-  --color-clay-900: #3f261b;
+  --color-clay-50: #f3f0ff;
+  --color-clay-100: #e6e0ff;
+  --color-clay-200: #cdc2ff;
+  --color-clay-300: #ab98ff;
+  --color-clay-400: #8a6cff;
+  --color-clay-500: #6d4aff;
+  --color-clay-600: #5a36ea;
+  --color-clay-700: #4a2ac4;
+  --color-clay-800: #392197;
+  --color-clay-900: #261661;
 
-  --color-sage-100: #eaefe8;
-  --color-sage-300: #b4c3ad;
-  --color-sage-500: #7f9276;
-  --color-sage-700: #56684f;
+  --color-sage-100: #e4f7ee;
+  --color-sage-300: #9fe0c0;
+  --color-sage-500: #22a36a;
+  --color-sage-700: #176f48;
 
-  --color-ink-500: #6b5f56;
-  --color-ink-700: #4a3f38;
-  --color-ink-900: #2f2823;
+  --color-ink-500: #6a6a80;
+  --color-ink-700: #3a3a4e;
+  --color-ink-900: #121221;
 
-  --color-candle: #f0b95c;
+  --color-candle: #f5b73c;
 
   --font-sans: "Be Vietnam Pro", system-ui, sans-serif;
-  --font-serif: "Lora", Georgia, serif;
+  /* Tiêu đề dùng cùng họ chữ, nặng hơn — bỏ serif Lora của bản cũ */
+  --font-serif: "Be Vietnam Pro", system-ui, sans-serif;
 }
 
 @layer base {
@@ -80,8 +86,9 @@
   h2,
   h3,
   h4 {
-    line-height: 1.25;
-    letter-spacing: -0.015em;
+    line-height: 1.2;
+    letter-spacing: -0.025em;
+    font-weight: 700;
     text-wrap: balance;
   }
 
@@ -99,7 +106,7 @@
 
   .display {
     font-family: var(--font-serif);
-    @apply text-4xl leading-[1.1] font-semibold text-ink-900 sm:text-5xl;
+    @apply text-4xl leading-[1.08] font-bold tracking-[-0.03em] text-ink-900 sm:text-5xl lg:text-6xl;
   }
 
   /* Giới hạn độ dài dòng cho dễ đọc; văn xuôi dài không nên tràn hết bề ngang. */
@@ -124,11 +131,11 @@
 
 @layer components {
   .btn-primary {
-    @apply btn bg-clay-500 text-white shadow-sm hover:bg-clay-600;
+    @apply btn bg-ink-900 text-white shadow-sm hover:bg-clay-600;
   }
 
   .btn-secondary {
-    @apply btn border border-clay-300 bg-white/70 text-clay-700 hover:bg-clay-50;
+    @apply btn border border-cream-300 bg-white text-ink-900 hover:border-clay-300 hover:text-clay-700;
   }
 
   .btn-ghost {
@@ -140,7 +147,7 @@
   }
 
   .card {
-    @apply rounded-2xl border border-cream-300 bg-white/80 shadow-[0_1px_2px_rgba(63,38,27,0.04)];
+    @apply rounded-2xl border border-cream-200 bg-white shadow-[0_1px_2px_rgba(18,18,33,0.04),0_8px_24px_-16px_rgba(18,18,33,0.12)];
   }
 
   .label {
@@ -193,14 +200,16 @@
 
 /* ── Theme trang kỷ niệm ──────────────────────────────────────────────────── */
 
+/* Giá trị cứng theo bảng màu ấm của bản tưởng niệm, không theo token chung nữa */
 [data-memorial-theme] {
-  --m-bg: var(--color-cream-100);
+  --m-bg: #faf5ec;
   --m-panel: rgba(255, 255, 255, 0.75);
-  --m-border: var(--color-cream-300);
-  --m-text: var(--color-ink-700);
-  --m-heading: var(--color-ink-900);
-  --m-muted: var(--color-ink-500);
-  --m-accent: var(--color-clay-500);
+  --m-border: #e8dac2;
+  --m-text: #4a3f38;
+  --m-heading: #2f2823;
+  --m-muted: #6b5f56;
+  --m-accent: #b06d48;
+  font-family: "Be Vietnam Pro", system-ui, sans-serif;
 }
 
 [data-memorial-theme='thanh-tinh'] {

@@ -1,7 +1,8 @@
 ---
 import SiteLayout from '../../layouts/SiteLayout.astro';
 import Icon from '../../components/Icon.astro';
-import { listActiveModels, MODEL_PLACEHOLDER_CLASS } from '../../lib/studio/models';
+import ModelPortrait from '../../components/studio/ModelPortrait.astro';
+import { listActiveModels } from '../../lib/studio/models';
 import { CREDIT_PACKS, STUDIO_COSTS, WELCOME_CREDITS, formatVnd } from '../../lib/plans';
 import { site } from '../../lib/site';
 
@@ -33,29 +34,12 @@ const cheapest = CREDIT_PACKS[0];
         </div>
       </div>
 
-      <div class="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div class="mt-16 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {
           models.map(({ model, persona, portraitUrl }) => (
             <article class="card overflow-hidden">
               <div class="aspect-[4/5] w-full bg-cream-100">
-                {portraitUrl ? (
-                  <img
-                    src={portraitUrl}
-                    alt={`Người mẫu ảo ${model.name}`}
-                    class="h-full w-full object-cover"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div
-                    class:list={[
-                      'flex h-full w-full items-center justify-center font-serif text-7xl font-semibold',
-                      MODEL_PLACEHOLDER_CLASS[model.slug] ?? 'bg-cream-200 text-ink-700',
-                    ]}
-                    aria-label={`Người mẫu ảo ${model.name}, chưa có ảnh đại diện`}
-                  >
-                    {model.name.charAt(0)}
-                  </div>
-                )}
+                <ModelPortrait slug={model.slug} name={model.name} portraitUrl={portraitUrl} />
               </div>
               <div class="p-5">
                 <div class="flex items-baseline justify-between gap-3">

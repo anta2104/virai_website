@@ -3,7 +3,8 @@ import SiteLayout from '../layouts/SiteLayout.astro';
 import Icon from '../components/Icon.astro';
 import type { IconName } from '../lib/icons';
 import { site } from '../lib/site';
-import { listActiveModels, MODEL_PLACEHOLDER_CLASS } from '../lib/studio/models';
+import ModelPortrait from '../components/studio/ModelPortrait.astro';
+import { listActiveModels } from '../lib/studio/models';
 import { CREDIT_PACKS, STUDIO_COSTS, WELCOME_CREDITS, formatVnd } from '../lib/plans';
 
 const user = Astro.locals.user;
@@ -108,35 +109,53 @@ const jsonLd = {
         </p>
       </div>
 
-      <!-- Hai sản phẩm đặt cạnh nhau như hai thẻ, để người xem thấy ngay site có gì -->
-      <div class="grid gap-4">
-        <a href="/tiktok" class="card group flex gap-4 p-5 transition hover:border-clay-300">
-          <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-clay-50 text-clay-600">
-            <Icon name="eye" size={22} />
+      <!-- Xem trước kết quả phân tích: để người xem hình dung sản phẩm ngay từ màn đầu -->
+      <div class="card overflow-hidden" aria-label="Ví dụ kết quả phân tích kênh">
+        <div class="flex items-center justify-between border-b border-cream-200 px-5 py-3">
+          <div class="flex items-center gap-2 text-sm">
+            <span class="flex h-7 w-7 items-center justify-center rounded-full bg-clay-100 text-xs font-bold text-clay-700">@</span>
+            <span class="font-semibold text-ink-900">shop.cua.ban</span>
+            <span class="text-ink-500">· 30 video gần nhất</span>
+          </div>
+          <span class="badge bg-sage-100 text-sage-700">Điểm 78/100</span>
+        </div>
+        <div class="grid grid-cols-3 divide-x divide-cream-200 border-b border-cream-200">
+          <div class="px-5 py-4">
+            <p class="text-xs text-ink-500">View trung bình</p>
+            <p class="mt-1 text-xl font-bold text-ink-900">42,1K</p>
+          </div>
+          <div class="px-5 py-4">
+            <p class="text-xs text-ink-500">Tỉ lệ lưu</p>
+            <p class="mt-1 text-xl font-bold text-ink-900">2,8%</p>
+          </div>
+          <div class="px-5 py-4">
+            <p class="text-xs text-ink-500">Giờ đăng tốt</p>
+            <p class="mt-1 text-xl font-bold text-ink-900">20–21h</p>
+          </div>
+        </div>
+        <div class="px-5 pt-4">
+          <svg viewBox="0 0 320 90" class="h-auto w-full" aria-hidden="true">
+            <defs>
+              <linearGradient id="hero-area" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#6d4aff" stop-opacity="0.25" />
+                <stop offset="1" stop-color="#6d4aff" stop-opacity="0" />
+              </linearGradient>
+            </defs>
+            <path d="M0 70 L40 62 L80 66 L120 48 L160 54 L200 30 L240 44 L280 18 L320 26 L320 90 L0 90 Z" fill="url(#hero-area)" />
+            <path d="M0 70 L40 62 L80 66 L120 48 L160 54 L200 30 L240 44 L280 18 L320 26" fill="none" stroke="#6d4aff" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
+            <circle cx="280" cy="18" r="4" fill="#6d4aff" />
+            <circle cx="200" cy="30" r="4" fill="#6d4aff" />
+          </svg>
+        </div>
+        <div class="flex gap-3 px-5 pt-3 pb-5">
+          <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-clay-500 text-white">
+            <Icon name="quill" size={13} />
           </span>
-          <span>
-            <span class="block font-serif text-lg font-semibold text-ink-900 group-hover:text-clay-700">
-              Phân tích kênh TikTok
-            </span>
-            <span class="mt-1 block text-sm text-ink-500">
-              Chỉ số từng video, giờ đăng tốt, hashtag hiệu quả, AI đọc xu hướng. Miễn phí.
-            </span>
-          </span>
-        </a>
-        <a href={studioHref} class="card group flex gap-4 p-5 transition hover:border-clay-300">
-          <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-clay-50 text-clay-600">
-            <Icon name="image" size={22} />
-          </span>
-          <span>
-            <span class="block font-serif text-lg font-semibold text-ink-900 group-hover:text-clay-700">
-              Người mẫu ảo cho thuê
-            </span>
-            <span class="mt-1 block text-sm text-ink-500">
-              Năm gương mặt do AI tạo, mỗi người một ngách. {STUDIO_COSTS.photoshootImage} tín chỉ mỗi ảnh,
-              gói từ {formatVnd(cheapest.price)}.
-            </span>
-          </span>
-        </a>
+          <p class="text-sm text-ink-700">
+            <span class="font-semibold text-ink-900">AI nhận định:</span> hai video nổi nhất đều mở đầu bằng
+            câu hỏi và quay cận sản phẩm trong 2 giây đầu. Nên giữ công thức này cho 3 video tới.
+          </p>
+        </div>
       </div>
     </div>
   </section>
@@ -185,24 +204,7 @@ const jsonLd = {
             {models.map(({ model, persona, portraitUrl }) => (
               <li class="card overflow-hidden">
                 <div class="aspect-[4/5] w-full bg-cream-100">
-                  {portraitUrl ? (
-                    <img
-                      src={portraitUrl}
-                      alt={`Người mẫu ảo ${model.name}`}
-                      class="h-full w-full object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div
-                      class:list={[
-                        'flex h-full w-full items-center justify-center font-serif text-5xl font-semibold',
-                        MODEL_PLACEHOLDER_CLASS[model.slug] ?? 'bg-cream-200 text-ink-700',
-                      ]}
-                      aria-label={`Người mẫu ảo ${model.name}, chưa có ảnh đại diện`}
-                    >
-                      {model.name.charAt(0)}
-                    </div>
-                  )}
+                  <ModelPortrait slug={model.slug} name={model.name} portraitUrl={portraitUrl} />
                 </div>
                 <div class="p-4">
                   <p class="font-serif text-lg font-semibold text-ink-900">{model.name}</p>

@@ -7,7 +7,15 @@
 > sửa 9 lỗi tìm được (Apify gọi đôi, biểu đồ rỗng ném lỗi, thứ tự cộng tín chỉ và đổi
 > trạng thái đơn, chặn oan từ khoá, trừ tín chỉ trước khi ghi R2, không tái dùng bản
 > thiếu AI, N+1 snapshot, admin xác nhận đơn đã huỷ, form lỗi trả 500).
-> tsc, astro check, 34 test và build đều sạch. Đã thử thật trên dev server với provider `mock`; phần gọi Workers AI
+> tsc, astro check, 36 test và build đều sạch.
+>
+> **Deploy:** production tự build từ `main` (Cloudflare), không chạy migration, nên
+> Worker tự áp migration còn thiếu lúc nhận request đầu (`src/lib/db/auto-migrate.ts`).
+> Đẩy `main` là đủ. Bản 15/10 đã lên virai.com.vn và mọi trang trả 200.
+>
+> **Giao diện:** 15/10 đổi sang bảng màu công cụ (nền xám nhạt, chữ gần đen, nhấn tím),
+> bỏ serif, logo mới, ảnh đại diện người mẫu bằng SVG minh hoạ cho tới khi sinh ảnh thật.
+> Trang `/be/*` giữ tông ấm cũ qua biến riêng. Đã thử thật trên dev server với provider `mock`; phần gọi Workers AI
 > (LLM và sinh ảnh) chưa chạy được ở local vì cần `CF_REMOTE=1`.
 >
 > | Mục | Trạng thái |

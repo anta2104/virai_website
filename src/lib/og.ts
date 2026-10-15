@@ -126,7 +126,8 @@ export interface SiteOgInput {
 }
 
 export function siteOgHtml(input: SiteOgInput): string {
-  const colors = THEME_COLORS['am-ap']!;
+  // Bảng màu thương hiệu mới (xem global.css), khác với màu ấm của trang /be
+  const colors = { bg: '#121221', heading: '#ffffff', muted: '#b4b4c4', accent: '#ab98ff' };
   return `<div style="display:flex;flex-direction:column;width:${OG_WIDTH}px;height:${OG_HEIGHT}px;background:${colors.bg};padding:96px;justify-content:center;font-family:'Be Vietnam Pro';">
   <div style="display:flex;font-size:28px;color:${colors.accent};font-weight:600;letter-spacing:2px;">${escapeHtml(input.brand.toUpperCase())}</div>
   <div style="display:flex;font-size:76px;font-weight:600;color:${colors.heading};margin-top:24px;line-height:1.15;">${escapeHtml(input.title)}</div>

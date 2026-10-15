@@ -1,6 +1,7 @@
 ---
 import AppLayout from '../../layouts/AppLayout.astro';
-import { listActiveModels, MODEL_PLACEHOLDER_CLASS } from '../../lib/studio/models';
+import ModelPortrait from '../../components/studio/ModelPortrait.astro';
+import { listActiveModels } from '../../lib/studio/models';
 import { SCENE_PRESETS } from '../../lib/studio/prompt';
 import { MAX_COUNT, MAX_PRODUCT_IMAGES, MIN_COUNT } from '../../lib/studio/service';
 import { balanceOf, ensureWelcomeCredits } from '../../lib/credits';
@@ -69,18 +70,7 @@ const perImage = STUDIO_COSTS.photoshootImage;
                 />
                 <span class="block overflow-hidden rounded-2xl border-2 border-cream-300 transition peer-checked:border-clay-500 peer-focus-visible:ring-2 peer-focus-visible:ring-clay-200">
                   <span class="block aspect-square w-full bg-cream-100">
-                    {portraitUrl ? (
-                      <img src={portraitUrl} alt="" class="h-full w-full object-cover" loading="lazy" />
-                    ) : (
-                      <span
-                        class:list={[
-                          'flex h-full w-full items-center justify-center font-serif text-4xl font-semibold',
-                          MODEL_PLACEHOLDER_CLASS[model.slug] ?? 'bg-cream-200 text-ink-700',
-                        ]}
-                      >
-                        {model.name.charAt(0)}
-                      </span>
-                    )}
+                    <ModelPortrait slug={model.slug} name={model.name} portraitUrl={portraitUrl} class="object-top" />
                   </span>
                   <span class="block px-3 py-2">
                     <span class="block font-medium text-ink-900">{model.name}</span>

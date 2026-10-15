@@ -1,0 +1,56 @@
+---
+/**
+ * Ảnh đại diện người mẫu ảo. Có ảnh thật (đã sinh bằng AI) thì hiện ảnh; chưa có
+ * thì vẽ bóng dáng người bằng SVG trên nền gradient riêng của từng người, thay
+ * cho ô chữ cái trông như lỗi tải ảnh.
+ */
+interface Props {
+  slug: string;
+  name: string;
+  portraitUrl: string | null;
+  class?: string;
+}
+const { slug, name, portraitUrl, class: className = '' } = Astro.props;
+
+const PALETTE: Record<string, { from: string; to: string; skin: string; hair: string }> = {
+  linh: { from: '#ffe4d6', to: '#f4b8a0', skin: '#f3d2bd', hair: '#2b1d1a' },
+  minh: { from: '#dfe6ff', to: '#9fb0e6', skin: '#e9c9ad', hair: '#1f2233' },
+  thao: { from: '#e3f6ea', to: '#a8d8ba', skin: '#f1cfb6', hair: '#3a2a24' },
+  khoa: { from: '#2a2a3a', to: '#5b4a8a', skin: '#d9ad88', hair: '#15141c' },
+  an: { from: '#efe3ff', to: '#f5b8d8', skin: '#f2d0bc', hair: '#6b3a2e' },
+};
+const colors = PALETTE[slug] ?? { from: '#e9e9f0', to: '#b4b4c4', skin: '#ecd0b9', hair: '#2a2a3a' };
+const gradientId = `mp-${slug}`;
+---
+
+{
+  portraitUrl ? (
+    <img
+      src={portraitUrl}
+      alt={`Người mẫu ảo ${name}`}
+      class:list={['h-full w-full object-cover', className]}
+      loading="lazy"
+    />
+  ) : (
+    <svg
+      viewBox="0 0 200 250"
+      preserveAspectRatio="xMidYMid slice"
+      class:list={['h-full w-full', className]}
+      role="img"
+      aria-label={`Người mẫu ảo ${name}, ảnh minh hoạ`}
+    >
+      <defs>
+        <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color={colors.from} />
+          <stop offset="1" stop-color={colors.to} />
+        </linearGradient>
+      </defs>
+      <rect width="200" height="250" fill={`url(#${gradientId})`} />
+      <path d="M30 250c0-46 31-72 70-72s70 26 70 72z" fill={colors.hair} opacity="0.9" />
+      <rect x="86" y="140" width="28" height="36" rx="12" fill={colors.skin} />
+      <ellipse cx="100" cy="100" rx="46" ry="54" fill={colors.hair} />
+      <ellipse cx="100" cy="106" rx="36" ry="44" fill={colors.skin} />
+      <path d="M56 96c6-34 26-50 44-50s38 16 44 50c-10-14-26-20-44-20s-34 6-44 20z" fill={colors.hair} />
+    </svg>
+  )
+}
