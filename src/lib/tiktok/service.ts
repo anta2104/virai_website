@@ -376,7 +376,10 @@ async function storeFetched(
   list: VideoData[],
 ): Promise<void> {
   if (list.length === 0) {
-    await fail(analysis, 'Không lấy được video nào. Kênh có thể riêng tư, không tồn tại, hoặc nguồn dữ liệu đang lỗi.');
+    await fail(
+      analysis,
+      `Không tìm thấy video nào của @${analysis.handle}. Kiểm tra lại tên kênh (tên trong link tiktok.com/@...), hoặc kênh đang để riêng tư. Lượt này không bị tính.`,
+    );
     return;
   }
   const creator = await upsertCreator(analysis.handle, profile, providerName);
