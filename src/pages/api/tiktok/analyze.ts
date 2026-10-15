@@ -24,14 +24,18 @@ export const POST: APIRoute = async ({ request, locals }) => {
   if (!user) return jsonResponse({ ok: false, error: 'Bạn cần đăng nhập.' }, 401);
 
   let input = '';
+  /** Bỏ qua bản lưu 12 giờ, kéo dữ liệu mới (tốn lượt như phân tích mới) */
+  let force = false;
   const contentType = request.headers.get('content-type') ?? '';
   try {
     if (contentType.includes('application/json')) {
-      const payload = (await request.json()) as { input?: unknown };
+      const payload = (await request.json()) as { input?: unknown; force?: unknown };
       input = String(payload.input ?? '');
+      force = payload.force === true;
     } else {
       const form = await request.formData();
       input = String(form.get('input') ?? '');
+      force = form.get('force') === '1';
     }
   } catch {
     return jsonResponse({ ok: false, error: 'Dữ liệu gửi lên không đọc được.' }, 400);
@@ -47,7 +51,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
   const provider = await pickProvider();
   let cost = 0;
-  if (provider.name !== 'mock' && !(await findReusable(handle, provider.name))) {
+  if (provider.name !== 'mock' && (force || !(await findReusable(handle, provider.name)))) {
     const used = await countBillableAnalysesThisMonth(user.id);
     if (used >= ANALYSIS_FREE_PER_MONTH) {
       cost = STUDIO_COSTS.tiktokAnalysis;
@@ -71,6 +75,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     handle,
     providerName: provider.name,
     costCredits: cost,
+    force,
   });
 
   if (!reused && analysis.costCredits > 0) {

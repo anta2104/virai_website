@@ -109,9 +109,11 @@ export async function createAnalysis(input: {
   handle: string;
   providerName: string;
   costCredits?: number;
+  /** true = không tái dùng bản 12 giờ, kéo dữ liệu mới */
+  force?: boolean;
 }): Promise<{ analysis: CreatorAnalysis; reused: boolean }> {
   const db = getDb(env.DB);
-  const source = await findReusable(input.handle, input.providerName);
+  const source = input.force ? null : await findReusable(input.handle, input.providerName);
   if (source && source.userId === input.userId) {
     return { analysis: source, reused: true };
   }

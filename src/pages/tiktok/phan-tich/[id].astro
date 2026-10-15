@@ -141,6 +141,16 @@ const sections = [
           </p>
           <p class="mt-1 text-sm text-ink-500">
             Phân tích {metrics?.videoCount ?? 30} video gần nhất · cập nhật {formatDateTime(analysis.finishedAt ?? analysis.createdAt)}
+            {done && analysis.provider !== 'mock' && (
+              <>
+                {' · '}
+                <form method="POST" action="/api/tiktok/analyze" class="inline" data-refresh>
+                  <input type="hidden" name="input" value={analysis.handle} />
+                  <input type="hidden" name="force" value="1" />
+                  <button type="submit" class="link-quiet">Phân tích lại với dữ liệu mới</button>
+                </form>
+              </>
+            )}
           </p>
         </div>
         {
@@ -257,14 +267,18 @@ const sections = [
                   <div>
                     <dt class="text-xs font-semibold tracking-wide text-clay-700 uppercase">Tầm với</dt>
                     <dd class="mt-1 text-xl font-bold text-ink-900">
-                      {insights.viewsPerFollower !== null ? `${insights.viewsPerFollower.toFixed(1).replace('.', ',')}× follower` : '—'}
+                      {insights.viewsPerFollower === null
+                        ? '—'
+                        : insights.viewsPerFollower >= 1
+                          ? `${insights.viewsPerFollower.toFixed(1).replace('.', ',')}× follower`
+                          : `${Math.round(insights.viewsPerFollower * 100)}% follower`}
                     </dd>
                     <dd class="mt-1 text-sm text-ink-500">
                       {insights.viewsPerFollower === null
                         ? 'không có số follower'
                         : insights.viewsPerFollower >= 1
-                          ? 'video đang vươn ra ngoài tệp theo dõi'
-                          : 'view chủ yếu từ người đã theo dõi'}
+                          ? 'view trung vị vượt số follower: video đang vươn ra ngoài tệp theo dõi'
+                          : `mỗi video chỉ tới được ${Math.round(insights.viewsPerFollower * 100)}% người theo dõi`}
                     </dd>
                   </div>
                 </dl>
@@ -636,6 +650,29 @@ const sections = [
     };
     setTimeout(tick, 3000);
   }
+
+  // "Phân tích lại": gọi API bằng fetch để nhận id rồi chuyển trang, thay vì submit form thường
+  const refresh = document.querySelector<HTMLFormElement>('[data-refresh]');
+  refresh?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const button = refresh.querySelector('button');
+    if (button) button.textContent = 'Đang tạo...';
+    try {
+      const response = await fetch('/api/tiktok/analyze', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ input: refresh.querySelector<HTMLInputElement>('[name=input]')?.value, force: true }),
+      });
+      const data = (await response.json()) as { ok: boolean; id?: string; error?: string };
+      if (data.ok && data.id) window.location.href = `/tiktok/phan-tich/${data.id}`;
+      else {
+        alert(data.error ?? 'Không tạo được phân tích.');
+        if (button) button.textContent = 'Phân tích lại với dữ liệu mới';
+      }
+    } catch {
+      if (button) button.textContent = 'Phân tích lại với dữ liệu mới';
+    }
+  });
 
   for (const button of document.querySelectorAll<HTMLButtonElement>('[data-copy]')) {
     button.addEventListener('click', async () => {

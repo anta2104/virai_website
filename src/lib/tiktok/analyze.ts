@@ -64,13 +64,13 @@ Quy tắc bắt buộc:
 - topVideos: chọn từ danh sách "video nổi bật" đã cho, giải thích vì sao nổi (hook mở đầu, chủ đề, định dạng, thời điểm).
 - themes: nhóm nội dung theo chủ đề từ caption, 3–5 nhóm; "share" là tỉ trọng ước lượng bằng chữ (ví dụ "khoảng 1/3 video"), "performance" nói nhóm đó hiệu quả hơn hay kém hơn mức chung.
 - trend: dựa vào chuỗi view theo thời gian đã cho.
-- nextIdeas: 5 ý tưởng video tiếp theo, mỗi ý gồm: "hook" là câu nói ra trong 2 giây đầu (1 dòng, cụ thể, không chung chung); "idea" mô tả 1–2 câu phải làm gì trong video; "format" là định dạng và độ dài (ví dụ "nói trước camera 30 giây", "vlog 45 giây", "trước/sau 20 giây"); "hashtags" 3–5 hashtag lấy từ hashtag đã hiệu quả của chính kênh (không có #); "why" một câu nói rõ ý tưởng này dựa vào video hay chỉ số nào của kênh (ví dụ "lặp lại công thức của 2 video review mỹ phẩm đạt 35K và 34K view"). Ý tưởng phải tái dụng công thức mở đầu đã chạy tốt của kênh, không được chung chung kiểu "giới thiệu về...". Hook KHÔNG được bắt đầu bằng "Bạn đã sẵn sàng", "Bạn có biết", "Bạn muốn biết"; hãy bắt chước cách mở đầu trong caption của chính các video nổi bật (ví dụ kênh hay dùng "Sự thật không ai nói với bạn về..." thì viết hook theo mẫu đó với chủ đề mới). Trong "why" và mọi chỗ khác, gọi video bằng vài chữ đầu caption trong ngoặc kép, KHÔNG dùng dãy số id.
+- nextIdeas: ĐÚNG 5 ý tưởng video tiếp theo (không được ít hơn), mỗi ý gồm: "hook" là câu nói ra trong 2 giây đầu (1 dòng, cụ thể, không chung chung); "idea" mô tả 1–2 câu phải làm gì trong video; "format" là định dạng và độ dài (ví dụ "nói trước camera 30 giây", "vlog 45 giây", "trước/sau 20 giây"); "hashtags" 3–5 hashtag lấy từ hashtag đã hiệu quả của chính kênh (không có #); "why" một câu nói rõ ý tưởng này dựa vào video hay chỉ số nào của kênh (ví dụ "lặp lại công thức của 2 video review mỹ phẩm đạt 35K và 34K view"). Ý tưởng phải tái dụng công thức mở đầu đã chạy tốt của kênh, không được chung chung kiểu "giới thiệu về...". Hook KHÔNG được bắt đầu bằng "Bạn đã sẵn sàng", "Bạn có biết", "Bạn muốn biết"; hãy bắt chước cách mở đầu trong caption của chính các video nổi bật (ví dụ kênh hay dùng "Sự thật không ai nói với bạn về..." thì viết hook theo mẫu đó với chủ đề mới). Trong "why" và mọi chỗ khác, gọi video bằng vài chữ đầu caption trong ngoặc kép, KHÔNG dùng dãy số id.
 - checklist: mỗi việc phải đo được và có mốc (ví dụ "Đăng 2 video vào thứ ba 22h trong 2 tuần tới"), không viết chung chung kiểu "tăng cường tương tác".
 - bestTimeAdvice: một câu chốt nên đăng thứ mấy, giờ nào, dẫn đúng số trung vị đã cho.
 - audience: chân dung người xem SUY LUẬN từ caption, hashtag, bio và chủ đề (TikTok không cho số đo nhân khẩu học). "who" một câu mô tả; "age" khoảng tuổi; "gender" tỉ lệ ước lượng bằng chữ; "location" nơi ở; "interests" 3–5 mối quan tâm; "whenOnline" họ hay xem lúc nào (dẫn từ khung giờ tốt); "basis" nói rõ suy ra từ dấu hiệu nào. Không bịa số phần trăm.
-- strengths: 2–4 điều kênh đang làm tốt. Mỗi điều "claim" một câu khẳng định, "evidence" là con số cụ thể lấy từ bảng (ví dụ "công thức 'sự thật không ai' 5 video, trung vị 34K, gấp 24 lần kênh").
-- weaknesses: 2–4 điều đang kéo kênh xuống, cùng cấu trúc, kèm bằng chứng số. Ví dụ nhịp đăng thưa, nhóm nội dung kém, hashtag ồn, độ dài không hợp.
-- plan: lịch đăng 2 tuần tới, 4–6 mục, mỗi mục "day" (ví dụ "Thứ ba tuần này"), "hour" (ví dụ "22h"), "title" tên video ngắn, "ideaIndex" số thứ tự ý tưởng trong nextIdeas (1–5) nếu lấy từ đó. Chỉ dùng khung giờ và thứ đã được chứng minh tốt trong bảng.
+- strengths: ĐÚNG 3 điều kênh đang làm tốt. Mỗi điều "claim" một câu khẳng định, "evidence" là con số cụ thể lấy từ bảng (ví dụ "công thức 'sự thật không ai' 5 video, trung vị 34K, gấp 24 lần kênh").
+- weaknesses: ĐÚNG 3 điều đang kéo kênh xuống, cùng cấu trúc, kèm bằng chứng số. Ví dụ nhịp đăng thưa, nhóm nội dung kém, hashtag ồn, độ dài không hợp.
+- plan: lịch đăng 2 tuần tới, ĐÚNG 6 mục (3 mỗi tuần), mỗi mục "day" (ví dụ "Thứ ba tuần này"), "hour" (ví dụ "22h"), "title" tên video ngắn, "ideaIndex" số thứ tự ý tưởng trong nextIdeas (1–5) nếu lấy từ đó. Chỉ dùng khung giờ và thứ đã được chứng minh tốt trong bảng.
 - healthScore: 0–100, cân nhắc tần suất đăng, tỉ lệ tương tác, tỉ lệ lưu/chia sẻ, có video nổi bật hay không.
 - checklist: 3–6 việc cụ thể nên làm trong 2 tuần tới.
 
@@ -191,7 +191,7 @@ export function isAnalysisResult(value: unknown): value is AnalysisResult {
     isString(v.postingAdvice) &&
     isString(v.hashtagAdvice) &&
     Array.isArray(v.nextIdeas) &&
-    v.nextIdeas.length > 0 &&
+    v.nextIdeas.length >= 3 &&
     typeof v.healthScore === 'number' &&
     Array.isArray(v.checklist)
   );
@@ -310,14 +310,17 @@ const RESULT_SCHEMA = {
     },
     strengths: {
       type: 'array',
+      minItems: 3,
       items: { type: 'object', properties: { claim: { type: 'string' }, evidence: { type: 'string' } }, required: ['claim', 'evidence'] },
     },
     weaknesses: {
       type: 'array',
+      minItems: 3,
       items: { type: 'object', properties: { claim: { type: 'string' }, evidence: { type: 'string' } }, required: ['claim', 'evidence'] },
     },
     plan: {
       type: 'array',
+      minItems: 6,
       items: {
         type: 'object',
         properties: { day: { type: 'string' }, hour: { type: 'string' }, title: { type: 'string' }, ideaIndex: { type: 'integer' } },
@@ -326,6 +329,7 @@ const RESULT_SCHEMA = {
     },
     nextIdeas: {
       type: 'array',
+      minItems: 5,
       items: {
         type: 'object',
         properties: {
@@ -339,7 +343,7 @@ const RESULT_SCHEMA = {
       },
     },
     healthScore: { type: 'integer' },
-    checklist: { type: 'array', items: { type: 'string' } },
+    checklist: { type: 'array', minItems: 3, items: { type: 'string' } },
   },
   required: ['summary', 'audience', 'strengths', 'weaknesses', 'topVideos', 'themes', 'trend', 'postingAdvice', 'hashtagAdvice', 'nextIdeas', 'plan', 'healthScore', 'checklist'],
 };
