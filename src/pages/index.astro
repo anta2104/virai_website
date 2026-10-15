@@ -5,10 +5,13 @@ import type { IconName } from '../lib/icons';
 import { site } from '../lib/site';
 import ModelPortrait from '../components/studio/ModelPortrait.astro';
 import { listActiveModels } from '../lib/studio/models';
+import { ensurePortraits } from '../lib/studio/portraits';
 import { CREDIT_PACKS, STUDIO_COSTS, WELCOME_CREDITS, formatVnd } from '../lib/plans';
 
 const user = Astro.locals.user;
 const models = await listActiveModels().catch(() => []);
+// Người mẫu chưa có ảnh thì production tự sinh ở nền, lần mở sau sẽ thấy
+ensurePortraits(models, Astro.locals);
 const cheapest = CREDIT_PACKS[0];
 const studioHref = user ? '/nguoi-mau-ao/tao' : '/nguoi-mau-ao';
 

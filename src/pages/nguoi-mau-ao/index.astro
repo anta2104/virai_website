@@ -3,10 +3,13 @@ import SiteLayout from '../../layouts/SiteLayout.astro';
 import Icon from '../../components/Icon.astro';
 import ModelPortrait from '../../components/studio/ModelPortrait.astro';
 import { listActiveModels } from '../../lib/studio/models';
+import { ensurePortraits } from '../../lib/studio/portraits';
 import { CREDIT_PACKS, STUDIO_COSTS, WELCOME_CREDITS, formatVnd } from '../../lib/plans';
 import { site } from '../../lib/site';
 
 const models = await listActiveModels();
+// Người mẫu chưa có ảnh thì production tự sinh ở nền, lần mở sau sẽ thấy
+ensurePortraits(models, Astro.locals);
 const user = Astro.locals.user;
 const ctaHref = user ? '/nguoi-mau-ao/tao' : '/dang-nhap?next=%2Fnguoi-mau-ao%2Ftao';
 const cheapest = CREDIT_PACKS[0];
