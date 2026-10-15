@@ -55,6 +55,26 @@ const scoreTone = (score: number) => (score >= 70 ? 'text-sage-700' : score >= 4
         Phân tích kênh khác
       </a>
 
+      {
+        analysis.provider === 'mock' && (
+          <div class="mt-6 rounded-2xl border border-candle/60 bg-amber-50 px-5 py-4 text-sm text-ink-900">
+            <p class="font-semibold">Đây là số liệu giả, không phải của kênh @{analysis.handle}.</p>
+            <p class="mt-1 text-ink-700">
+              Hệ thống chưa được nối với nguồn dữ liệu TikTok thật nên sinh số ngẫu nhiên để bạn xem thử
+              giao diện và cách AI nhận xét.
+              {Astro.locals.user?.role === 'admin' ? (
+                <>
+                  {' '}Bạn là quản trị viên: vào <a href="/admin/cai-dat" class="link-quiet font-medium">Cài đặt</a> dán
+                  token nhà cung cấp dữ liệu là có số thật.
+                </>
+              ) : (
+                ' Khi quản trị viên bật nguồn dữ liệu thật, cảnh báo này sẽ tự biến mất.'
+              )}
+            </p>
+          </div>
+        )
+      }
+
       <div class="mt-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p class="eyebrow">Phân tích TikTok</p>

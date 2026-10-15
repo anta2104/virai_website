@@ -2,13 +2,13 @@
 import SiteLayout from '../../layouts/SiteLayout.astro';
 import Icon from '../../components/Icon.astro';
 import { listAnalysesOfUser, STATUS_LABEL } from '../../lib/tiktok/service';
-import { pickProvider } from '../../lib/tiktok/provider';
+import { pickProvider } from '../../lib/tiktok/pick-provider';
 import { formatDateTime } from '../../lib/format';
 import { env } from '../../lib/env';
 
 const user = Astro.locals.user;
 const recent = user ? await listAnalysesOfUser(user.id, 8) : [];
-const isDemo = pickProvider(env).name === 'mock';
+const isDemo = (await pickProvider()).name === 'mock';
 
 const description =
   'Dán link kênh TikTok, nhận ngay bảng chỉ số view, like, lưu, chia sẻ của 30 video gần nhất và phân tích xu hướng bằng AI.';

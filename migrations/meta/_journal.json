@@ -50,6 +50,13 @@
       "when": 1792034543013,
       "tag": "0006_tiktok_studio",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1792046487160,
+      "tag": "0007_settings",
+      "breakpoints": true
     }
   ]
 }

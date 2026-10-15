@@ -8,6 +8,7 @@
  */
 import { profileUrl } from './handle';
 
+
 export interface CreatorProfile {
   displayName: string | null;
   avatarUrl: string | null;
@@ -322,11 +323,3 @@ export class ApifyProvider implements TikTokProvider {
 }
 
 /** Chọn provider theo TIKTOK_PROVIDER; thiếu token thì về mock và ghi log. */
-export function pickProvider(env: Env): TikTokProvider {
-  const wanted = (env.TIKTOK_PROVIDER ?? 'mock').trim().toLowerCase();
-  if (wanted === 'apify') {
-    if (env.APIFY_TOKEN?.trim()) return new ApifyProvider(env.APIFY_TOKEN.trim());
-    console.warn('[tiktok] TIKTOK_PROVIDER=apify nhưng thiếu APIFY_TOKEN, dùng mock');
-  }
-  return new MockProvider();
-}

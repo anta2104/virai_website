@@ -20,7 +20,8 @@ import { newId } from '../ids';
 import { env } from '../env';
 import { analyzeCreator, type AnalysisResult } from './analyze';
 import { computeMetrics, type CreatorMetrics } from './metrics';
-import { pickProvider, type VideoData } from './provider';
+import { type CreatorProfile, type VideoData } from './provider';
+import { pickProvider } from './pick-provider';
 
 /** Số video gần nhất kéo về mỗi lần. */
 export const VIDEO_LIMIT = 30;
@@ -85,7 +86,7 @@ export async function createAnalysis(input: {
     handle: input.handle,
     creatorId: source?.creatorId ?? null,
     status: source ? 'done' : 'queued',
-    provider: source?.provider ?? pickProvider(env).name,
+    provider: source?.provider ?? (await pickProvider()).name,
     inputHash: source?.inputHash ?? null,
     metricsJson: source?.metricsJson ?? null,
     resultJson: source?.resultJson ?? null,
@@ -105,7 +106,7 @@ async function setStatus(id: string, status: string, extra: Partial<CreatorAnaly
 }
 
 /** Ghi hoặc cập nhật kênh, trả về bản ghi đã lưu. */
-async function upsertCreator(handle: string, profile: Awaited<ReturnType<ReturnType<typeof pickProvider>['fetchProfile']>>): Promise<Creator> {
+async function upsertCreator(handle: string, profile: CreatorProfile | null): Promise<Creator> {
   const db = getDb(env.DB);
   const existing = await db
     .select()
@@ -211,7 +212,7 @@ export async function runAnalysis(id: string): Promise<void> {
 
   try {
     await setStatus(id, 'fetching');
-    const provider = pickProvider(env);
+    const provider = await pickProvider();
     const [profile, list] = await Promise.all([
       provider.fetchProfile(analysis.handle),
       provider.fetchVideos(analysis.handle, VIDEO_LIMIT),

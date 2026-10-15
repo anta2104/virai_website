@@ -1,0 +1,115 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { SETTING_KEYS, getSetting, maskSecret, setSetting, tiktokDataConfig } from '../../lib/settings';
+import { ApifyProvider } from '../../lib/tiktok/provider';
+import { env } from '../../lib/env';
+
+let notice: string | null = null;
+let error: string | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('action') ?? '');
+
+  if (action === 'save') {
+    const provider = String(form.get('provider') ?? 'mock') === 'apify' ? 'apify' : 'mock';
+    const token = String(form.get('apifyToken') ?? '').trim();
+    // Ô token để trống nghĩa là giữ token cũ; muốn xoá thì tick ô xoá
+    const clear = form.get('clearToken') === 'on';
+    if (clear) await setSetting(SETTING_KEYS.apifyToken, '');
+    else if (token) await setSetting(SETTING_KEYS.apifyToken, token);
+    await setSetting(SETTING_KEYS.tiktokProvider, provider);
+    notice = 'Đã lưu. Phân tích mới sẽ dùng cấu hình này ngay.';
+  } else if (action === 'test') {
+    const config = await tiktokDataConfig();
+    if (!config.apifyToken) {
+      error = 'Chưa có token Apify để thử.';
+    } else {
+      try {
+        const videos = await new ApifyProvider(config.apifyToken).fetchVideos('tiktok', 5);
+        notice = videos.length
+          ? `Kết nối được. Kênh @tiktok trả ${videos.length} video, video đầu ${videos[0]!.views.toLocaleString('vi-VN')} view.`
+          : 'Kết nối được nhưng không nhận được video nào. Kiểm tra log hoặc actor trên Apify.';
+      } catch (e) {
+        error = `Không kết nối được: ${e instanceof Error ? e.message : String(e)}`;
+      }
+    }
+  }
+}
+
+const config = await tiktokDataConfig();
+const storedToken = await getSetting(SETTING_KEYS.apifyToken);
+const tokenSource = storedToken ? 'lưu trong cài đặt' : env.APIFY_TOKEN ? 'secret của Worker' : null;
+---
+
+<AdminLayout title="Cài đặt">
+  <div class="max-w-2xl space-y-8">
+    {notice && <p class="alert-success">{notice}</p>}
+    {error && <p class="alert-error">{error}</p>}
+
+    <section class="card p-6">
+      <h2 class="text-lg font-semibold">Nguồn dữ liệu TikTok</h2>
+      <p class="mt-1 text-sm text-ink-500">
+        Đang dùng:
+        <strong class="text-ink-900">{config.provider === 'apify' ? 'Apify (dữ liệu thật)' : 'Demo (số liệu giả)'}</strong>
+        {config.apifyToken && tokenSource && <> · token {maskSecret(config.apifyToken)} ({tokenSource})</>}
+      </p>
+
+      <form method="POST" class="mt-6 space-y-5">
+        <input type="hidden" name="action" value="save" />
+        <fieldset>
+          <legend class="label">Nguồn</legend>
+          <div class="mt-2 space-y-2">
+            <label class="flex items-start gap-3 text-sm">
+              <input type="radio" name="provider" value="apify" checked={config.provider === 'apify'} class="mt-1" />
+              <span>
+                <span class="font-medium text-ink-900">Apify, dữ liệu thật</span>
+                <span class="block text-ink-500">
+                  Cần token từ <a href="https://console.apify.com/account/integrations" target="_blank" rel="noopener" class="link-quiet">console.apify.com</a>.
+                  Mỗi lần phân tích tốn phí theo gói Apify của bạn.
+                </span>
+              </span>
+            </label>
+            <label class="flex items-start gap-3 text-sm">
+              <input type="radio" name="provider" value="mock" checked={config.provider === 'mock'} class="mt-1" />
+              <span>
+                <span class="font-medium text-ink-900">Demo, số liệu giả</span>
+                <span class="block text-ink-500">Không tốn phí. Trang kết quả hiện cảnh báo rõ là dữ liệu giả.</span>
+              </span>
+            </label>
+          </div>
+        </fieldset>
+
+        <div>
+          <label class="label" for="apifyToken">Token Apify</label>
+          <input
+            class="input font-mono text-sm"
+            id="apifyToken"
+            name="apifyToken"
+            type="password"
+            autocomplete="off"
+            placeholder={config.apifyToken ? 'Để trống để giữ token hiện tại' : 'apify_api_...'}
+          />
+          <p class="hint">Token được lưu trong database của bạn, chỉ admin xem được trang này.</p>
+          {
+            config.apifyToken && (
+              <label class="mt-2 flex items-center gap-2 text-sm text-ink-700">
+                <input type="checkbox" name="clearToken" /> Xoá token đang lưu
+              </label>
+            )
+          }
+        </div>
+
+        <button type="submit" class="btn-primary">Lưu cài đặt</button>
+      </form>
+
+      <form method="POST" class="mt-4 border-t border-cream-200 pt-4">
+        <input type="hidden" name="action" value="test" />
+        <button type="submit" class="btn-secondary btn-sm" disabled={!config.apifyToken}>
+          Thử kết nối với kênh @tiktok
+        </button>
+        <p class="hint">Gọi Apify thật một lần (tốn một lượt), để chắc token hoạt động.</p>
+      </form>
+    </section>
+  </div>
+</AdminLayout>

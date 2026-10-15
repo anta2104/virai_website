@@ -418,6 +418,20 @@ export const creditLedger = sqliteTable(
   ],
 );
 
+/**
+ * Cài đặt vận hành admin sửa được trên web (token nhà cung cấp dữ liệu...).
+ *
+ * Để ở D1 thay vì secret của Worker vì chủ dự án không dùng wrangler; đổi
+ * ở /admin/cai-dat là có hiệu lực ngay, không cần deploy.
+ */
+export const settings = sqliteTable('settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  updatedAt: integer('updated_at')
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
 export type User = typeof users.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
@@ -434,3 +448,4 @@ export type VirtualModel = typeof virtualModels.$inferSelect;
 export type Product = typeof products.$inferSelect;
 export type StudioJob = typeof studioJobs.$inferSelect;
 export type CreditEntry = typeof creditLedger.$inferSelect;
+export type Setting = typeof settings.$inferSelect;
