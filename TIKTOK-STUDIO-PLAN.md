@@ -53,7 +53,7 @@
 | Việc | Giá |
 |---|---|
 | Phân tích kênh, dữ liệu demo | miễn phí, không giới hạn |
-| Phân tích kênh, dữ liệu thật | 3 lượt miễn phí mỗi tháng (giờ VN), sau đó 2 tín chỉ/lượt; bản tái dùng trong 12 giờ không tốn |
+| Phân tích kênh, dữ liệu thật | 1 lượt miễn phí cho mỗi tài khoản (cả đời), sau đó 2 tín chỉ/lượt; bản tái dùng trong 12 giờ không tốn. Giá vốn ~0,11 USD/lượt Apify |
 | Ảnh người mẫu ảo | 1 tín chỉ/ảnh |
 | Tín chỉ tặng khi vào studio lần đầu | 2 |
 

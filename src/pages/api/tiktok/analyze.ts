@@ -2,11 +2,11 @@ import type { APIRoute } from 'astro';
 import { jsonResponse } from '../../../lib/guards';
 import { waitUntil } from '../../../lib/env';
 import { balanceOf, charge, ensureWelcomeCredits } from '../../../lib/credits';
-import { ANALYSIS_FREE_PER_MONTH, STUDIO_COSTS } from '../../../lib/plans';
+import { ANALYSIS_FREE_TOTAL, STUDIO_COSTS } from '../../../lib/plans';
 import { normalizeHandle } from '../../../lib/tiktok/handle';
 import { pickProvider } from '../../../lib/tiktok/pick-provider';
 import {
-  countBillableAnalysesThisMonth,
+  countBillableAnalyses,
   createAnalysis,
   findReusable,
   runAnalysis,
@@ -15,8 +15,8 @@ import {
 /**
  * Nhận link hoặc @handle, tạo phân tích và chạy nền; trả về id để trang kết quả poll.
  *
- * Tính phí: dữ liệu demo miễn phí. Dữ liệu thật được ANALYSIS_FREE_PER_MONTH lượt
- * miễn phí mỗi tháng, sau đó mỗi lượt trừ STUDIO_COSTS.tiktokAnalysis tín chỉ.
+ * Tính phí: dữ liệu demo miễn phí. Dữ liệu thật được ANALYSIS_FREE_TOTAL lượt
+ * miễn phí cho mỗi tài khoản, sau đó mỗi lượt trừ STUDIO_COSTS.tiktokAnalysis tín chỉ.
  * Bản tái dùng trong 12 giờ không tốn lượt, không tốn tín chỉ.
  */
 export const POST: APIRoute = async ({ request, locals }) => {
@@ -52,8 +52,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const provider = await pickProvider();
   let cost = 0;
   if (provider.name !== 'mock' && (force || !(await findReusable(handle, provider.name)))) {
-    const used = await countBillableAnalysesThisMonth(user.id);
-    if (used >= ANALYSIS_FREE_PER_MONTH) {
+    const used = await countBillableAnalyses(user.id);
+    if (used >= ANALYSIS_FREE_TOTAL) {
       cost = STUDIO_COSTS.tiktokAnalysis;
       await ensureWelcomeCredits(user.id);
       const balance = await balanceOf(user.id);
@@ -62,7 +62,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
           {
             ok: false,
             code: 'credits',
-            error: `Bạn đã dùng hết ${ANALYSIS_FREE_PER_MONTH} lượt miễn phí tháng này. Mỗi lượt tiếp theo cần ${cost} tín chỉ, bạn đang có ${balance}.`,
+            error: `Lượt phân tích miễn phí đã dùng. Mỗi lượt cần ${cost} tín chỉ, bạn đang có ${balance}.`,
           },
           402,
         );

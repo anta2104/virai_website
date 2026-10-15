@@ -1,9 +1,9 @@
 ---
 import SiteLayout from '../../layouts/SiteLayout.astro';
 import Icon from '../../components/Icon.astro';
-import { countBillableAnalysesThisMonth, listAnalysesOfUser, STATUS_LABEL } from '../../lib/tiktok/service';
+import { countBillableAnalyses, listAnalysesOfUser, STATUS_LABEL } from '../../lib/tiktok/service';
 import { balanceOf } from '../../lib/credits';
-import { ANALYSIS_FREE_PER_MONTH, STUDIO_COSTS } from '../../lib/plans';
+import { ANALYSIS_FREE_TOTAL, STUDIO_COSTS } from '../../lib/plans';
 import { pickProvider } from '../../lib/tiktok/pick-provider';
 import { formatDateTime } from '../../lib/format';
 import { env } from '../../lib/env';
@@ -11,8 +11,8 @@ import { env } from '../../lib/env';
 const user = Astro.locals.user;
 const recent = user ? await listAnalysesOfUser(user.id, 8) : [];
 const isDemo = (await pickProvider()).name === 'mock';
-const usedThisMonth = user && !isDemo ? await countBillableAnalysesThisMonth(user.id) : 0;
-const freeLeft = Math.max(0, ANALYSIS_FREE_PER_MONTH - usedThisMonth);
+const used = user && !isDemo ? await countBillableAnalyses(user.id) : 0;
+const freeLeft = Math.max(0, ANALYSIS_FREE_TOTAL - used);
 const balance = user && !isDemo ? await balanceOf(user.id) : 0;
 
 const description =
@@ -55,9 +55,17 @@ const features = [
                   Chỉ phân tích được kênh công khai. Mất khoảng 10–60 giây.
                   {!isDemo && (
                     <>
-                      {' '}Tháng này bạn còn <strong class="text-ink-900">{freeLeft}</strong> lượt miễn phí, sau đó{' '}
-                      {STUDIO_COSTS.tiktokAnalysis} tín chỉ mỗi lượt (đang có {balance} tín chỉ,{' '}
-                      <a href="/tai-khoan/tin-chi" class="link-quiet">nạp thêm</a>).
+                      {freeLeft > 0 ? (
+                        <>
+                          {' '}<strong class="text-ink-900">Lượt đầu tiên miễn phí.</strong> Từ lượt thứ hai, mỗi lượt{' '}
+                          {STUDIO_COSTS.tiktokAnalysis} tín chỉ.
+                        </>
+                      ) : (
+                        <>
+                          {' '}Mỗi lượt <strong class="text-ink-900">{STUDIO_COSTS.tiktokAnalysis} tín chỉ</strong>, bạn đang có {balance}{' '}
+                          (<a href="/tai-khoan/tin-chi" class="link-quiet">nạp thêm</a>).
+                        </>
+                      )}
                     </>
                   )}
                 </p>
@@ -72,7 +80,7 @@ const features = [
             <div class="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p class="font-medium text-ink-900">Đăng nhập để bắt đầu phân tích</p>
-                <p class="mt-1 text-sm text-ink-500">{ANALYSIS_FREE_PER_MONTH} lượt miễn phí mỗi tháng. Mỗi phân tích lưu lại trong tài khoản để bạn xem lại.</p>
+                <p class="mt-1 text-sm text-ink-500">Lượt đầu tiên miễn phí, sau đó {STUDIO_COSTS.tiktokAnalysis} tín chỉ mỗi lượt. Mỗi phân tích lưu lại trong tài khoản để bạn xem lại.</p>
               </div>
               <div class="flex gap-2">
                 <a href="/dang-nhap?next=%2Ftiktok" class="btn-primary">Đăng nhập</a>

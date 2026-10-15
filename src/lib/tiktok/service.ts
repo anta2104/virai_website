@@ -18,7 +18,6 @@ import {
 } from '../db/schema';
 import { newId } from '../ids';
 import { env } from '../env';
-import { todayInVietnam } from '../format';
 import { refund } from '../credits';
 import { computeInsights } from './insights';
 import { analyzeCreator, type AnalysisResult } from './analyze';
@@ -72,11 +71,10 @@ export async function findReusable(handle: string, providerName: string): Promis
 }
 
 /**
- * Số lần phân tích bằng dữ liệu thật tính vào hạn mức tháng này (giờ Việt Nam):
+ * Số lần phân tích bằng dữ liệu thật tính vào hạn mức miễn phí của tài khoản:
  * do chính người này tạo, không phải bản sao chép, không phải demo, không thất bại.
  */
-export async function countBillableAnalysesThisMonth(userId: string): Promise<number> {
-  const monthStart = startOfMonthVietnam();
+export async function countBillableAnalyses(userId: string): Promise<number> {
   const rows = await getDb(env.DB)
     .select({ n: sql<number>`count(*)` })
     .from(creatorAnalyses)
@@ -86,17 +84,9 @@ export async function countBillableAnalysesThisMonth(userId: string): Promise<nu
         eq(creatorAnalyses.reused, 0),
         ne(creatorAnalyses.provider, 'mock'),
         ne(creatorAnalyses.status, 'failed'),
-        gt(creatorAnalyses.createdAt, monthStart - 1),
       ),
     );
   return Number(rows[0]?.n ?? 0);
-}
-
-/** Mốc unix đầu tháng hiện tại theo giờ Việt Nam. */
-function startOfMonthVietnam(): number {
-  const [y, m] = todayInVietnam().split('-').map(Number) as [number, number, number];
-  // 00:00 ngày 1 giờ VN = 17:00 UTC ngày cuối tháng trước
-  return Math.floor(Date.UTC(y, m - 1, 1, -7) / 1000);
 }
 
 /**

@@ -162,8 +162,12 @@ export const STUDIO_COSTS = {
 /** Tín chỉ tặng khi tài khoản dùng studio lần đầu — đủ để thử một ảnh. */
 export const WELCOME_CREDITS = 2;
 
-/** Số lần phân tích kênh bằng dữ liệu thật miễn phí mỗi tháng cho mỗi tài khoản. */
-export const ANALYSIS_FREE_PER_MONTH = 3;
+/**
+ * Số lần phân tích kênh bằng dữ liệu thật miễn phí cho MỖI TÀI KHOẢN (tính cả đời,
+ * không reset theo tháng). Mỗi lượt kéo dữ liệu tốn ~0,11 USD phí Apify (số thật
+ * 15/10/2026), nên chỉ tặng một lượt để thử; sau đó tính tín chỉ.
+ */
+export const ANALYSIS_FREE_TOTAL = 1;
 
 export function formatVnd(amount: number): string {
   return `${amount.toLocaleString('vi-VN')}đ`;
